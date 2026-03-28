@@ -13,8 +13,10 @@ export default defineConfig({
     tailwindcss(),
   ],
   server: {
-    watch: {
-      ignored: ['**/storage/framework/views/**'],
+      watch: {
+        usePolling: true,
+        interval: 1000,
+        ignored: ['**/storage/framework/views/**'],
+      },
     },
-  },
-})
+  })
