@@ -1,4 +1,52 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { getPublishedAnimations } from "../services/animationService";
+import { getCreators } from "../services/referenceService";
+import AppNavbar from "../navbar/AppNavbar.jsx";
+
+const dummySeries = [
+    {
+        id: "dummy-roro-jonggrang",
+        title: "Kisah Seribu Candi",
+        description: "Rahasia satu malam penuh siasat dalam legenda Roro Jonggrang.",
+        counts: { comments: 12 },
+    },
+    {
+        id: "dummy-borobudur",
+        title: "Candi Borobudur",
+        description: "Perjalanan megah warisan batu yang menyimpan jejak peradaban.",
+        counts: { comments: 10 },
+    },
+    {
+        id: "dummy-malin-kundang",
+        title: "Malin Kundang",
+        description: "Cerita klasik tentang durhaka, ombak, dan kutukan yang abadi.",
+        counts: { comments: 18 },
+    },
+    {
+        id: "dummy-timun-mas",
+        title: "Timun Mas",
+        description: "Keberanian seorang gadis melawan raksasa dengan kecerdikan.",
+        counts: { comments: 9 },
+    },
+    {
+        id: "dummy-sangkuriang",
+        title: "Sangkuriang",
+        description: "Legenda gunung dan takdir yang berputar pada masa lalu.",
+        counts: { comments: 14 },
+    },
+];
+
+const dummyCreators = [
+    { id: "dummy-creator-1", name: "Studio Parahyangan", followers_count: 1200, videos_count: 8 },
+    { id: "dummy-creator-2", name: "Nusa Frame", followers_count: 980, videos_count: 6 },
+    { id: "dummy-creator-3", name: "Legenda Timur", followers_count: 1430, videos_count: 11 },
+    { id: "dummy-creator-4", name: "Cerita Pesisir", followers_count: 760, videos_count: 5 },
+];
+
+function isDummyRecord(id) {
+    return String(id).startsWith("dummy-");
+}
 
 // Wrapper konsisten untuk semua section
 const Container = ({ children, className = "" }) => (
@@ -7,45 +55,12 @@ const Container = ({ children, className = "" }) => (
     </div>
 );
 
-// ===== NAVBAR =====
-function Navbar() {
-    return (
-        <div className="px-6 pt-4 sticky top-4 z-50">
-            <nav className="max-w-6xl mx-auto bg-white rounded-2xl px-6 py-3 flex items-center justify-between shadow-sm">
-                <div className="flex items-center gap-2">
-                    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-                        <polygon points="14,2 26,14 14,26 2,14" fill="#C8960C" />
-                        <polygon points="14,6 22,14 14,22 6,14" fill="#F5C842" />
-                    </svg>
-                    <span className="font-bold text-xl" style={{ color: "#3B2A0E", fontFamily: "Georgia, serif" }}>NusaTales</span>
-                </div>
-                <div className="hidden md:flex items-center gap-8">
-                    {["Beranda", "Shorts", "Jelajah", "Peta", "Favorit"].map((item) => (
-                        <a key={item} href="#" className="text-sm font-medium transition-colors hover:text-amber-700" style={{ color: "#6B5A3E" }}>{item}</a>
-                    ))}
-                </div>
-                <div className="flex items-center gap-3">
-                    <button className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full text-sm border transition" style={{ borderColor: "#D1C9B0", color: "#6B5A3E" }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-                        </svg>
-                        Cari...
-                    </button>
-                    <a href="/login" className="px-5 py-2 rounded-full text-sm font-semibold text-white transition hover:opacity-90" style={{ backgroundColor: "#3B2A0E" }}>
-                        Masuk
-                    </a>
-                </div>
-            </nav>
-        </div>
-    );
-}
-
 // ===== HERO =====
 function Hero() {
     const [activeSlide, setActiveSlide] = useState(0);
 
     return (
-        <div className="px-6 mt-4">
+        <div id="hero" className="px-6 mt-4">
             <div className="max-w-6xl mx-auto">
                 <section className="rounded-3xl overflow-hidden relative" style={{ minHeight: "380px", backgroundColor: "#2a1200" }}>
                     <div className="absolute inset-0">
@@ -74,13 +89,13 @@ function Hero() {
                             Temukan rahasia di balik terciptanya seribu candi dalam 1 malam melalui kisah cinta dan janji yang terlanggar.
                         </p>
                         <div className="flex items-center gap-3 flex-wrap">
-                            <button className="px-7 py-3 rounded-full font-semibold text-sm transition hover:opacity-90" style={{ backgroundColor: "#F5F0E0", color: "#1a0a00" }}>
+                            <Link to="/register" className="px-7 py-3 rounded-full font-semibold text-sm transition hover:opacity-90" style={{ backgroundColor: "#F5F0E0", color: "#1a0a00" }}>
                                 Daftar
-                            </button>
-                            <button className="flex items-center gap-2 px-7 py-3 rounded-full font-semibold text-sm transition hover:opacity-90" style={{ backgroundColor: "#8DC63F", color: "#fff" }}>
+                            </Link>
+                            <a href="#series-populer" className="flex items-center gap-2 px-7 py-3 rounded-full font-semibold text-sm transition hover:opacity-90" style={{ backgroundColor: "#8DC63F", color: "#fff" }}>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                                 Tonton Sekarang
-                            </button>
+                            </a>
                         </div>
                         <div className="flex items-center gap-2 mt-8">
                             {[0,1,2].map((i) => (
@@ -105,6 +120,7 @@ function Hero() {
 function JelajahiSection() {
     return (
         <Container className="mt-10">
+            <div id="jelajah"></div>
             <div className="flex items-center justify-between gap-8">
                 <div className="flex-1">
                     <h2 className="text-2xl md:text-3xl font-bold mb-3" style={{ color: "#3B2A0E", fontFamily: "Georgia, serif" }}>
@@ -112,15 +128,15 @@ function JelajahiSection() {
                     </h2>
                     <p className="text-sm leading-relaxed mb-5 max-w-lg" style={{ color: "#6B5A3E" }}>
                         Yuk, temukan cerita legenda, mitologi, hingga sejarah dari berbagai{" "}
-                        <a href="#" className="font-semibold underline" style={{ color: "#8DC63F" }}>daerah di Indonesia</a>{" "}
+                        <a href="#creator-section" className="font-semibold underline" style={{ color: "#8DC63F" }}>daerah di Indonesia</a>{" "}
                         lewat{" "}
-                        <a href="#" className="font-semibold underline" style={{ color: "#8DC63F" }}>animasi pendek</a>{" "}
+                        <a href="#series-populer" className="font-semibold underline" style={{ color: "#8DC63F" }}>animasi pendek</a>{" "}
                         yang seru untuk dinikmati.
                     </p>
-                    <button className="flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold transition hover:opacity-90" style={{ backgroundColor: "#8DC63F", color: "#fff" }}>
+                    <a href="#series-populer" className="flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold transition hover:opacity-90" style={{ backgroundColor: "#8DC63F", color: "#fff" }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                         Mulai
-                    </button>
+                    </a>
                 </div>
                 <div className="hidden md:block shrink-0">
                     <img src="/poto/nunjuk.webp" className="w-44 h-auto" alt="Sitompel" />
@@ -166,36 +182,97 @@ function SeriesCard({ number, title, desc, episodes, isFeatured = false }) {
 
 // ===== SERIES POPULER =====
 function SeriesPopuler() {
-    const series = [
-        { number: "1", title: "KISAH SERIBU CANDI", desc: "Temukan rahasia di balik terciptanya seribu candi dalam 1 malam melalui kisah cinta dan janji yang terlanggar.", episodes: 12, isFeatured: true },
-        { number: "2", title: "Candi Borobudur", desc: "Kisah megah pembangunan candi terbesar di dunia...", episodes: 10 },
-        { number: "3", title: "Kisah Nusantara", desc: "Kumpulan cerita legenda dari Sulawesi yang memukau...", episodes: 10 },
-        { number: "4", title: "Malin Kundang", desc: "Cerita anak durhaka yang dikutuk menjadi batu...", episodes: 10 },
-        { number: "5", title: "Timun Mas", desc: "Kisah gadis pemberani yang melawan raksasa dengan kecerdikannya...", episodes: 10 },
-    ];
+    const [series, setSeries] = useState(dummySeries);
+    const [creators, setCreators] = useState(dummyCreators);
+    const [isUsingFallback, setIsUsingFallback] = useState(true);
+
+    useEffect(() => {
+        let ignore = false;
+
+        async function loadHomepageData() {
+            try {
+                const [animationResponse, creatorResponse] = await Promise.all([
+                    getPublishedAnimations({ per_page: 5 }),
+                    getCreators({ per_page: 4 }),
+                ]);
+
+                if (!ignore) {
+                    const apiSeries = animationResponse.data ?? [];
+                    const apiCreators = creatorResponse.items ?? creatorResponse ?? [];
+
+                    setSeries(apiSeries.length > 0 ? apiSeries : dummySeries);
+                    setCreators(apiCreators.length > 0 ? apiCreators : dummyCreators);
+                    setIsUsingFallback(apiSeries.length === 0 || apiCreators.length === 0);
+                }
+            } catch (_error) {
+                if (!ignore) {
+                    setSeries(dummySeries);
+                    setCreators(dummyCreators);
+                    setIsUsingFallback(true);
+                }
+            }
+        }
+
+        loadHomepageData();
+
+        return () => {
+            ignore = true;
+        };
+    }, []);
 
     return (
         <Container className="mt-10 mb-12">
+            <div id="series-populer"></div>
             <div className="flex items-end justify-between mb-5">
                 <div>
                     <h2 className="text-2xl font-bold" style={{ color: "#3B2A0E", fontFamily: "Georgia, serif" }}>Series Populer</h2>
                     <p className="text-sm mt-1" style={{ color: "#9B8E7A" }}>Kisah paling banyak ditonton minggu ini.</p>
                 </div>
-                <a href="#" className="flex items-center gap-1 text-sm font-semibold" style={{ color: "#8DC63F" }}>
+                <a href="#creator-section" className="flex items-center gap-1 text-sm font-semibold" style={{ color: "#8DC63F" }}>
                     Lihat Semua
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M5 12h14M12 5l7 7-7 7"/>
                     </svg>
                 </a>
             </div>
-            <div className="grid grid-cols-3 gap-4">
-                <div className="row-span-2">
-                    <SeriesCard {...series[0]} />
+            {isUsingFallback ? (
+                <div className="mb-4 rounded-2xl px-4 py-3 text-sm" style={{ backgroundColor: "#EBDCB7", color: "#6B5A3E" }}>
+                    Menampilkan data dummy sementara sampai koleksi backend siap.
                 </div>
-                <SeriesCard {...series[1]} />
-                <SeriesCard {...series[2]} />
-                <SeriesCard {...series[3]} />
-                <SeriesCard {...series[4]} />
+            ) : null}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {series.map((item, index) => (
+                    <Link key={item.id} to={isDummyRecord(item.id) ? "/register" : `/animations/${item.id}`} className={index === 0 ? "md:row-span-2 block" : "block"}>
+                        <SeriesCard
+                            number={String(index + 1)}
+                            title={item.title}
+                            desc={item.description || "NusaTales published animation."}
+                            episodes={item.counts?.comments ?? 0}
+                            isFeatured={index === 0}
+                        />
+                    </Link>
+                ))}
+            </div>
+
+            <div id="creator-section" className="mt-8">
+                <h3 className="text-xl font-bold mb-4" style={{ color: "#3B2A0E", fontFamily: "Georgia, serif" }}>
+                    Featured Creators
+                </h3>
+                <div className="grid md:grid-cols-4 gap-4">
+                    {creators.map((creator) => (
+                        <Link key={creator.id} to={isDummyRecord(creator.id) ? "/register" : "/account"} className="rounded-3xl p-5 block" style={{ backgroundColor: "#DCCDAA" }}>
+                            <p className="font-bold text-lg" style={{ color: "#3B2A0E" }}>
+                                {creator.name}
+                            </p>
+                            <p className="text-sm mt-1" style={{ color: "#6B5A3E" }}>
+                                {creator.followers_count} followers
+                            </p>
+                            <p className="text-sm" style={{ color: "#8A7B5A" }}>
+                                {creator.videos_count} animations
+                            </p>
+                        </Link>
+                    ))}
+                </div>
             </div>
         </Container>
     );
@@ -231,7 +308,7 @@ function Footer() {
 export default function LandingPage() {
     return (
         <div className="min-h-screen" style={{ backgroundColor: "#F5F0E0" }}>
-            <Navbar />
+            <AppNavbar current="home" />
             <Hero />
             <JelajahiSection />
             <SeriesPopuler />

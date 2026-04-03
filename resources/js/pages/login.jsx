@@ -1,44 +1,54 @@
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { login } from "../services/authService";
+import { useAuth } from "../contexts/AuthContext";
+import AppNavbar from "../navbar/AppNavbar.jsx";
 
 export default function Login() {
     const [showPassword, setShowPassword] = useState(false);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [errorMessage, setErrorMessage] = useState("");
+    const [isPending, startTransition] = useTransition();
+    const navigate = useNavigate();
+    const { setUser } = useAuth();
+
+    async function handleSubmit(event) {
+        event.preventDefault();
+        setErrorMessage("");
+
+        startTransition(async () => {
+            try {
+                const { user } = await login({
+                    email,
+                    password,
+                    device_name: "react-web",
+                });
+
+                setUser(user);
+                navigate("/dashboard");
+            } catch (error) {
+                const message =
+                    error.response?.data?.message ||
+                    "Login failed. Please check your credentials.";
+
+                setErrorMessage(message);
+            }
+        });
+    }
 
     return (
         <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#F5F0E0" }}>
-            {/* Navbar */}
-            <nav className="bg-white rounded-4xl mx-4 mt-4 px-6 py-3 flex items-center justify-between shadow-xl/10">
-                <div className="flex items-center gap-2">
-                    {/* Logo diamond */}
-                    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-                        <polygon points="14,2 26,14 14,26 2,14" fill="#C8960C" />
-                        <polygon points="14,6 22,14 14,22 6,14" fill="#F5C842" />
-                    </svg>
-                    <span className="font-bold text-xl" style={{ color: "#3B2A0E", fontFamily: "Georgia, serif" }}>NusaTales</span>
-                </div>
-                <div className="hidden md:flex items-center gap-8">
-                    {["Beranda", "Shorts", "Jelajah", "Peta", "Favorit"].map((item) => (
-                        <a key={item} href="#" className="text-sm font-medium transition-colors hover:text-amber-700" style={{ color: "#6B5A3E" }}>{item}</a>
-                    ))}
-                </div>
-                <div className="flex items-center gap-3">
-                    <button className="flex items-center gap-2 px-4 py-2 rounded-full text-sm border transition" style={{ borderColor: "#D1C9B0", color: "#6B5A3E" }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-                        </svg>
-                        Cari...
-                    </button>
-                    <button className="px-5 py-2 rounded-full text-sm font-semibold text-white transition hover:opacity-90" style={{ backgroundColor: "#3B2A0E" }}>
-                        Masuk
-                    </button>
-                </div>
-            </nav>
+            <AppNavbar current="login" />
 
             {/* Main content */}
             <div className="flex-1 flex items-start justify-center gap-8 px-4 pt-10 pb-16 relative">
                 {/* Login Card */}
-                <div className="bg-white rounded-3xl p-8 w-full max-w-lg shadow-sm border" style={{ borderColor: "#C8E6A0" }}>
+                <form
+                    onSubmit={handleSubmit}
+                    className="bg-white rounded-3xl p-8 w-full max-w-lg shadow-sm border"
+                    style={{ borderColor: "#C8E6A0" }}
+                >
                     <h1 className="text-4xl font-bold text-center mb-8" style={{ color: "#3B2A0E", fontFamily: "Georgia, serif" }}>Masuk</h1>
 
                     {/* Email */}
@@ -64,6 +74,7 @@ export default function Login() {
                             style={{ backgroundColor: "#F0EEE8", color: "#3B2A0E", border: "none" }}
                         />
                         <button
+                            type="button"
                             onClick={() => setShowPassword(!showPassword)}
                             className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                         >
@@ -85,9 +96,23 @@ export default function Login() {
                         <a href="#" className="text-sm font-medium" style={{ color: "#E05C3A" }}>Lupa Password ?</a>
                     </div>
 
+                    {errorMessage ? (
+                        <div
+                            className="mb-4 rounded-2xl px-4 py-3 text-sm"
+                            style={{ backgroundColor: "#FFF1EB", color: "#A63B1F" }}
+                        >
+                            {errorMessage}
+                        </div>
+                    ) : null}
+
                     {/* Login button */}
-                    <button className="w-full py-4 rounded-full text-white font-semibold text-base transition hover:opacity-90 mb-5" style={{ backgroundColor: "#8DC63F" }}>
-                        Masuk
+                    <button
+                        type="submit"
+                        disabled={isPending}
+                        className="w-full py-4 rounded-full text-white font-semibold text-base transition hover:opacity-90 mb-5 disabled:opacity-60"
+                        style={{ backgroundColor: "#8DC63F" }}
+                    >
+                        {isPending ? "Memproses..." : "Masuk"}
                     </button>
 
                     {/* Divider */}
@@ -100,13 +125,13 @@ export default function Login() {
                     {/* Social login */}
                     <div className="grid grid-cols-3 gap-3 mb-6">
                         {/* Facebook */}
-                        <button className="flex items-center justify-center py-3 rounded-2xl border transition hover:bg-gray-50" style={{ borderColor: "#E0D8C8" }}>
+                        <button type="button" className="flex items-center justify-center py-3 rounded-2xl border transition hover:bg-gray-50" style={{ borderColor: "#E0D8C8" }}>
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="#1877F2">
                                 <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                             </svg>
                         </button>
                         {/* Google */}
-                        <button className="flex items-center justify-center py-3 rounded-2xl border transition hover:bg-gray-50" style={{ borderColor: "#E0D8C8" }}>
+                        <button type="button" className="flex items-center justify-center py-3 rounded-2xl border transition hover:bg-gray-50" style={{ borderColor: "#E0D8C8" }}>
                             <svg width="24" height="24" viewBox="0 0 24 24">
                                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                                 <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -115,7 +140,7 @@ export default function Login() {
                             </svg>
                         </button>
                         {/* Apple */}
-                        <button className="flex items-center justify-center py-3 rounded-2xl border transition hover:bg-gray-50" style={{ borderColor: "#E0D8C8" }}>
+                        <button type="button" className="flex items-center justify-center py-3 rounded-2xl border transition hover:bg-gray-50" style={{ borderColor: "#E0D8C8" }}>
                             <svg width="22" height="22" viewBox="0 0 814 1000" fill="#000">
                                 <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-36.8-162.3-105.1C110.7 717.8 67 610 67 507.9c0-190.3 124.4-290.9 246.8-290.9 64.7 0 118.5 42.1 158.8 42.1 38.5 0 98.5-44.7 171.5-44.7 27.5 0 108.2 2.6 168.4 80.6zm-198.3-167.8c31.1-36.9 53.1-88.1 53.1-139.3 0-7.1-.6-14.3-1.9-20.1-50.6 1.9-110.8 33.7-147.1 75.8-28.5 32.4-55.1 83.6-55.1 135.5 0 7.8 1.3 15.6 1.9 18.1 3.2.6 8.4 1.3 13.6 1.3 45.4 0 102.5-30.4 135.5-71.3z"/>
                             </svg>
@@ -125,9 +150,9 @@ export default function Login() {
                     {/* Register link */}
                     <p className="text-center text-sm" style={{ color: "#6B5A3E" }}>
                         Tidak mempunyai akun?{" "}
-                        <a href="#" className="font-semibold" style={{ color: "#3B82F6" }}>Daftar</a>
+                        <Link to="/register" className="font-semibold" style={{ color: "#3B82F6" }}>Daftar</Link>
                     </p>
-                </div>
+                </form>
 
                 {/* Mascot Sitompel */}
                 <div className="hidden lg:flex flex-col items-center relative mt-10">
