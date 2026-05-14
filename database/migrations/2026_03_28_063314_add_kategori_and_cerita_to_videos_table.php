@@ -11,21 +11,35 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('videos', function (Blueprint $table) {
-            $table->unsignedBigInteger('kategori_id')->nullable()->after('kreator_id');
-            $table->unsignedBigInteger('cerita_id')->nullable()->after('kategori_id');
+        $shouldCreateKategoriColumn = ! Schema::hasColumn('videos', 'kategori_id');
+        $shouldCreateCeritaColumn = ! Schema::hasColumn('videos', 'cerita_id');
 
-            $table->foreign('kategori_id')
-                ->references('kategori_id')
-                ->on('kategori')
-                ->cascadeOnUpdate()
-                ->nullOnDelete();
+        Schema::table('videos', function (Blueprint $table) use ($shouldCreateKategoriColumn, $shouldCreateCeritaColumn) {
+            if ($shouldCreateKategoriColumn) {
+                $table->unsignedBigInteger('kategori_id')->nullable()->after('kreator_id');
+            }
 
-            $table->foreign('cerita_id')
-                ->references('cerita_id')
-                ->on('cerita_rakyat')
-                ->cascadeOnUpdate()
-                ->nullOnDelete();
+            if ($shouldCreateCeritaColumn) {
+                $table->unsignedBigInteger('cerita_id')->nullable()->after('kategori_id');
+            }
+        });
+
+        Schema::table('videos', function (Blueprint $table) use ($shouldCreateKategoriColumn, $shouldCreateCeritaColumn) {
+            if ($shouldCreateKategoriColumn) {
+                $table->foreign('kategori_id')
+                    ->references('kategori_id')
+                    ->on('kategori')
+                    ->cascadeOnUpdate()
+                    ->nullOnDelete();
+            }
+
+            if ($shouldCreateCeritaColumn) {
+                $table->foreign('cerita_id')
+                    ->references('cerita_id')
+                    ->on('cerita_rakyat')
+                    ->cascadeOnUpdate()
+                    ->nullOnDelete();
+            }
         });
     }
 
@@ -35,9 +49,29 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('videos', function (Blueprint $table) {
-            $table->dropForeign(['kategori_id']);
-            $table->dropForeign(['cerita_id']);
-            $table->dropColumn(['kategori_id', 'cerita_id']);
+            if (Schema::hasColumn('videos', 'kategori_id')) {
+                try {
+                    $table->dropForeign(['kategori_id']);
+                } catch (Throwable) {
+                    //
+                }
+            }
+
+            if (Schema::hasColumn('videos', 'cerita_id')) {
+                try {
+                    $table->dropForeign(['cerita_id']);
+                } catch (Throwable) {
+                    //
+                }
+            }
+        });
+
+        Schema::table('videos', function (Blueprint $table) {
+            $columns = array_filter(['kategori_id', 'cerita_id'], fn (string $column) => Schema::hasColumn('videos', $column));
+
+            if ($columns !== []) {
+                $table->dropColumn($columns);
+            }
         });
     }
 };

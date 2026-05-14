@@ -31,8 +31,8 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($request->is('api/*')) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Unauthenticated.',
-                    'errors' => null,
+                    'message' => $e->getMessage() ?: 'Unauthenticated.',
+                    'errors' => (object) [],
                 ], 401);
             }
         });
@@ -42,7 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json([
                     'success' => false,
                     'message' => 'Requested resource was not found.',
-                    'errors' => null,
+                    'errors' => (object) [],
                 ], 404);
             }
         });
@@ -52,7 +52,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json([
                     'success' => false,
                     'message' => $e->getMessage() ?: 'Request could not be processed.',
-                    'errors' => null,
+                    'errors' => (object) [],
                 ], $e->getStatusCode());
             }
         });
@@ -64,7 +64,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json([
                     'success' => false,
                     'message' => 'An unexpected error occurred.',
-                    'errors' => null,
+                    'errors' => (object) [],
                 ], 500);
             }
         });

@@ -34,14 +34,15 @@ export default function AppNavbar({ current = "home" }) {
 
                 <div className="hidden md:flex items-center gap-8">
                     <NavAnchor href="/#hero">Beranda</NavAnchor>
-                    <NavAnchor href="/#series-populer">Shorts</NavAnchor>
+                    <NavAnchor href="/explore">Explore</NavAnchor>
+                    <NavAnchor href="/favorites">Favorites</NavAnchor>
                     <NavAnchor href="/#jelajah">Jelajah</NavAnchor>
                     <NavAnchor href="/#creator-section">Kreator</NavAnchor>
                 </div>
 
                 <div className="flex items-center gap-3">
                     <a
-                        href="/api/test"
+                        href="/explore"
                         className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full text-sm border transition"
                         style={{ borderColor: "#D1C9B0", color: "#6B5A3E" }}
                     >
@@ -54,13 +55,13 @@ export default function AppNavbar({ current = "home" }) {
 
                     {isAuthenticated ? (
                         <Link
-                            to={user?.role === "admin" ? "/admin/studio" : "/dashboard"}
+                            to={user?.role === "admin" ? "/admin" : "/dashboard"}
                             className="px-5 py-2 rounded-full text-sm font-semibold text-white transition hover:opacity-90"
                             style={{ backgroundColor: "#3B2A0E" }}
                         >
                             {user?.role === "admin"
                                 ? "Admin Panel"
-                                : user?.role === "kreator"
+                                : user?.role === "creator"
                                     ? "Dashboard"
                                     : "Akun"}
                         </Link>

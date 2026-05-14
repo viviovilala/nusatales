@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import AppNavbar from "../navbar/AppNavbar.jsx";
 import {
     getAdminDashboard,
     getCreatorDashboard,
@@ -32,7 +33,7 @@ function StatCard({ label, value }) {
 export default function Dashboard() {
     const { user, logout } = useAuth();
     const isAdmin = user.role === "admin";
-    const isCreator = user.role === "kreator";
+    const isCreator = user.role === "creator";
     const [dashboard, setDashboard] = useState(null);
     const [wallet, setWallet] = useState(null);
     const [plans, setPlans] = useState([]);
@@ -101,7 +102,9 @@ export default function Dashboard() {
     }, [isAdmin, isCreator]);
 
     return (
-        <div className="min-h-screen px-6 py-6" style={{ backgroundColor: "#F5F0E0" }}>
+        <div className="min-h-screen pb-6" style={{ backgroundColor: "#F5F0E0" }}>
+            <AppNavbar current="dashboard" />
+            <div className="px-6 py-6">
             <div className="max-w-6xl mx-auto">
                 <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
                     <div>
@@ -124,14 +127,14 @@ export default function Dashboard() {
                             Account Hub
                         </Link>
                         {user.role === "admin" ? (
-                            <Link
-                                to="/admin/studio"
+                            <a
+                                href="/admin"
                                 className="px-5 py-3 rounded-full text-sm font-semibold"
                                 style={{ backgroundColor: "#8DC63F", color: "#FFFFFF" }}
                             >
-                                Admin Studio
-                            </Link>
-                        ) : user.role === "kreator" ? (
+                                Filament Admin
+                            </a>
+                        ) : user.role === "creator" ? (
                             <Link
                                 to="/creator/studio"
                                 className="px-5 py-3 rounded-full text-sm font-semibold"
@@ -211,7 +214,9 @@ export default function Dashboard() {
                             {isAdmin ? "Operations Snapshot" : isCreator ? "Creator Snapshot" : "Account Snapshot"}
                         </h2>
                         <div className="grid sm:grid-cols-2 gap-4 text-sm">
-                            {Object.entries(dashboard ?? {}).map(([key, value]) => (
+                            {Object.entries(dashboard ?? {})
+                                .filter(([, value]) => ["string", "number", "boolean"].includes(typeof value))
+                                .map(([key, value]) => (
                                 <div key={key} className="rounded-2xl px-4 py-3" style={{ backgroundColor: "#F8F2E4" }}>
                                     <p style={{ color: "#8A7B5A" }}>{key.replaceAll("_", " ")}</p>
                                     <p className="font-semibold mt-1" style={{ color: "#3B2A0E" }}>
@@ -288,6 +293,7 @@ export default function Dashboard() {
                         )}
                     </div>
                 </section>
+            </div>
             </div>
         </div>
     );

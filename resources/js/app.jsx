@@ -9,8 +9,12 @@ import AdminStudio from "./pages/AdminStudio.jsx";
 import AnimationViewer from "./pages/AnimationViewer.jsx";
 import CreatorStudio from "./pages/CreatorStudio.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
+import EpisodeWatch from "./pages/EpisodeWatch.jsx";
+import Explore from "./pages/Explore.jsx";
+import Favorites from "./pages/Favorites.jsx";
 import LandingPage from "./pages/Landingpage.jsx";
 import Register from "./pages/Register.jsx";
+import SeriesDetail from "./pages/SeriesDetail.jsx";
 import Login from "./pages/login.jsx";
 
 function App() {
@@ -19,13 +23,16 @@ function App() {
             <BrowserRouter>
                 <Routes>
                     <Route path="/" element={<LandingPage />} />
+                    <Route path="/explore" element={<Explore />} />
+                    <Route path="/series/:slug" element={<SeriesDetail />} />
+                    <Route path="/episodes/:id" element={<EpisodeWatch />} />
                     <Route path="/animations/:id" element={<AnimationViewer />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
                     <Route
                         path="/dashboard"
                         element={
-                            <ProtectedRoute allowedRoles={["admin", "kreator", "user"]}>
+                            <ProtectedRoute allowedRoles={["admin", "creator", "user"]}>
                                 <Dashboard />
                             </ProtectedRoute>
                         }
@@ -33,7 +40,7 @@ function App() {
                     <Route
                         path="/creator/studio"
                         element={
-                            <ProtectedRoute allowedRoles={["admin", "kreator"]}>
+                            <ProtectedRoute allowedRoles={["admin", "creator"]}>
                                 <CreatorStudio />
                             </ProtectedRoute>
                         }
@@ -41,8 +48,16 @@ function App() {
                     <Route
                         path="/account"
                         element={
-                            <ProtectedRoute allowedRoles={["admin", "kreator", "user"]}>
+                            <ProtectedRoute allowedRoles={["admin", "creator", "user"]}>
                                 <AccountHub />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/favorites"
+                        element={
+                            <ProtectedRoute allowedRoles={["admin", "creator", "user"]}>
+                                <Favorites />
                             </ProtectedRoute>
                         }
                     />

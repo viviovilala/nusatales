@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
+use App\Http\Requests\Auth\UpdateProfileRequest;
 use App\Http\Resources\UserResource;
 use App\Services\AuthService;
 use Illuminate\Http\Request;
@@ -45,5 +46,12 @@ class AuthController extends Controller
         $this->authService->logout($request->user());
 
         return $this->successResponse('Logout successful.', null);
+    }
+
+    public function updateProfile(UpdateProfileRequest $request)
+    {
+        $user = $this->authService->updateProfile($request->user(), $request->validated());
+
+        return $this->successResponse('Profile updated successfully.', new UserResource($user));
     }
 }

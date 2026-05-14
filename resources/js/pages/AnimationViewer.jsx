@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { getAnimationById } from "../services/animationService";
+import AppNavbar from "../navbar/AppNavbar.jsx";
 import {
     addComment,
     getComments,
@@ -130,7 +131,9 @@ export default function AnimationViewer() {
     }
 
     return (
-        <div className="min-h-screen px-6 py-6" style={{ backgroundColor: "#F5F0E0" }}>
+        <div className="min-h-screen pb-6" style={{ backgroundColor: "#F5F0E0" }}>
+            <AppNavbar current="viewer" />
+            <div className="px-6 py-6">
             <div className="max-w-6xl mx-auto">
                 <div className="flex items-center justify-between gap-4 mb-8">
                     <div>
@@ -228,6 +231,7 @@ export default function AnimationViewer() {
                         </section>
                     </div>
                 )}
+            </div>
             </div>
         </div>
     );

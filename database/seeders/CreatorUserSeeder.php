@@ -16,10 +16,10 @@ class CreatorUserSeeder extends Seeder
             ['email' => 'creator@nusatales.test'],
             [
                 'nama' => 'NusaTales Creator',
-                'password' => 'password123',
+                'password' => 'Password123!',
                 'foto_profil' => null,
                 'tanggal_daftar' => now(),
-                'role' => 'kreator',
+                'role' => 'creator',
             ]
         );
     }

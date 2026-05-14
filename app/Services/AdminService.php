@@ -59,13 +59,13 @@ class AdminService
     }
 
     /**
-     * @return array<string, int|float>
+     * @return array<string, mixed>
      */
     public function dashboardStats(): array
     {
-        return [
+        $stats = [
             'total_users' => User::count(),
-            'total_creators' => User::where('role', 'kreator')->count(),
+            'total_creators' => User::where('role', 'creator')->count(),
             'total_admins' => User::where('role', 'admin')->count(),
             'total_videos' => Video::count(),
             'published_videos' => Video::where('status', 'published')->count(),
@@ -75,6 +75,36 @@ class AdminService
             'total_ads' => Ad::count(),
             'total_subscription_plans' => SubscriptionPlan::count(),
             'total_daily_missions' => DailyMission::count(),
+        ];
+
+        return [
+            ...$stats,
+            'totals' => [
+                'users' => $stats['total_users'],
+                'creators' => $stats['total_creators'],
+                'admins' => $stats['total_admins'],
+                'animations' => $stats['total_videos'],
+                'published' => $stats['published_videos'],
+                'draft' => $stats['draft_videos'],
+                'rejected' => $stats['rejected_videos'],
+                'views' => $stats['total_views'],
+                'ads' => $stats['total_ads'],
+                'subscription_plans' => $stats['total_subscription_plans'],
+                'daily_missions' => $stats['total_daily_missions'],
+            ],
+            'recent_uploads' => Video::query()
+                ->with('creator')
+                ->orderByDesc('tanggal_upload')
+                ->limit(5)
+                ->get()
+                ->map(fn (Video $video) => [
+                    'id' => $video->video_id,
+                    'title' => $video->judul,
+                    'status' => $video->status,
+                    'creator' => $video->creator?->nama,
+                    'uploaded_at' => optional($video->tanggal_upload)->toISOString(),
+                ])
+                ->values(),
         ];
     }
 }

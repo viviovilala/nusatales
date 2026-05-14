@@ -1,6 +1,7 @@
 import { useState, useTransition } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import AppNavbar from "../navbar/AppNavbar.jsx";
 import { register } from "../services/authService";
 
 export default function Register() {
@@ -8,10 +9,10 @@ export default function Register() {
     const { setUser } = useAuth();
     const [isPending, startTransition] = useTransition();
     const [errorMessage, setErrorMessage] = useState("");
+    const [fieldErrors, setFieldErrors] = useState({});
     const [form, setForm] = useState({
-        nama: "",
+        name: "",
         email: "",
-        role: "kreator",
         password: "",
         password_confirmation: "",
     });
@@ -26,6 +27,7 @@ export default function Register() {
     function handleSubmit(event) {
         event.preventDefault();
         setErrorMessage("");
+        setFieldErrors({});
 
         startTransition(async () => {
             try {
@@ -33,6 +35,7 @@ export default function Register() {
                 setUser(user);
                 navigate("/dashboard");
             } catch (error) {
+                setFieldErrors(error.response?.data?.errors || {});
                 setErrorMessage(
                     error.response?.data?.message || "Registration failed. Please review your input."
                 );
@@ -41,7 +44,9 @@ export default function Register() {
     }
 
     return (
-        <div className="min-h-screen px-6 py-10" style={{ backgroundColor: "#F5F0E0" }}>
+        <div className="min-h-screen pb-10" style={{ backgroundColor: "#F5F0E0" }}>
+            <AppNavbar current="register" />
+            <div className="px-6 py-10">
             <div className="max-w-5xl mx-auto grid lg:grid-cols-[0.95fr_1.05fr] gap-8 items-center">
                 <section className="rounded-[32px] p-8 text-white" style={{ background: "linear-gradient(135deg, #5C3A1E 0%, #A56E28 100%)" }}>
                     <p className="text-sm uppercase tracking-[0.3em] text-amber-100 mb-3">NusaKarya</p>
@@ -78,21 +83,28 @@ export default function Register() {
                     ) : null}
 
                     <div className="grid md:grid-cols-2 gap-4">
-                        <input value={form.nama} onChange={(event) => updateField("nama", event.target.value)} placeholder="Full name" className="w-full px-5 py-4 rounded-2xl outline-none" style={{ backgroundColor: "#F7F3EA", color: "#3B2A0E" }} />
-                        <input type="email" value={form.email} onChange={(event) => updateField("email", event.target.value)} placeholder="Email" className="w-full px-5 py-4 rounded-2xl outline-none" style={{ backgroundColor: "#F7F3EA", color: "#3B2A0E" }} />
-                        <select value={form.role} onChange={(event) => updateField("role", event.target.value)} className="w-full px-5 py-4 rounded-2xl outline-none" style={{ backgroundColor: "#F7F3EA", color: "#3B2A0E" }}>
-                            <option value="kreator">Creator</option>
-                            <option value="user">User</option>
-                        </select>
-                        <input type="password" value={form.password} onChange={(event) => updateField("password", event.target.value)} placeholder="Password" className="w-full px-5 py-4 rounded-2xl outline-none" style={{ backgroundColor: "#F7F3EA", color: "#3B2A0E" }} />
+                        <div>
+                            <input value={form.name} onChange={(event) => updateField("name", event.target.value)} placeholder="Full name" className="w-full px-5 py-4 rounded-2xl outline-none" style={{ backgroundColor: "#F7F3EA", color: "#3B2A0E" }} />
+                            {fieldErrors.name ? <p className="mt-2 text-xs" style={{ color: "#A63B1F" }}>{fieldErrors.name[0]}</p> : null}
+                        </div>
+                        <div>
+                            <input type="email" value={form.email} onChange={(event) => updateField("email", event.target.value)} placeholder="Email" className="w-full px-5 py-4 rounded-2xl outline-none" style={{ backgroundColor: "#F7F3EA", color: "#3B2A0E" }} />
+                            {fieldErrors.email ? <p className="mt-2 text-xs" style={{ color: "#A63B1F" }}>{fieldErrors.email[0]}</p> : null}
+                        </div>
+                        <div>
+                            <input type="password" value={form.password} onChange={(event) => updateField("password", event.target.value)} placeholder="Password" className="w-full px-5 py-4 rounded-2xl outline-none" style={{ backgroundColor: "#F7F3EA", color: "#3B2A0E" }} />
+                            {fieldErrors.password ? <p className="mt-2 text-xs" style={{ color: "#A63B1F" }}>{fieldErrors.password[0]}</p> : null}
+                        </div>
+                        <div>
+                            <input type="password" value={form.password_confirmation} onChange={(event) => updateField("password_confirmation", event.target.value)} placeholder="Confirm password" className="w-full px-5 py-4 rounded-2xl outline-none" style={{ backgroundColor: "#F7F3EA", color: "#3B2A0E" }} />
+                        </div>
                     </div>
-
-                    <input type="password" value={form.password_confirmation} onChange={(event) => updateField("password_confirmation", event.target.value)} placeholder="Confirm password" className="w-full mt-4 px-5 py-4 rounded-2xl outline-none" style={{ backgroundColor: "#F7F3EA", color: "#3B2A0E" }} />
 
                     <button type="submit" disabled={isPending} className="w-full mt-6 py-4 rounded-2xl text-white font-semibold disabled:opacity-60" style={{ backgroundColor: "#8DC63F" }}>
                         {isPending ? "Creating account..." : "Create account"}
                     </button>
                 </form>
+            </div>
             </div>
         </div>
     );

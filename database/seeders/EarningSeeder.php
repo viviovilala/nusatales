@@ -14,7 +14,7 @@ class EarningSeeder extends Seeder
      */
     public function run(): void
     {
-        $creator = User::query()->where('role', 'kreator')->first();
+        $creator = User::query()->where('role', 'creator')->first();
         $video = Video::query()->first();
 
         if (! $creator || ! $video) {

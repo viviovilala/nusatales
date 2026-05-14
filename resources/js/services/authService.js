@@ -36,6 +36,24 @@ export async function me() {
     return response.data.data;
 }
 
+export async function updateProfile(payload) {
+    const formData = new FormData();
+
+    Object.entries(payload).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+            formData.append(key, value);
+        }
+    });
+
+    const response = await apiClient.post("/auth/profile", formData, {
+        headers: {
+            "Content-Type": "multipart/form-data",
+        },
+    });
+
+    return response.data.data;
+}
+
 export async function logout() {
     try {
         await apiClient.post("/auth/logout");

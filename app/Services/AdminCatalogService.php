@@ -87,7 +87,7 @@ class AdminCatalogService
     public function creators(int $perPage = 15, ?string $search = null): LengthAwarePaginator
     {
         return User::query()
-            ->whereIn('role', ['kreator', 'admin'])
+            ->whereIn('role', ['creator', 'admin'])
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($builder) use ($search) {
                     $builder

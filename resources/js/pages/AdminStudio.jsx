@@ -11,8 +11,12 @@ import {
     getAdminAnimations,
     getAdminMissions,
     getAdminPlans,
+    updateAdminAd,
     updateAdminAnimationStatus,
+    updateAdminMission,
+    updateAdminPlan,
 } from "../services/dashboardService";
+import AppNavbar from "../navbar/AppNavbar.jsx";
 
 export default function AdminStudio() {
     const [animations, setAnimations] = useState([]);
@@ -21,6 +25,9 @@ export default function AdminStudio() {
     const [ads, setAds] = useState([]);
     const [message, setMessage] = useState("");
     const [errorMessage, setErrorMessage] = useState("");
+    const [editingPlanId, setEditingPlanId] = useState(null);
+    const [editingMissionId, setEditingMissionId] = useState(null);
+    const [editingAdId, setEditingAdId] = useState(null);
     const [planForm, setPlanForm] = useState({ name: "", description: "", price: "", duration_days: 30, status: "active" });
     const [missionForm, setMissionForm] = useState({ judul: "", deskripsi: "", target: 1, tipe: "watch", reward_point: 10 });
     const [adForm, setAdForm] = useState({ nama_brand: "", jenis_iklan: "", durasi: "", video_id: "" });
@@ -116,41 +123,61 @@ export default function AdminStudio() {
     async function submitPlan(event) {
         event.preventDefault();
         try {
-            const created = await createAdminPlan(planForm);
-            setPlans((previous) => [...previous, created]);
+            const saved = editingPlanId
+                ? await updateAdminPlan(editingPlanId, planForm)
+                : await createAdminPlan(planForm);
+            setPlans((previous) => editingPlanId
+                ? previous.map((item) => (item.id === editingPlanId ? saved : item))
+                : [...previous, saved]
+            );
             setPlanForm({ name: "", description: "", price: "", duration_days: 30, status: "active" });
-            setMessage("Subscription plan created.");
+            setEditingPlanId(null);
+            setMessage(editingPlanId ? "Subscription plan updated." : "Subscription plan created.");
         } catch (error) {
-            setErrorMessage(error.response?.data?.message || "Failed to create plan.");
+            setErrorMessage(error.response?.data?.message || "Failed to save plan.");
         }
     }
 
     async function submitMission(event) {
         event.preventDefault();
         try {
-            const created = await createAdminMission(missionForm);
-            setMissions((previous) => [...previous, created]);
+            const saved = editingMissionId
+                ? await updateAdminMission(editingMissionId, missionForm)
+                : await createAdminMission(missionForm);
+            setMissions((previous) => editingMissionId
+                ? previous.map((item) => ((item.mission_id ?? item.id) === editingMissionId ? saved : item))
+                : [...previous, saved]
+            );
             setMissionForm({ judul: "", deskripsi: "", target: 1, tipe: "watch", reward_point: 10 });
-            setMessage("Mission created.");
+            setEditingMissionId(null);
+            setMessage(editingMissionId ? "Mission updated." : "Mission created.");
         } catch (error) {
-            setErrorMessage(error.response?.data?.message || "Failed to create mission.");
+            setErrorMessage(error.response?.data?.message || "Failed to save mission.");
         }
     }
 
     async function submitAd(event) {
         event.preventDefault();
         try {
-            const created = await createAdminAd(adForm);
-            setAds((previous) => [created, ...previous]);
+            const saved = editingAdId
+                ? await updateAdminAd(editingAdId, adForm)
+                : await createAdminAd(adForm);
+            setAds((previous) => editingAdId
+                ? previous.map((item) => (item.id === editingAdId ? saved : item))
+                : [saved, ...previous]
+            );
             setAdForm({ nama_brand: "", jenis_iklan: "", durasi: "", video_id: "" });
-            setMessage("Ad created.");
+            setEditingAdId(null);
+            setMessage(editingAdId ? "Ad updated." : "Ad created.");
         } catch (error) {
-            setErrorMessage(error.response?.data?.message || "Failed to create ad.");
+            setErrorMessage(error.response?.data?.message || "Failed to save ad.");
         }
     }
 
     return (
-        <div className="min-h-screen px-6 py-6" style={{ backgroundColor: "#F5F0E0" }}>
+        <div className="min-h-screen pb-6" style={{ backgroundColor: "#F5F0E0" }}>
+            <AppNavbar current="admin" />
+            <div className="px-6 py-6">
             <div className="max-w-7xl mx-auto">
                 <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
                     <div>
@@ -194,7 +221,9 @@ export default function AdminStudio() {
                                 <input type="number" value={planForm.price} onChange={(event) => setPlanForm((previous) => ({ ...previous, price: event.target.value }))} placeholder="Price" className="w-full px-4 py-4 rounded-2xl outline-none" style={{ backgroundColor: "#F7F3EA" }} />
                                 <input type="number" value={planForm.duration_days} onChange={(event) => setPlanForm((previous) => ({ ...previous, duration_days: event.target.value }))} placeholder="Duration days" className="w-full px-4 py-4 rounded-2xl outline-none" style={{ backgroundColor: "#F7F3EA" }} />
                             </div>
-                            <button type="submit" className="w-full py-4 rounded-2xl text-white font-semibold" style={{ backgroundColor: "#8DC63F" }}>Create Plan</button>
+                            <button type="submit" className="w-full py-4 rounded-2xl text-white font-semibold" style={{ backgroundColor: "#8DC63F" }}>
+                                {editingPlanId ? "Update Plan" : "Create Plan"}
+                            </button>
                         </form>
                         <div className="mt-5 space-y-2">
                             {plans.map((plan) => (
@@ -203,7 +232,25 @@ export default function AdminStudio() {
                                         <p className="font-semibold" style={{ color: "#3B2A0E" }}>{plan.name}</p>
                                         <p className="text-sm" style={{ color: "#8A7B5A" }}>{plan.price} NusaKoin</p>
                                     </div>
-                                    <button onClick={() => removePlan(plan.id)} className="text-xs font-semibold" style={{ color: "#A63B1F" }}>Delete</button>
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={() => {
+                                                setEditingPlanId(plan.id);
+                                                setPlanForm({
+                                                    name: plan.name,
+                                                    description: plan.description ?? "",
+                                                    price: plan.price,
+                                                    duration_days: plan.duration_days,
+                                                    status: plan.status,
+                                                });
+                                            }}
+                                            className="text-xs font-semibold"
+                                            style={{ color: "#5C4B2D" }}
+                                        >
+                                            Edit
+                                        </button>
+                                        <button onClick={() => removePlan(plan.id)} className="text-xs font-semibold" style={{ color: "#A63B1F" }}>Delete</button>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -225,7 +272,9 @@ export default function AdminStudio() {
                                 </select>
                                 <input type="number" value={missionForm.reward_point} onChange={(event) => setMissionForm((previous) => ({ ...previous, reward_point: event.target.value }))} placeholder="Reward" className="w-full px-4 py-4 rounded-2xl outline-none" style={{ backgroundColor: "#F7F3EA" }} />
                             </div>
-                            <button type="submit" className="w-full py-4 rounded-2xl text-white font-semibold" style={{ backgroundColor: "#8DC63F" }}>Create Mission</button>
+                            <button type="submit" className="w-full py-4 rounded-2xl text-white font-semibold" style={{ backgroundColor: "#8DC63F" }}>
+                                {editingMissionId ? "Update Mission" : "Create Mission"}
+                            </button>
                         </form>
                         <div className="mt-5 space-y-2">
                             {missions.map((mission) => (
@@ -234,7 +283,26 @@ export default function AdminStudio() {
                                         <p className="font-semibold" style={{ color: "#3B2A0E" }}>{mission.judul ?? mission.title}</p>
                                         <p className="text-sm" style={{ color: "#8A7B5A" }}>{mission.tipe ?? mission.type} / reward {mission.reward_point}</p>
                                     </div>
-                                    <button onClick={() => removeMission(mission.mission_id ?? mission.id)} className="text-xs font-semibold" style={{ color: "#A63B1F" }}>Delete</button>
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={() => {
+                                                const id = mission.mission_id ?? mission.id;
+                                                setEditingMissionId(id);
+                                                setMissionForm({
+                                                    judul: mission.judul ?? mission.title,
+                                                    deskripsi: mission.deskripsi ?? mission.description ?? "",
+                                                    target: mission.target,
+                                                    tipe: mission.tipe ?? mission.type,
+                                                    reward_point: mission.reward_point,
+                                                });
+                                            }}
+                                            className="text-xs font-semibold"
+                                            style={{ color: "#5C4B2D" }}
+                                        >
+                                            Edit
+                                        </button>
+                                        <button onClick={() => removeMission(mission.mission_id ?? mission.id)} className="text-xs font-semibold" style={{ color: "#A63B1F" }}>Delete</button>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -249,7 +317,9 @@ export default function AdminStudio() {
                                 <input type="number" value={adForm.durasi} onChange={(event) => setAdForm((previous) => ({ ...previous, durasi: event.target.value }))} placeholder="Duration" className="w-full px-4 py-4 rounded-2xl outline-none" style={{ backgroundColor: "#F7F3EA" }} />
                                 <input value={adForm.video_id} onChange={(event) => setAdForm((previous) => ({ ...previous, video_id: event.target.value }))} placeholder="Optional video ID" className="w-full px-4 py-4 rounded-2xl outline-none" style={{ backgroundColor: "#F7F3EA" }} />
                             </div>
-                            <button type="submit" className="w-full py-4 rounded-2xl text-white font-semibold" style={{ backgroundColor: "#8DC63F" }}>Create Ad</button>
+                            <button type="submit" className="w-full py-4 rounded-2xl text-white font-semibold" style={{ backgroundColor: "#8DC63F" }}>
+                                {editingAdId ? "Update Ad" : "Create Ad"}
+                            </button>
                         </form>
                         <div className="mt-5 space-y-2">
                             {ads.map((ad) => (
@@ -258,12 +328,30 @@ export default function AdminStudio() {
                                         <p className="font-semibold" style={{ color: "#3B2A0E" }}>{ad.brand_name}</p>
                                         <p className="text-sm" style={{ color: "#8A7B5A" }}>{ad.ad_type} / {ad.duration}s</p>
                                     </div>
-                                    <button onClick={() => removeAd(ad.id)} className="text-xs font-semibold" style={{ color: "#A63B1F" }}>Delete</button>
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={() => {
+                                                setEditingAdId(ad.id);
+                                                setAdForm({
+                                                    nama_brand: ad.brand_name,
+                                                    jenis_iklan: ad.ad_type,
+                                                    durasi: ad.duration,
+                                                    video_id: ad.video?.id ?? "",
+                                                });
+                                            }}
+                                            className="text-xs font-semibold"
+                                            style={{ color: "#5C4B2D" }}
+                                        >
+                                            Edit
+                                        </button>
+                                        <button onClick={() => removeAd(ad.id)} className="text-xs font-semibold" style={{ color: "#A63B1F" }}>Delete</button>
+                                    </div>
                                 </div>
                             ))}
                         </div>
                     </section>
                 </div>
+            </div>
             </div>
         </div>
     );

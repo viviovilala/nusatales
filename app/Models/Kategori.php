@@ -15,6 +15,9 @@ class Kategori extends Model
 
     protected $fillable = [
         'nama_kategori',
+        'slug',
+        'description',
+        'status',
     ];
 
     public function getRouteKeyName(): string
@@ -25,5 +28,10 @@ class Kategori extends Model
     public function videos(): HasMany
     {
         return $this->hasMany(Video::class, 'kategori_id', 'kategori_id');
+    }
+
+    public function series(): HasMany
+    {
+        return $this->hasMany(Series::class, 'kategori_id', 'kategori_id');
     }
 }

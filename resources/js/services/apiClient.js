@@ -35,4 +35,15 @@ if (token) {
     apiClient.defaults.headers.common.Authorization = `Bearer ${token}`;
 }
 
+apiClient.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401) {
+            clearStoredToken();
+        }
+
+        return Promise.reject(error);
+    }
+);
+
 export default apiClient;

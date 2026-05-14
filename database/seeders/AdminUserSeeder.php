@@ -16,7 +16,7 @@ class AdminUserSeeder extends Seeder
             ['email' => 'admin@nusatales.test'],
             [
                 'nama' => 'NusaTales Admin',
-                'password' => 'password123',
+                'password' => 'Password123!',
                 'foto_profil' => null,
                 'tanggal_daftar' => now(),
                 'role' => 'admin',

@@ -38,6 +38,14 @@ NusaTales is a modular platform with several product domains:
 - [`rules/security.md`](/c:/laragon/www/nusatales/docs/rules/security.md)
 - [`rules/testing.md`](/c:/laragon/www/nusatales/docs/rules/testing.md)
 
+### MVP Status
+
+- [`DEMO_ACCOUNTS.md`](/c:/laragon/www/nusatales/docs/DEMO_ACCOUNTS.md)
+- [`FEATURE_MATRIX.md`](/c:/laragon/www/nusatales/docs/FEATURE_MATRIX.md)
+- [`API_INVENTORY.md`](/c:/laragon/www/nusatales/docs/API_INVENTORY.md)
+- [`PHASE_1_COMPLETION_REPORT.md`](/c:/laragon/www/nusatales/docs/PHASE_1_COMPLETION_REPORT.md)
+- [`KNOWN_ISSUES.md`](/c:/laragon/www/nusatales/docs/KNOWN_ISSUES.md)
+
 ### Skills
 
 - [`skills/skill.md`](/c:/laragon/www/nusatales/docs/skills/skill.md)

@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Database\Factories\UserFactory;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,7 +16,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['nama', 'email', 'password', 'foto_profil', 'tanggal_daftar', 'role'])]
 #[Hidden(['password'])]
-class User extends Authenticatable
+class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
@@ -50,12 +52,22 @@ class User extends Authenticatable
 
     public function isCreator(): bool
     {
-        return in_array($this->role, ['kreator', 'admin'], true);
+        return in_array($this->role, ['creator', 'admin'], true);
+    }
+
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $this->role === 'admin';
     }
 
     public function videos(): HasMany
     {
         return $this->hasMany(Video::class, 'kreator_id', 'user_id');
+    }
+
+    public function series(): HasMany
+    {
+        return $this->hasMany(Series::class, 'creator_id', 'user_id');
     }
 
     public function likes(): HasMany
@@ -116,5 +128,20 @@ class User extends Authenticatable
     public function userMissions(): HasMany
     {
         return $this->hasMany(UserMission::class, 'user_id', 'user_id');
+    }
+
+    public function favorites(): HasMany
+    {
+        return $this->hasMany(Favorite::class, 'user_id', 'user_id');
+    }
+
+    public function ratings(): HasMany
+    {
+        return $this->hasMany(Rating::class, 'user_id', 'user_id');
+    }
+
+    public function episodeProgress(): HasMany
+    {
+        return $this->hasMany(EpisodeProgress::class, 'user_id', 'user_id');
     }
 }

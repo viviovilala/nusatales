@@ -23,7 +23,7 @@ class UpdateUserRequest extends FormRequest
         return [
             'nama' => ['sometimes', 'required', 'string', 'max:255'],
             'email' => ['sometimes', 'required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($userId, 'user_id')],
-            'role' => ['sometimes', 'required', Rule::in(['user', 'kreator', 'admin'])],
+            'role' => ['sometimes', 'required', Rule::in(['user', 'creator', 'admin'])],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'foto_profil' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ];

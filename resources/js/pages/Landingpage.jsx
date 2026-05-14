@@ -228,12 +228,12 @@ function SeriesPopuler() {
                     <h2 className="text-2xl font-bold" style={{ color: "#3B2A0E", fontFamily: "Georgia, serif" }}>Series Populer</h2>
                     <p className="text-sm mt-1" style={{ color: "#9B8E7A" }}>Kisah paling banyak ditonton minggu ini.</p>
                 </div>
-                <a href="#creator-section" className="flex items-center gap-1 text-sm font-semibold" style={{ color: "#8DC63F" }}>
+                <Link to="/explore" className="flex items-center gap-1 text-sm font-semibold" style={{ color: "#8DC63F" }}>
                     Lihat Semua
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M5 12h14M12 5l7 7-7 7"/>
                     </svg>
-                </a>
+                </Link>
             </div>
             {isUsingFallback ? (
                 <div className="mb-4 rounded-2xl px-4 py-3 text-sm" style={{ backgroundColor: "#EBDCB7", color: "#6B5A3E" }}>

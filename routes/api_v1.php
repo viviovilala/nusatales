@@ -12,11 +12,16 @@ use App\Http\Controllers\Api\CreatorDirectoryController;
 use App\Http\Controllers\Api\CreatorDashboardController;
 use App\Http\Controllers\Api\CreatorMonetizationController;
 use App\Http\Controllers\Api\CreatorVideoController;
+use App\Http\Controllers\Api\EpisodeController;
+use App\Http\Controllers\Api\FavoriteController;
+use App\Http\Controllers\Api\GenreController;
 use App\Http\Controllers\Api\InteractionController;
 use App\Http\Controllers\Api\MissionController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PublicVideoController;
+use App\Http\Controllers\Api\RatingController;
 use App\Http\Controllers\Api\ReferenceController;
+use App\Http\Controllers\Api\SeriesController;
 use App\Http\Controllers\Api\SubscriptionController;
 use Illuminate\Support\Facades\Route;
 
@@ -31,13 +36,20 @@ Route::prefix('v1')->group(function () {
         ]);
     });
 
-    Route::post('/auth/register', [AuthController::class, 'register']);
-    Route::post('/auth/login', [AuthController::class, 'login']);
+    Route::middleware('throttle:10,1')->group(function () {
+        Route::post('/auth/register', [AuthController::class, 'register']);
+        Route::post('/auth/login', [AuthController::class, 'login']);
+    });
 
     Route::get('/references/categories', [ReferenceController::class, 'categories']);
     Route::get('/references/stories', [ReferenceController::class, 'stories']);
+    Route::get('/genres', [GenreController::class, 'index']);
     Route::get('/subscriptions/plans', [SubscriptionController::class, 'plans']);
     Route::get('/creators', [CreatorDirectoryController::class, 'index']);
+
+    Route::get('/series', [SeriesController::class, 'index']);
+    Route::get('/series/{slug}', [SeriesController::class, 'show']);
+    Route::get('/episodes/{episode}', [EpisodeController::class, 'show']);
 
     Route::get('/animations', [PublicVideoController::class, 'index']);
     Route::get('/animations/{video}', [PublicVideoController::class, 'show']);
@@ -46,11 +58,18 @@ Route::prefix('v1')->group(function () {
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me']);
+        Route::match(['post', 'patch'], '/auth/profile', [AuthController::class, 'updateProfile']);
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::get('/notifications', [NotificationController::class, 'index']);
         Route::patch('/notifications/{notification}', [NotificationController::class, 'updateStatus']);
         Route::get('/wallet', [NotificationController::class, 'wallet']);
         Route::get('/missions', [MissionController::class, 'index']);
+        Route::get('/continue-watching', [EpisodeController::class, 'continueWatching']);
+        Route::post('/episodes/{episode}/progress', [EpisodeController::class, 'storeProgress']);
+        Route::get('/favorites', [FavoriteController::class, 'index']);
+        Route::post('/favorites', [FavoriteController::class, 'store']);
+        Route::delete('/favorites/{favorite}', [FavoriteController::class, 'destroy']);
+        Route::post('/ratings', [RatingController::class, 'store']);
         Route::post('/subscriptions', [SubscriptionController::class, 'subscribe']);
         Route::get('/subscriptions', [SubscriptionController::class, 'subscriptions']);
         Route::get('/nusa-koin/transactions', [SubscriptionController::class, 'transactions']);
@@ -63,7 +82,7 @@ Route::prefix('v1')->group(function () {
         Route::delete('/comments/{comment}', [InteractionController::class, 'destroyComment']);
         Route::post('/animations/{video}/share', [InteractionController::class, 'share']);
 
-        Route::middleware('role:kreator,admin')->prefix('creator')->group(function () {
+        Route::middleware('role:creator,admin')->prefix('creator')->group(function () {
             Route::get('/dashboard', [CreatorDashboardController::class, 'index']);
             Route::get('/monetization/summary', [CreatorMonetizationController::class, 'summary']);
             Route::get('/monetization/earnings', [CreatorMonetizationController::class, 'earnings']);

@@ -5,7 +5,7 @@ import {
     useState,
 } from "react";
 import { clearStoredToken, getStoredToken } from "../services/apiClient";
-import { logout as logoutRequest, me as fetchMe } from "../services/authService";
+import { logout as logoutRequest, me as fetchMe, updateProfile as updateProfileRequest } from "../services/authService";
 
 const AuthContext = createContext(null);
 
@@ -56,6 +56,12 @@ export function AuthProvider({ children }) {
             setUser(authenticatedUser);
 
             return authenticatedUser;
+        },
+        async updateProfile(payload) {
+            const updatedUser = await updateProfileRequest(payload);
+            setUser(updatedUser);
+
+            return updatedUser;
         },
         async logout() {
             await logoutRequest();

@@ -1,4 +1,4 @@
-import { useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { login } from "../services/authService";
 import { useAuth } from "../contexts/AuthContext";
@@ -9,32 +9,39 @@ export default function Login() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [errorMessage, setErrorMessage] = useState("");
-    const [isPending, startTransition] = useTransition();
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const navigate = useNavigate();
-    const { setUser } = useAuth();
+    const { isAuthenticated, isLoading, setUser } = useAuth();
+
+    useEffect(() => {
+        if (!isLoading && isAuthenticated) {
+            navigate("/dashboard", { replace: true });
+        }
+    }, [isAuthenticated, isLoading, navigate]);
 
     async function handleSubmit(event) {
         event.preventDefault();
         setErrorMessage("");
+        setIsSubmitting(true);
 
-        startTransition(async () => {
-            try {
-                const { user } = await login({
-                    email,
-                    password,
-                    device_name: "react-web",
-                });
+        try {
+            const { user } = await login({
+                email,
+                password,
+                device_name: "react-web",
+            });
 
-                setUser(user);
-                navigate("/dashboard");
-            } catch (error) {
-                const message =
-                    error.response?.data?.message ||
-                    "Login failed. Please check your credentials.";
+            setUser(user);
+            navigate("/dashboard", { replace: true });
+        } catch (error) {
+            const message =
+                error.response?.data?.message ||
+                "Login failed. Please check your credentials.";
 
-                setErrorMessage(message);
-            }
-        });
+            setErrorMessage(message);
+        } finally {
+            setIsSubmitting(false);
+        }
     }
 
     return (
@@ -58,6 +65,8 @@ export default function Login() {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="Masukkan email anda..."
+                            autoComplete="email"
+                            required
                             className="w-full px-5 py-4 rounded-full text-sm outline-none transition"
                             style={{ backgroundColor: "#F0EEE8", color: "#3B2A0E", border: "none" }}
                         />
@@ -70,6 +79,8 @@ export default function Login() {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="Masukkan password anda..."
+                            autoComplete="current-password"
+                            required
                             className="w-full px-5 py-4 rounded-full text-sm outline-none pr-12"
                             style={{ backgroundColor: "#F0EEE8", color: "#3B2A0E", border: "none" }}
                         />
@@ -108,11 +119,11 @@ export default function Login() {
                     {/* Login button */}
                     <button
                         type="submit"
-                        disabled={isPending}
+                        disabled={isSubmitting}
                         className="w-full py-4 rounded-full text-white font-semibold text-base transition hover:opacity-90 mb-5 disabled:opacity-60"
                         style={{ backgroundColor: "#8DC63F" }}
                     >
-                        {isPending ? "Memproses..." : "Masuk"}
+                        {isSubmitting ? "Memproses..." : "Masuk"}
                     </button>
 
                     {/* Divider */}

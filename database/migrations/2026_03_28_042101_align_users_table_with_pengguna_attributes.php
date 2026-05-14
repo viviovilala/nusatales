@@ -49,7 +49,7 @@ return new class extends Migration
             }
 
             if (! Schema::hasColumn('users', 'role')) {
-                $table->enum('role', ['user', 'kreator', 'admin'])->default('user')->after('tanggal_daftar');
+                $table->enum('role', ['user', 'creator', 'admin'])->default('user')->after('tanggal_daftar');
             }
         });
     }
