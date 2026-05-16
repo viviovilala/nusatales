@@ -1,15 +1,15 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
-function NavAnchor({ href, children }) {
+function NavAnchor({ to, children }) {
     return (
-        <a
-            href={href}
+        <Link
+            to={to}
             className="text-sm font-medium transition-colors hover:text-amber-700"
             style={{ color: "#6B5A3E" }}
         >
             {children}
-        </a>
+        </Link>
     );
 }
 
@@ -33,16 +33,16 @@ export default function AppNavbar({ current = "home" }) {
                 </Link>
 
                 <div className="hidden md:flex items-center gap-8">
-                    <NavAnchor href="/#hero">Beranda</NavAnchor>
-                    <NavAnchor href="/explore">Explore</NavAnchor>
-                    <NavAnchor href="/favorites">Favorites</NavAnchor>
-                    <NavAnchor href="/#jelajah">Jelajah</NavAnchor>
-                    <NavAnchor href="/#creator-section">Kreator</NavAnchor>
+                    <NavAnchor to="/">Beranda</NavAnchor>
+                    <NavAnchor to="/shorts">Shorts</NavAnchor>
+                    <NavAnchor to="/jelajah">Jelajah</NavAnchor>
+                    <NavAnchor to="/peta">Peta</NavAnchor>
+                    <NavAnchor to="/favorit">Favorit</NavAnchor>
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <a
-                        href="/explore"
+                    <Link
+                        to="/search"
                         className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full text-sm border transition"
                         style={{ borderColor: "#D1C9B0", color: "#6B5A3E" }}
                     >
@@ -51,7 +51,7 @@ export default function AppNavbar({ current = "home" }) {
                             <path d="m21 21-4.35-4.35" />
                         </svg>
                         Cari Cerita 
-                    </a>
+                    </Link>
 
                     {isAuthenticated ? (
                         <Link

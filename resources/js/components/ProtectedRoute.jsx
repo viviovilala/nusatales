@@ -1,8 +1,9 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function ProtectedRoute({ children, allowedRoles = [] }) {
     const { isAuthenticated, isLoading, user } = useAuth();
+    const location = useLocation();
 
     if (isLoading) {
         return (
@@ -16,10 +17,10 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
     }
 
     if (!isAuthenticated) {
-        return <Navigate to="/login" replace />;
+        return <Navigate to="/login" replace state={{ from: location.pathname, message: "Masuk terlebih dahulu untuk melanjutkan." }} />;
     }
 
-    if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
+    if (allowedRoles.length > 0 && !allowedRoles.includes(user?.role)) {
         return <Navigate to="/" replace />;
     }
 

@@ -19,6 +19,7 @@ import {
     LoadingSkeleton,
     LoginPrompt,
     MonetizationAgreementModal,
+    Navbar,
     NusaAdhiPanel,
     PageShell,
     SaveButton,
@@ -61,8 +62,8 @@ import {
 import { getAssets } from "../services/assetApi";
 import { getChallenge, getChallengeLeaderboard, getChallenges } from "../services/challengeApi";
 import { addFavorite, getBadges, getCulturalProgress, getMissions, getRegions } from "../services/culturalApi";
+import { getFavorites } from "../services/favoriteApi";
 import { checkoutCoinPackage, getCoinPackages, getWallet, getWalletTransactions } from "../services/walletApi";
-import { login as loginRequest, register as registerRequest } from "../services/authApi";
 import { checkoutSubscription, getBilling, getSubscriptionPlans } from "../services/subscriptionApi";
 import {
     agreeMonetization,
@@ -82,7 +83,6 @@ import {
     getSeriesDetail,
 } from "../services/seriesApi";
 import {
-    getComments,
     getFeaturedVideos,
     getRecommendedVideos,
     getVideo,
@@ -196,10 +196,13 @@ function SectionHeader({ title, subtitle, link }) {
 }
 
 function HomeHero({ item }) {
+    const image = item?.thumbnail_url ?? item?.image ?? mockups.explore;
+    const slug = item?.slug ?? "roro-jonggrang";
+
     return (
         <section className="nt-container nt-section">
             <ImageFrame
-                src={item.image}
+                src={image}
                 style={{
                     minHeight: "28rem",
                     borderRadius: "2.2rem",
@@ -217,11 +220,11 @@ function HomeHero({ item }) {
                     <div className="nt-avatar" style={{ width: "3.7rem", height: "3.7rem", marginBottom: "1rem" }}>
                         <img src={mascotImage} alt="" />
                     </div>
-                    <h1 className="nt-title" style={{ color: "#fffdf7" }}>{item.title}</h1>
-                    <p style={{ maxWidth: "35rem", lineHeight: 1.55, fontWeight: 850 }}>{item.subtitle}</p>
+                    <h1 className="nt-title" style={{ color: "#fffdf7" }}>{item?.title ?? "RORO JONGGRANG"}</h1>
+                    <p style={{ maxWidth: "35rem", lineHeight: 1.55, fontWeight: 850 }}>{item?.subtitle ?? item?.description ?? "Kisah Seribu Candi dalam balutan animasi Nusantara."}</p>
                     <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", marginTop: "1.4rem" }}>
                         <Link className="nt-btn ghost" style={{ color: "#fffdf7", borderColor: "rgba(255,255,255,.5)" }} to="/register">Daftar</Link>
-                        <Link className="nt-btn green" to={`/watch/${item.slug}`}>
+                        <Link className="nt-btn green" to={`/watch/${slug}`}>
                             <Icon name="play" />
                             Tonton Sekarang
                         </Link>
@@ -336,8 +339,10 @@ export function HomePage() {
 
 export function ShortsPage() {
     const { data, status } = useApiFallback(() => getVideos({ content_type: "short" }), shorts, []);
+    const navigate = useNavigate();
     const [active, setActive] = useState(0);
-    const current = data[active] ?? shorts[0];
+    const items = Array.isArray(data) && data.length ? data : shorts;
+    const current = items[active] ?? shorts[0];
 
     return (
         <PageShell active="Shorts" dark>
@@ -357,8 +362,8 @@ export function ShortsPage() {
                     </section>
                     <h3 style={{ color: "#fffdf7" }}>Kreator Yang Serupa :</h3>
                     <div style={{ display: "grid", gap: "0.8rem" }}>
-                        {shorts.concat(shorts).slice(0, 6).map((item, index) => (
-                            <button key={`${item.id}-${index}`} type="button" onClick={() => setActive(index % shorts.length)} style={{ display: "grid", gridTemplateColumns: "3rem 1fr", gap: ".55rem", alignItems: "center", background: "transparent", border: 0, color: index > 2 ? "rgba(255,255,255,.45)" : "#fff", textAlign: "left" }}>
+                        {items.concat(items).slice(0, 6).map((item, index) => (
+                            <button key={`${item.id}-${index}`} type="button" onClick={() => setActive(index % items.length)} style={{ display: "grid", gridTemplateColumns: "3rem 1fr", gap: ".55rem", alignItems: "center", background: "transparent", border: 0, color: index > 2 ? "rgba(255,255,255,.45)" : "#fff", textAlign: "left" }}>
                                 <span className="nt-avatar" style={{ width: "3rem", height: "3rem" }}><img src={mockups.logo} alt="" /></span>
                                 <span><strong>{item.creator}</strong><small style={{ display: "block" }}>{item.views}</small></span>
                             </button>
@@ -368,8 +373,14 @@ export function ShortsPage() {
                 <ShortVideoPlayer item={current} />
                 <aside style={{ display: "grid", gap: "1.5rem", justifyItems: "center" }}>
                     <div className="nt-avatar" style={{ width: "4.6rem", height: "4.6rem" }}><img src={mockups.profile} alt="" /></div>
-                    {[["heart", likeVideo], ["comment"], ["save", saveWatchLater], ["share"]].map(([icon, action]) => (
-                        <button key={icon} type="button" className="nt-icon-btn" style={{ width: "5rem", height: "5rem", color: "var(--nt-brown)" }} onClick={() => action?.(current.id).catch(() => null)}>
+                    {[["heart", likeVideo], ["comment", () => navigate(`/watch/${current.slug ?? current.id}`)], ["save", saveWatchLater], ["share"]].map(([icon, action]) => (
+                        <button key={icon} type="button" className="nt-icon-btn" style={{ width: "5rem", height: "5rem", color: "var(--nt-brown)" }} onClick={() => {
+                            if (typeof action === "function" && icon === "comment") {
+                                action();
+                                return;
+                            }
+                            action?.(current.id).catch(() => null);
+                        }}>
                             <Icon name={icon} size={32} />
                         </button>
                     ))}
@@ -431,7 +442,7 @@ export function FavoritPage() {
     const { isAuthenticated } = useAuth();
     const [mode, setMode] = useState("dashboard");
     const [segment, setSegment] = useState("Series");
-    const favorites = useApiFallback(() => Promise.resolve({ data: { data: favoriteItems } }), favoriteItems, []);
+    const favorites = useApiFallback(getFavorites, favoriteItems, []);
 
     if (!isAuthenticated) {
         return <LoginPrompt />;
@@ -454,18 +465,22 @@ export function FavoritPage() {
                 {mode === "dashboard" ? (
                     <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 28rem", gap: "1.5rem" }}>
                         <section style={{ display: "grid", gap: "1.5rem" }}>
-                            {favorites.data.map((item) => (
+                            {(Array.isArray(favorites.data) ? favorites.data : favoriteItems).map((item) => {
+                                const target = item.target ?? item.video ?? item;
+
+                                return (
                                 <article key={item.id} className="nt-card" style={{ display: "grid", gridTemplateColumns: "17rem 1fr", overflow: "hidden" }}>
-                                    <ImageFrame src={item.image} style={{ minHeight: "15rem" }} />
+                                    <ImageFrame src={target.thumbnail_url ?? target.image ?? mockups.favorite} style={{ minHeight: "15rem" }} />
                                     <div style={{ padding: "1.2rem" }}>
-                                        <h2 style={{ color: "var(--nt-brown)", margin: 0, fontSize: "1.7rem", fontWeight: 950 }}>{item.title}</h2>
-                                        <p className="nt-subtle" style={{ margin: ".2rem 0", fontWeight: 800 }}>{item.genre}</p>
-                                        <small className="nt-subtle">{item.updated}</small>
-                                        <p style={{ lineHeight: 1.45, fontWeight: 750 }}>{item.description}</p>
-                                        <Link to={`/watch/${item.id}`} className="nt-btn" style={{ float: "right" }}>Lanjut Nonton</Link>
+                                        <h2 style={{ color: "var(--nt-brown)", margin: 0, fontSize: "1.7rem", fontWeight: 950 }}>{target.title ?? "Kisah Favorit"}</h2>
+                                        <p className="nt-subtle" style={{ margin: ".2rem 0", fontWeight: 800 }}>{target.genre ?? target.category?.name ?? "Legenda"}</p>
+                                        <small className="nt-subtle">{item.updated ?? item.created_at ?? "Terakhir diperbarui"}</small>
+                                        <p style={{ lineHeight: 1.45, fontWeight: 750 }}>{target.description ?? "Cerita Nusantara yang kamu simpan."}</p>
+                                        <Link to={`/watch/${target.slug ?? item.id}`} className="nt-btn" style={{ float: "right" }}>Lanjut Nonton</Link>
                                     </div>
                                 </article>
-                            ))}
+                                );
+                            })}
                         </section>
                         <aside className="nt-card pad" style={{ background: "var(--nt-brown)", color: "#fffdf7", overflow: "hidden" }}>
                             <h2 style={{ fontSize: "2rem", margin: 0 }}>Hallo petualang Nusa !!</h2>
@@ -487,7 +502,7 @@ export function FavoritPage() {
                                 <div className="nt-card pad">
                                     <strong style={{ color: "var(--nt-gold)" }}>Supporter</strong>
                                     <p style={{ color: "#d94c12", fontSize: "1.5rem", fontWeight: 950, margin: ".2rem 0" }}>Rp15.000<small>/Bulan</small></p>
-                                    <button type="button" className="nt-btn dark" style={{ width: "100%" }}>Upgrade plan</button>
+                                    <Link to="/premium" className="nt-btn dark" style={{ width: "100%" }}>Upgrade plan</Link>
                                 </div>
                                 <img src={mascotImage} alt="" style={{ width: "10rem", marginLeft: "-2rem" }} />
                             </div>
@@ -526,12 +541,14 @@ export function FavoritPage() {
 function AuthCard({ mode }) {
     const navigate = useNavigate();
     const location = useLocation();
-    const { setUser } = useAuth();
+    const { login, register } = useAuth();
     const [form, setForm] = useState({ name: "", email: "", password: "", password_confirmation: "" });
     const [message, setMessage] = useState(location.state?.message ?? "");
     const [error, setError] = useState("");
+    const [fieldErrors, setFieldErrors] = useState({});
     const [loading, setLoading] = useState(false);
     const isRegister = mode === "register";
+    const intendedPath = location.state?.from || "/";
 
     function update(key, value) {
         setForm((current) => ({ ...current, [key]: value }));
@@ -541,23 +558,29 @@ function AuthCard({ mode }) {
         event.preventDefault();
         setLoading(true);
         setError("");
+        setFieldErrors({});
         setMessage("");
 
         try {
-            const result = isRegister
-                ? await registerRequest({
+            if (isRegister) {
+                await register({
                     name: form.name,
-                    nama: form.name,
                     email: form.email,
                     password: form.password,
                     password_confirmation: form.password_confirmation,
-                })
-                : await loginRequest({ email: form.email, password: form.password });
+                });
+            } else {
+                await login(form.email, form.password);
+            }
 
-            setUser(result.user ?? result.data?.user ?? null);
-            navigate("/");
+            setMessage(isRegister ? "Akun NusaTales berhasil dibuat." : "Berhasil masuk ke NusaTales.");
+            window.setTimeout(() => navigate(isRegister ? "/" : intendedPath), 350);
         } catch (requestError) {
-            setError(requestError.response?.data?.message ?? "Validasi gagal. Periksa kembali email dan password.");
+            const errors = requestError.response?.data?.errors ?? {};
+
+            setFieldErrors(errors);
+            setError(requestError.response?.data?.message ?? "Validasi gagal. Periksa kembali isian formulir.");
+            setForm((current) => ({ ...current, password: "", password_confirmation: "" }));
         } finally {
             setLoading(false);
         }
@@ -571,14 +594,26 @@ function AuthCard({ mode }) {
                     {message ? <div className="nt-status">{message}</div> : null}
                     {error ? <div className="nt-status nt-error">{error}</div> : null}
                     <form onSubmit={submit} style={{ display: "grid", gap: "1.3rem", marginTop: "1rem" }}>
-                        {isRegister ? <input className="nt-form-field" value={form.name} onChange={(event) => update("name", event.target.value)} placeholder="Nama lengkap anda..." required /> : null}
-                        <input className="nt-form-field" value={form.email} onChange={(event) => update("email", event.target.value)} type="email" placeholder="Masukkan email anda..." required />
+                        {isRegister ? (
+                            <label>
+                                <input className="nt-form-field" value={form.name} onChange={(event) => update("name", event.target.value)} placeholder="Nama lengkap anda..." required />
+                                {fieldErrors.name ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.name[0]}</small> : null}
+                            </label>
+                        ) : null}
+                        <label>
+                            <input className="nt-form-field" value={form.email} onChange={(event) => update("email", event.target.value)} type="email" placeholder="Masukkan email anda..." required />
+                            {fieldErrors.email ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.email[0]}</small> : null}
+                        </label>
                         <div style={{ position: "relative" }}>
-                            <input className="nt-form-field" value={form.password} onChange={(event) => update("password", event.target.value)} type="password" placeholder="Masukkan password anda..." required />
+                            <input className="nt-form-field" value={form.password} onChange={(event) => update("password", event.target.value)} type="password" minLength={isRegister ? 8 : undefined} placeholder="Masukkan password anda..." required />
                             <span style={{ position: "absolute", right: "1.3rem", top: "50%", transform: "translateY(-50%)", color: "var(--nt-muted)" }}>hide</span>
+                            {fieldErrors.password ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.password[0]}</small> : null}
                         </div>
                         {isRegister ? (
-                            <input className="nt-form-field" value={form.password_confirmation} onChange={(event) => update("password_confirmation", event.target.value)} type="password" placeholder="Ulangi password anda..." required />
+                            <label>
+                                <input className="nt-form-field" value={form.password_confirmation} onChange={(event) => update("password_confirmation", event.target.value)} type="password" minLength={8} placeholder="Ulangi password anda..." required />
+                                {fieldErrors.password_confirmation ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.password_confirmation[0]}</small> : null}
+                            </label>
                         ) : (
                             <Link to="/login" style={{ justifySelf: "end", color: "#ff6975", textDecoration: "none", fontWeight: 850 }}>Lupa Password ?</Link>
                         )}
@@ -593,7 +628,7 @@ function AuthCard({ mode }) {
                     </div>
                     <div className="nt-grid nt-grid-3">
                         {["Facebook", "Google", "Apple"].map((provider) => (
-                            <button key={provider} type="button" className="nt-btn ghost" onClick={() => setMessage(`${provider} Segera hadir`)}>
+                            <button key={provider} type="button" className="nt-btn ghost" onClick={() => setMessage("Fitur login sosial segera hadir")}>
                                 {provider}
                             </button>
                         ))}
@@ -775,11 +810,12 @@ export function StudioDashboardPage() {
 }
 
 export function StudioUploadPage() {
-    const { hasChannel } = useAuth();
+    const { hasChannel, isAuthenticated } = useAuth();
     const navigate = useNavigate();
     const [progress, setProgress] = useState(0);
     const [message, setMessage] = useState("");
     const [error, setError] = useState("");
+    const [fieldErrors, setFieldErrors] = useState({});
     const [premium, setPremium] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
     const [form, setForm] = useState({
@@ -791,6 +827,13 @@ export function StudioUploadPage() {
         contentType: "episode",
         visibility: "public",
         coinPrice: "",
+        categoryId: "",
+        genreIds: "",
+        regionId: "",
+        folkloreType: "",
+        seriesId: "",
+        episodeNumber: "",
+        allowComments: true,
         videoFile: null,
         thumbnailFile: null,
     });
@@ -819,14 +862,28 @@ export function StudioUploadPage() {
     async function publish(draft = false) {
         setError("");
         setMessage("");
+        setFieldErrors({});
+
+        if (!isAuthenticated) {
+            navigate("/login", { state: { from: "/studio/upload", message: "Masuk terlebih dahulu untuk mengunggah karya." } });
+            return;
+        }
 
         if (!form.title.trim()) {
+            setFieldErrors({ title: ["Judul karya wajib diisi."] });
             setError("Judul karya wajib diisi.");
             return;
         }
 
         if (!form.videoFile) {
+            setFieldErrors({ video: ["File video wajib dipilih."] });
             setError("File video wajib dipilih.");
+            return;
+        }
+
+        if (form.scheduled && !form.date) {
+            setFieldErrors({ scheduled_at: ["Tanggal rilis wajib diisi untuk jadwal."] });
+            setError("Tanggal rilis wajib diisi untuk jadwal.");
             return;
         }
 
@@ -836,6 +893,12 @@ export function StudioUploadPage() {
                 title: form.title,
                 description: form.description,
                 tags: form.tags.split(",").map((tag) => tag.trim()).filter(Boolean),
+                category_id: form.categoryId,
+                genre_ids: form.genreIds.split(",").map((id) => id.trim()).filter(Boolean),
+                region_id: form.regionId,
+                folklore_type: form.folkloreType,
+                series_id: form.seriesId,
+                episode_number: form.episodeNumber,
                 content_type: form.contentType,
                 video: form.videoFile,
                 thumbnail: form.thumbnailFile,
@@ -844,14 +907,21 @@ export function StudioUploadPage() {
                 scheduled_at: form.scheduled ? form.date : "",
                 is_premium: premium ? 1 : 0,
                 coin_price: premium ? form.coinPrice || 1 : 0,
-                allow_comments: 1,
+                allow_comments: form.allowComments ? 1 : 0,
+            }, {
+                onUploadProgress: (event) => {
+                    if (event.total) {
+                        setProgress(Math.round((event.loaded * 100) / event.total));
+                    }
+                },
             });
 
             const slug = response.data?.data?.video?.slug;
             setMessage(draft ? "Draft tersimpan di Studio NusaKarya." : "Video berhasil diunggah.");
-            window.setTimeout(() => navigate(slug && !draft ? `/watch/${slug}` : "/studio/karya"), 500);
+            window.setTimeout(() => navigate(slug && !draft ? `/watch/${slug}` : "/studio/karya"), 650);
         } catch (requestError) {
             const errors = requestError.response?.data?.errors;
+            setFieldErrors(errors ?? {});
             const firstError = errors ? Object.values(errors).flat()[0] : null;
             setError(firstError ?? requestError.response?.data?.message ?? "Unggahan belum berhasil.");
         }
@@ -880,6 +950,8 @@ export function StudioUploadPage() {
             <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 24rem", gap: "1.5rem", marginTop: "1.5rem" }}>
                 <div style={{ display: "grid", gap: "1.5rem" }}>
                     <UploadDropzone onFile={handleFile} progress={progress} />
+                    {fieldErrors.video ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.video[0]}</small> : null}
+                    {fieldErrors.video_file ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.video_file[0]}</small> : null}
                     <section className="nt-card pad">
                         <h2 style={{ marginTop: 0, color: "var(--nt-brown)" }}>Jenis Karya</h2>
                         <div className="nt-grid nt-grid-2" style={{ marginBottom: "1rem" }}>
@@ -900,13 +972,34 @@ export function StudioUploadPage() {
                             ))}
                         </div>
                         <input className="nt-form-field" value={form.title} onChange={(event) => update("title", event.target.value)} placeholder="Judul Karya" />
+                        {fieldErrors.title ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.title[0]}</small> : null}
+                        {fieldErrors.judul ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.judul[0]}</small> : null}
                         <textarea className="nt-form-field" value={form.description} onChange={(event) => update("description", event.target.value)} placeholder="Deskripsi Cerita" style={{ marginTop: "1rem" }} />
+                        {fieldErrors.description ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.description[0]}</small> : null}
+                        {fieldErrors.deskripsi ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.deskripsi[0]}</small> : null}
                         <input className="nt-form-field" value={form.tags} onChange={(event) => update("tags", event.target.value)} placeholder="Tagar Budaya" style={{ marginTop: "1rem" }} />
+                        {fieldErrors.tags ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.tags[0]}</small> : null}
+                    </section>
+                    <section className="nt-card pad">
+                        <h2 style={{ marginTop: 0, color: "var(--nt-brown)" }}>Detail Budaya</h2>
+                        <div className="nt-grid nt-grid-2">
+                            <input className="nt-form-field" value={form.categoryId} onChange={(event) => update("categoryId", event.target.value)} placeholder="Category ID" />
+                            <input className="nt-form-field" value={form.genreIds} onChange={(event) => update("genreIds", event.target.value)} placeholder="Genre IDs, pisahkan koma" />
+                            <input className="nt-form-field" value={form.regionId} onChange={(event) => update("regionId", event.target.value)} placeholder="Region ID" />
+                            <input className="nt-form-field" value={form.folkloreType} onChange={(event) => update("folkloreType", event.target.value)} placeholder="Folklore type" />
+                            <input className="nt-form-field" value={form.seriesId} onChange={(event) => update("seriesId", event.target.value)} placeholder="Series ID" />
+                            <input className="nt-form-field" type="number" min="1" value={form.episodeNumber} onChange={(event) => update("episodeNumber", event.target.value)} placeholder="Nomor episode" />
+                        </div>
+                        {fieldErrors.category_id ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.category_id[0]}</small> : null}
+                        {fieldErrors.genre_ids ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.genre_ids[0]}</small> : null}
+                        {fieldErrors.region_id ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.region_id[0]}</small> : null}
                     </section>
                     <section className="nt-card pad">
                         <h2 style={{ marginTop: 0, color: "var(--nt-brown)" }}>Pilih Thumbnail</h2>
                         <ThumbnailSelector />
                         <input className="nt-form-field" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => update("thumbnailFile", event.target.files?.[0] ?? null)} style={{ marginTop: "1rem" }} />
+                        {fieldErrors.thumbnail ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.thumbnail[0]}</small> : null}
+                        {fieldErrors.thumbnail_file ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.thumbnail_file[0]}</small> : null}
                     </section>
                 </div>
                 <aside style={{ display: "grid", gap: "1.5rem" }}>
@@ -930,12 +1023,18 @@ export function StudioUploadPage() {
                             <input type="checkbox" checked={form.scheduled} onChange={(event) => update("scheduled", event.target.checked)} />
                         </label>
                         {form.scheduled ? <input className="nt-form-field" type="datetime-local" value={form.date} onChange={(event) => update("date", event.target.value)} /> : null}
+                        {fieldErrors.scheduled_at ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.scheduled_at[0]}</small> : null}
                         {premium ? <input className="nt-form-field" type="number" min="1" value={form.coinPrice} onChange={(event) => update("coinPrice", event.target.value)} placeholder="Harga NusaKoin" style={{ marginTop: "1rem" }} /> : null}
+                        {fieldErrors.coin_price ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.coin_price[0]}</small> : null}
                         <select className="nt-form-field" value={form.visibility} onChange={(event) => update("visibility", event.target.value)} style={{ marginTop: "1rem" }}>
                             <option value="public">Public</option>
                             <option value="unlisted">Unlisted</option>
                             <option value="private">Private</option>
                         </select>
+                        <label style={{ display: "flex", justifyContent: "space-between", marginTop: "1rem", fontWeight: 900 }}>
+                            Izinkan NusaRembug
+                            <input type="checkbox" checked={form.allowComments} onChange={(event) => update("allowComments", event.target.checked)} />
+                        </label>
                         <button type="button" className="nt-btn green" style={{ width: "100%", marginTop: "1rem" }} onClick={() => publish(false)}>Terbitkan Sekarang</button>
                         <button type="button" className="nt-btn ghost" style={{ width: "100%", marginTop: ".7rem" }} onClick={() => publish(true)}>Simpan Sebagai Draft</button>
                         <div className="nt-status" style={{ marginTop: "1rem" }}>Validasi file, judul, deskripsi, thumbnail, kategori, dan tags aktif.</div>
@@ -1000,26 +1099,27 @@ export function ChannelPage() {
     const { slug } = useParams();
     const creator = creators.find((item) => item.slug === slug) ?? creators[0];
     const channel = useApiFallback(() => Promise.resolve({ data: { data: creator } }), creator, [slug]);
+    const current = { ...creator, ...(channel.data ?? {}) };
 
     return (
         <PageShell>
             <main className="nt-container" style={{ padding: "2rem 0 3rem" }}>
                 <StatusLine status={channel.status} />
                 <section className="nt-card" style={{ overflow: "hidden" }}>
-                    <ImageFrame src={mockups.channel} style={{ height: "18rem" }} />
+                    <ImageFrame src={current.banner_url ?? current.image ?? mockups.channel} style={{ height: "18rem" }} />
                     <div style={{ display: "grid", gridTemplateColumns: "12rem 1fr auto", gap: "1.5rem", padding: "0 2rem 2rem", alignItems: "end" }}>
                         <div className="nt-avatar" style={{ width: "10rem", height: "10rem", marginTop: "-5rem", borderRadius: "2rem", borderColor: "#fff" }}>
-                            <img src={mockups.studio} alt="" />
+                            <img src={current.avatar_url ?? current.avatar ?? mockups.studio} alt="" />
                         </div>
                         <div>
-                            <h1 className="nt-title" style={{ fontSize: "3rem" }}>Kadek Wijaya <span style={{ color: "var(--nt-lime-dark)", fontSize: "1.4rem" }}>verified</span></h1>
-                            <p style={{ fontWeight: 850 }}>Sang Penjaga Legenda (Guardian of Legends)</p>
+                            <h1 className="nt-title" style={{ fontSize: "3rem" }}>{current.name ?? "Kadek Wijaya"} {current.verified || current.is_verified ? <span style={{ color: "var(--nt-lime-dark)", fontSize: "1.4rem" }}>verified</span> : null}</h1>
+                            <p style={{ fontWeight: 850 }}>{current.subtitle ?? "Sang Penjaga Legenda (Guardian of Legends)"}</p>
                         </div>
                         <button type="button" className="nt-btn green">Ikuti</button>
                     </div>
                 </section>
                 <div className="nt-grid nt-grid-4" style={{ margin: "1.5rem 0" }}>
-                    {[["Total Episode", "124"], ["Pengikut", "8.2K"], ["Jumlah Penayangan", "850rb"], ["Total Series", "12"]].map(([label, value]) => (
+                    {[["Total Episode", current.totalEpisodes ?? current.video_count ?? "124"], ["Pengikut", current.followers ?? current.subscriber_count ?? "8.2K"], ["Jumlah Penayangan", current.views ?? current.total_views ?? "850rb"], ["Total Series", current.totalSeries ?? "12"]].map(([label, value]) => (
                         <div key={label} className="nt-card pad">
                             <p className="nt-subtle" style={{ margin: 0 }}>{label}</p>
                             <h2 style={{ color: "var(--nt-brown)", fontSize: "2.2rem", margin: ".2rem 0 0" }}>{value}</h2>
@@ -1044,17 +1144,30 @@ export function ChannelPage() {
 }
 
 export function ProfilePage() {
+    const { logout, user } = useAuth();
+    const navigate = useNavigate();
+
+    async function handleLogout() {
+        try {
+            await logout();
+        } catch (_error) {
+            // Token is cleared locally even if the API logout request fails.
+        }
+        navigate("/");
+    }
+
     return (
         <PageShell>
             <main className="nt-container" style={{ padding: "2rem 0 3rem" }}>
                 <section className="nt-card pad" style={{ display: "grid", gridTemplateColumns: "12rem 1fr", gap: "1.5rem", alignItems: "center", borderWidth: "4px" }}>
-                    <div className="nt-avatar" style={{ width: "11rem", height: "11rem", borderRadius: "2rem" }}><img src={mockups.studio} alt="" /></div>
+                    <div className="nt-avatar" style={{ width: "11rem", height: "11rem", borderRadius: "2rem" }}><img src={user?.profile_photo ?? mockups.studio} alt="" /></div>
                     <div>
-                        <h1 className="nt-title" style={{ fontSize: "3.5rem", color: "#111" }}>Kadek Wijaya</h1>
+                        <h1 className="nt-title" style={{ fontSize: "3.5rem", color: "#111" }}>{user?.name ?? "Kadek Wijaya"}</h1>
                         <p style={{ color: "var(--nt-brown)", fontSize: "1.35rem", fontWeight: 850 }}>Aku penyuka animasi nusatales</p>
                         <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
                             <span className="nt-pill">Pelanggan Pro</span>
                             <span className="nt-pill green">12 Hari Beruntun</span>
+                            <button type="button" className="nt-pill dark" onClick={handleLogout}>Keluar</button>
                         </div>
                     </div>
                 </section>
@@ -1114,14 +1227,17 @@ export function WatchPage() {
     const { slug } = useParams();
     const fallback = seriesPopular.find((item) => item.slug === slug) ?? { ...seriesPopular[0], title: "Kisah Gajah Mada : Bagian 1 - Lahirnya Sang Legenda Gajah Mada", image: mockups.watch };
     const video = useApiFallback(() => getVideo(slug), fallback, [slug]);
-    const pageComments = useApiFallback(() => getComments(video.data?.id ?? slug), comments, [slug]);
     const recommendations = useApiFallback(getRecommendedVideos, seriesPopular, []);
     const [paywall, setPaywall] = useState(false);
     const [message, setMessage] = useState("");
+    const currentVideo = { ...fallback, ...(video.data ?? {}) };
+    const videoId = currentVideo.id ?? slug;
+    const creatorName = currentVideo.channel?.name ?? currentVideo.creator?.name ?? currentVideo.creator ?? "NusaTales Studio";
+    const currentImage = currentVideo.thumbnail_url ?? currentVideo.image ?? mockups.watch;
 
     useEffect(() => {
-        recordVideoView(video.data?.id ?? slug).catch(() => null);
-    }, [slug]);
+        recordVideoView(videoId).catch(() => null);
+    }, [slug, videoId]);
 
     async function unlock() {
         try {
@@ -1142,7 +1258,7 @@ export function WatchPage() {
                 <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 22rem", gap: "1.5rem" }}>
                     <div style={{ display: "grid", gap: "1.5rem" }}>
                         <div style={{ position: "relative" }}>
-                            <VideoPlayer item={{ ...fallback, ...video.data }} />
+                            <VideoPlayer item={{ ...currentVideo, image: currentImage }} />
                             {paywall ? (
                                 <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", background: "rgba(0,0,0,.65)", borderRadius: "2rem" }}>
                                     <section className="nt-card pad" style={{ textAlign: "center", maxWidth: "25rem" }}>
@@ -1154,8 +1270,8 @@ export function WatchPage() {
                             ) : null}
                         </div>
                         <section className="nt-card pad">
-                            <h1 style={{ color: "var(--nt-brown)", fontSize: "2rem", fontWeight: 950, margin: 0 }}>Kisah Gajah Mada : Bagian 1 - Lahirnya Sang Legenda Gajah Mada</h1>
-                            <p className="nt-subtle" style={{ fontWeight: 850 }}>850rb tayangan - 24 Okt 2024</p>
+                            <h1 style={{ color: "var(--nt-brown)", fontSize: "2rem", fontWeight: 950, margin: 0 }}>{currentVideo.title ?? fallback.title}</h1>
+                            <p className="nt-subtle" style={{ fontWeight: 850 }}>{currentVideo.view_count ?? currentVideo.views ?? "850rb"} tayangan - {currentVideo.published_at ?? currentVideo.uploaded_at ?? "24 Okt 2024"}</p>
                             <div style={{ display: "flex", gap: ".8rem", flexWrap: "wrap", marginBottom: "1.2rem" }}>
                                 <LikeButton />
                                 <ShareButton />
@@ -1163,15 +1279,15 @@ export function WatchPage() {
                                 <button type="button" className="nt-btn ghost" onClick={() => setPaywall(true)}>Lihat Paywall</button>
                             </div>
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", marginBottom: "1rem" }}>
-                                <Link to="/channel/kadek-wijaya" style={{ display: "flex", alignItems: "center", gap: ".8rem", color: "var(--nt-brown)", textDecoration: "none", fontWeight: 950 }}>
-                                    <span className="nt-avatar"><img src={mockups.studio} alt="" /></span>
-                                    Kadek Wijaya
+                                <Link to={`/channel/${currentVideo.channel?.slug ?? "kadek-wijaya"}`} style={{ display: "flex", alignItems: "center", gap: ".8rem", color: "var(--nt-brown)", textDecoration: "none", fontWeight: 950 }}>
+                                    <span className="nt-avatar"><img src={currentVideo.channel?.avatar_url ?? mockups.studio} alt="" /></span>
+                                    {creatorName}
                                 </Link>
                                 <button type="button" className="nt-btn green">Ikuti</button>
                             </div>
-                            <p style={{ lineHeight: 1.6 }}>Episode pembuka kisah Gajah Mada, menggabungkan ritme animasi modern dengan konteks budaya Nusantara dan diskusi NusaRembug.</p>
+                            <p style={{ lineHeight: 1.6 }}>{currentVideo.description ?? "Episode pembuka kisah Nusantara, menggabungkan ritme animasi modern dengan konteks budaya dan diskusi NusaRembug."}</p>
                         </section>
-                        <CommentSection videoId={video.data.id} seed={Array.isArray(pageComments.data) ? pageComments.data : comments} />
+                        <CommentSection videoId={videoId} allowComments={currentVideo.allow_comments ?? true} seed={comments} />
                     </div>
                     <aside style={{ display: "grid", gap: "1.5rem", alignContent: "start" }}>
                         <section className="nt-card pad">
@@ -1190,18 +1306,25 @@ export function WatchPage() {
 }
 
 export function MapPage() {
+    const { isAuthenticated } = useAuth();
+    const navigate = useNavigate();
     const apiRegions = useApiFallback(getRegions, regions, []);
-    const [selectedRegion, setSelectedRegion] = useState(null);
+    const [selectedRegion, setSelectedRegion] = useState(regions[0]);
     const [selectedStory, setSelectedStory] = useState(null);
     const region = selectedRegion ?? regions[0];
 
     function saveFavorite() {
-        addFavorite({ type: "series", slug: selectedStory?.title ?? "misteri-ratu-kidul" }).catch(() => null);
+        if (!isAuthenticated) {
+            navigate("/login", { state: { from: "/peta", message: "Masuk terlebih dahulu untuk menyimpan cerita favorit." } });
+            return;
+        }
+
+        addFavorite({ target_type: "series", target_id: selectedStory?.id ?? 1 }).catch(() => null);
     }
 
     return (
         <div className="nt-map-page">
-            <NavbarProxy active="Peta" />
+            <Navbar active="Peta" />
             <main className="nt-map-stage">
                 <StatusLine status={apiRegions.status} />
                 {["java", "kalimantan", "sulawesi"].map((pin) => (
@@ -1218,7 +1341,7 @@ export function MapPage() {
                         <p style={{ fontSize: "1.25rem", lineHeight: 1.45, fontWeight: 850 }}>{region.description}</p>
                         <CulturalProgressPath levels={culturalProgress.levels} />
                         <h2 style={{ color: "var(--nt-brown)" }}>Series Tersedia</h2>
-                        {region.series.map((story) => (
+                        {(Array.isArray(region.series) ? region.series : regions[0].series).map((story) => (
                             <button key={story.title} type="button" onClick={() => setSelectedStory(story)} style={{ display: "grid", gridTemplateColumns: "3.4rem 1fr auto", gap: ".8rem", alignItems: "center", width: "100%", background: "transparent", border: 0, borderBottom: "1px solid var(--nt-line)", padding: ".65rem 0", textAlign: "left" }}>
                                 <ImageFrame src={story.image} style={{ height: "3.4rem", borderRadius: ".5rem" }} />
                                 <span><strong>{story.title}</strong><small className="nt-subtle" style={{ display: "block" }}>Menjelajahi legenda penguasa pantai...</small></span>
@@ -1313,7 +1436,7 @@ export function LanglangPage() {
                                 </div>
                                 <h2 style={{ color: "var(--nt-lime-dark)", fontSize: "2.4rem", margin: 0 }}>Lvl 42</h2>
                             </div>
-                            {data.knowledge.map((item) => (
+                            {(Array.isArray(data.knowledge) ? data.knowledge : culturalProgress.knowledge).map((item) => (
                                 <div key={item.label} style={{ marginTop: "1.5rem" }}>
                                     <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 900 }}><span>{item.label}</span><span>{item.value}%</span></div>
                                     <div style={{ height: ".8rem", background: "rgba(117,71,37,.08)", borderRadius: "999px", overflow: "hidden" }}><div style={{ width: `${item.value}%`, height: "100%", background: item.value > 60 ? "var(--nt-brown)" : "var(--nt-lime-dark)" }} /></div>
@@ -1392,22 +1515,35 @@ export function StorePage() {
 }
 
 export function SayembaraPage() {
+    const { isAuthenticated } = useAuth();
+    const navigate = useNavigate();
     const challengeList = useApiFallback(getChallenges, [fallbackChallenge], []);
     const challengeDetail = useApiFallback(() => getChallenge("sayembara-karakter-wayang-modern"), fallbackChallenge, []);
     const leaderboard = useApiFallback(() => getChallengeLeaderboard(1), fallbackChallenge.leaderboard, []);
     const data = { ...fallbackChallenge, ...(Array.isArray(challengeDetail.data) ? {} : challengeDetail.data) };
+    const [joinMessage, setJoinMessage] = useState("");
+
+    function joinChallenge() {
+        if (!isAuthenticated) {
+            navigate("/login", { state: { from: "/sayembara", message: "Masuk terlebih dahulu untuk ikut SayembaraNusa." } });
+            return;
+        }
+
+        setJoinMessage("Pendaftaran sayembara siap. Unggah karya dari Studio NusaKarya untuk melanjutkan.");
+    }
 
     return (
         <PageShell>
             <main className="nt-container" style={{ padding: "1rem 0 4rem" }}>
                 <StatusLine status={challengeList.status === "fallback" || challengeDetail.status === "fallback" ? "fallback" : "ready"} />
+                {joinMessage ? <div className="nt-status" style={{ marginBottom: "1rem" }}>{joinMessage}</div> : null}
                 <section className="nt-card pad" style={{ minHeight: "28rem", background: "var(--nt-brown)", color: "#fff0e5", display: "grid", gridTemplateColumns: "minmax(0,1fr) 28rem", gap: "2rem", alignItems: "center" }}>
                     <div>
                         <span className="nt-pill green">SAYEMBARA AKTIF</span>
                         <h1 className="nt-title" style={{ color: "#ffe1d5", marginTop: "1.5rem" }}>{data.title}</h1>
                         <p style={{ maxWidth: "43rem", fontSize: "1.35rem", lineHeight: 1.4 }}>{data.description}</p>
                         <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", marginTop: "2rem" }}>
-                            <button type="button" className="nt-btn green">Ikuti Sayembara</button>
+                            <button type="button" className="nt-btn green" onClick={joinChallenge}>Ikuti Sayembara</button>
                             <button type="button" className="nt-btn ghost" style={{ color: "#fff", borderColor: "rgba(255,255,255,.28)" }}>Panduan Detail</button>
                         </div>
                     </div>
@@ -1441,7 +1577,7 @@ export function SayembaraPage() {
                             <p>Jangan biarkan ide hebatmu mengendap. Ikuti sayembara dan jadilah legenda baru di dunia NusaTales.</p>
                             <p><Icon name="check" /> Batas Waktu: {data.deadline}</p>
                             <p><Icon name="check" /> Format: {data.format}</p>
-                            <button type="button" className="nt-btn green" style={{ width: "100%" }}>Ikuti Sayembara</button>
+                            <button type="button" className="nt-btn green" style={{ width: "100%" }} onClick={joinChallenge}>Ikuti Sayembara</button>
                         </section>
                         <section className="nt-card pad nt-soft">
                             <h2>Juri Tamu</h2>
@@ -1510,5 +1646,26 @@ export function SimpleStudioPage({ title = "Studio NusaKarya", active = "Beranda
             <h1 className="nt-title">{title}</h1>
             <EmptyState title="Halaman studio siap dikembangkan" body="Struktur NusaKarya sudah terhubung dengan navigasi dan fallback data." />
         </StudioShell>
+    );
+}
+
+export function NotFoundPage() {
+    return (
+        <PageShell>
+            <main className="nt-container" style={{ minHeight: "28rem", display: "grid", gridTemplateColumns: "minmax(0,1fr) 14rem", gap: "2rem", alignItems: "center", padding: "3rem 0" }}>
+                <section>
+                    <span className="nt-pill green">404</span>
+                    <h1 className="nt-title" style={{ marginTop: "1rem" }}>Kisah belum ditemukan</h1>
+                    <p style={{ fontSize: "1.2rem", fontWeight: 850, lineHeight: 1.55 }}>
+                        Halaman ini belum tersedia di peta NusaTales. Jelajahi cerita lain atau kembali ke beranda.
+                    </p>
+                    <div style={{ display: "flex", gap: ".8rem", flexWrap: "wrap" }}>
+                        <Link to="/" className="nt-btn green">Beranda</Link>
+                        <Link to="/jelajah" className="nt-btn ghost">Jelajah Kisah</Link>
+                    </div>
+                </section>
+                <img src={mascotImage} alt="" style={{ width: "13rem", justifySelf: "center" }} />
+            </main>
+        </PageShell>
     );
 }

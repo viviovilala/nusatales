@@ -1,6 +1,6 @@
-import nusaApiClient from "./nusaApiClient";
+import api from "./api";
 
-export const getCoinPackages = () => nusaApiClient.get("/coin-packages");
-export const checkoutCoinPackage = (id) => nusaApiClient.post(`/coin-packages/${id}/checkout`);
-export const getWallet = () => nusaApiClient.get("/wallet");
-export const getWalletTransactions = () => nusaApiClient.get("/nusa-koin/transactions");
+export const getCoinPackages = () => api.get("/coin-packages");
+export const checkoutCoinPackage = (id) => api.post(`/coin-packages/${id}/checkout`);
+export const getWallet = () => api.get("/wallet");
+export const getWalletTransactions = (params = {}) => api.get("/nusa-koin/transactions", { params });

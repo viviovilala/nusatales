@@ -7,14 +7,14 @@ export async function toggleLike(videoId) {
 }
 
 export async function getComments(videoId, params = {}) {
-    const response = await apiClient.get(`/animations/${videoId}/comments`, { params });
+    const response = await apiClient.get(`/videos/${videoId}/comments`, { params });
 
     return response.data;
 }
 
 export async function addComment(videoId, content) {
-    const response = await apiClient.post(`/animations/${videoId}/comments`, {
-        content,
+    const response = await apiClient.post(`/videos/${videoId}/comments`, {
+        body: content,
     });
 
     return response.data.data;

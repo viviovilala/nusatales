@@ -1,44 +1,59 @@
-import nusaApiClient from "./nusaApiClient";
-import { setStoredToken } from "./apiClient";
+import api, { clearStoredToken, setStoredToken } from "./api";
 
-export async function login(payload) {
-    const response = await nusaApiClient.post("/auth/login", payload);
-    const token = response.data?.data?.token;
-
-    if (token) {
-        setStoredToken(token);
-    }
-
-    return response.data?.data ?? response.data;
+function unwrapAuthResponse(response) {
+    return response.data?.data ?? response.data ?? {};
 }
 
-export async function register(payload) {
-    const { role: _role, ...safePayload } = payload ?? {};
-    const response = await nusaApiClient.post("/auth/register", safePayload);
-    const token = response.data?.data?.token;
+export async function login(payload = {}) {
+    const response = await api.post("/auth/login", {
+        email: payload.email,
+        password: payload.password,
+    });
+    const data = unwrapAuthResponse(response);
+    const token = data.token;
 
     if (token) {
         setStoredToken(token);
     }
 
-    return response.data?.data ?? response.data;
+    return data;
+}
+
+export async function register(payload = {}) {
+    const response = await api.post("/auth/register", {
+        name: payload.name,
+        email: payload.email,
+        password: payload.password,
+        password_confirmation: payload.password_confirmation ?? payload.passwordConfirm,
+    });
+    const data = unwrapAuthResponse(response);
+    const token = data.token;
+
+    if (token) {
+        setStoredToken(token);
+    }
+
+    return data;
 }
 
 export async function logout() {
-    const response = await nusaApiClient.post("/auth/logout");
-    setStoredToken(null);
+    try {
+        const response = await api.post("/auth/logout");
 
-    return response.data;
+        return response.data;
+    } finally {
+        clearStoredToken();
+    }
 }
 
 export async function me() {
-    const response = await nusaApiClient.get("/auth/me");
+    const response = await api.get("/auth/me");
 
-    return response.data?.data ?? response.data;
+    return unwrapAuthResponse(response);
 }
 
 export async function updateProfile(payload) {
-    const response = await nusaApiClient.post("/auth/profile", payload);
+    const response = await api.post("/auth/profile", payload);
 
-    return response.data?.data ?? response.data;
+    return unwrapAuthResponse(response);
 }

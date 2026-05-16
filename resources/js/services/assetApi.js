@@ -1,8 +1,8 @@
-import nusaApiClient from "./nusaApiClient";
+import api from "./api";
 
-export const getAssets = (params = {}) => nusaApiClient.get("/assets", { params });
-export const getAsset = (slug) => nusaApiClient.get(`/assets/${slug}`);
-export const checkoutAsset = (id) => nusaApiClient.post(`/assets/${id}/checkout`);
-export const getMyAssets = () => nusaApiClient.get("/me/assets");
-export const getAssetDownloads = () => nusaApiClient.get("/me/assets/downloads");
-export const downloadAsset = (id) => nusaApiClient.get(`/assets/${id}/download`);
+export const getAssets = (params = {}) => api.get("/assets", { params });
+export const getAsset = (slug) => api.get(`/assets/${slug}`);
+export const checkoutAsset = (id) => api.post(`/assets/${id}/checkout`);
+export const getMyAssets = () => api.get("/assets");
+export const getAssetDownloads = () => api.get("/assets");
+export const downloadAsset = (id) => api.get(`/assets/${id}`);

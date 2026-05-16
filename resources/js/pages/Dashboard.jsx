@@ -127,13 +127,13 @@ export default function Dashboard() {
                             Account Hub
                         </Link>
                         {user.role === "admin" ? (
-                            <a
-                                href="/admin"
+                            <Link
+                                to="/admin"
                                 className="px-5 py-3 rounded-full text-sm font-semibold"
                                 style={{ backgroundColor: "#8DC63F", color: "#FFFFFF" }}
                             >
-                                Filament Admin
-                            </a>
+                                Admin Studio
+                            </Link>
                         ) : isCreator ? (
                             <Link
                                 to="/studio"

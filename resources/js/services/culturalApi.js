@@ -1,8 +1,12 @@
-import nusaApiClient from "./nusaApiClient";
+import api from "./api";
 
-export const getRegions = () => nusaApiClient.get("/regions");
-export const getRegionSeries = (slug) => nusaApiClient.get(`/regions/${slug}/series`);
-export const getCulturalProgress = () => nusaApiClient.get("/me/cultural-progress");
-export const getMissions = () => nusaApiClient.get("/me/missions");
-export const getBadges = () => nusaApiClient.get("/me/badges");
-export const addFavorite = (payload) => nusaApiClient.post("/favorites", payload);
+export const getRegions = () => api.get("/regions");
+export const getRegionSeries = (slug) => api.get(`/regions/${slug}/series`);
+export const getCulturalProgress = () => api.get("/cultural-progress");
+export const getMyCulturalProgress = () => api.get("/me/cultural-progress");
+export const getMissions = () => api.get("/missions");
+export const getBadges = () => api.get("/badges");
+export const getMyBadges = () => api.get("/me/badges");
+export const addFavorite = (payload) => api.post("/favorites", payload);
+export const getFavorites = (params = {}) => api.get("/favorites", { params });
+export const removeFavorite = (id) => api.delete(`/favorites/${id}`);

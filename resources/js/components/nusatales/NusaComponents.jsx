@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { postComment } from "../../services/videoApi";
-import { activateStudio } from "../../services/studioApi";
+import {
+    createVideoComment,
+    deleteComment as deleteCommentRequest,
+    getVideoComments,
+    replyToComment,
+} from "../../services/commentApi";
 import {
     coinPackages,
     comments as fallbackComments,
@@ -10,6 +14,7 @@ import {
     mockups,
     subscriptionPlans,
     transactions,
+    unwrapApiData,
 } from "../../data/nusatalesData";
 
 export function Icon({ name, size = 20 }) {
@@ -51,7 +56,10 @@ export function SearchBar({ placeholder = "Cari...", studio = false }) {
 
         if (q) {
             navigate(`/search?q=${encodeURIComponent(q)}`);
+            return;
         }
+
+        navigate("/search");
     }
 
     return (
@@ -77,42 +85,21 @@ export function CoinBalancePill({ balance = "1,250" }) {
 }
 
 export function UserMenu() {
-    const { user, logout } = useAuth();
-    const [open, setOpen] = useState(false);
+    const { user } = useAuth();
 
     if (!user) {
         return null;
     }
 
     return (
-        <div style={{ position: "relative" }}>
-            <button className="nt-avatar" onClick={() => setOpen((value) => !value)} aria-label="Buka menu profil">
-                <img src={mascotImage} alt="" />
-            </button>
-            {open ? (
-                <div className="nt-card pad" style={{ position: "absolute", right: 0, top: "3.2rem", width: "13rem", zIndex: 80 }}>
-                    <Link to="/profile" className="side-link" style={{ display: "block", color: "var(--nt-brown)", fontWeight: 900, textDecoration: "none", marginBottom: "0.8rem" }}>
-                        Profil
-                    </Link>
-                    <Link to="/studio" className="side-link" style={{ display: "block", color: "var(--nt-brown)", fontWeight: 900, textDecoration: "none", marginBottom: "0.8rem" }}>
-                        Studio NusaKarya
-                    </Link>
-                    <button
-                        type="button"
-                        onClick={logout}
-                        className="nt-btn ghost"
-                        style={{ width: "100%", padding: "0.7rem 1rem" }}
-                    >
-                        Keluar
-                    </button>
-                </div>
-            ) : null}
-        </div>
+        <Link className="nt-avatar" to="/profile" aria-label="Buka profil">
+            <img src={user.profile_photo ?? mascotImage} alt="" />
+        </Link>
     );
 }
 
 export function Navbar({ active, studio = false, dark = false }) {
-    const { hasChannel, isAuthenticated, refreshUser } = useAuth();
+    const { activateStudio, hasChannel, isAuthenticated } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
     const [activationOpen, setActivationOpen] = useState(false);
@@ -146,7 +133,6 @@ export function Navbar({ active, studio = false, dark = false }) {
 
         try {
             await activateStudio();
-            await refreshUser();
             setActivationMessage("Studio NusaKarya berhasil diaktifkan.");
             setActivationOpen(false);
             navigate("/studio/upload");
@@ -185,21 +171,20 @@ export function Navbar({ active, studio = false, dark = false }) {
 
                 <div className="nt-actions">
                     {!studio ? <SearchBar /> : null}
-                    {isAuthenticated ? (
-                        <>
-                            <CoinBalancePill />
-                            <button type="button" className="nt-icon-btn" aria-label="Notifikasi">
-                                <Icon name="bell" size={20} />
-                            </button>
-                            <button type="button" className="nt-pill" onClick={handleCreate}>
-                                <Icon name="upload" size={18} />
-                                Buat+
-                            </button>
-                            <UserMenu />
-                        </>
-                    ) : (
-                        <Link to="/login" className="nt-pill dark">Masuk</Link>
-                    )}
+                    <CoinBalancePill />
+                    <button
+                        type="button"
+                        className="nt-icon-btn"
+                        aria-label="Notifikasi"
+                        onClick={() => isAuthenticated ? navigate("/profile?tab=notifications") : navigate("/login", { state: { message: "Masuk terlebih dahulu untuk melihat notifikasi." } })}
+                    >
+                        <Icon name="bell" size={20} />
+                    </button>
+                    <button type="button" className="nt-pill" onClick={handleCreate}>
+                        <Icon name="upload" size={18} />
+                        Buat+
+                    </button>
+                    {isAuthenticated ? <UserMenu /> : <Link to="/login" className="nt-pill dark">Masuk</Link>}
                 </div>
             </nav>
             {activationOpen ? (
@@ -230,10 +215,10 @@ export function Footer() {
         <footer className="nt-footer">
             <h2>NusaTales</h2>
             <div className="nt-footer-links">
-                <a href="/#tentang">Tentang Kami</a>
-                <a href="/#kredit-budaya">Kredit Budaya</a>
-                <a href="/#privasi">Privasi</a>
-                <a href="/#syarat">Syarat & Ketentuan</a>
+                <Link to="/#tentang">Tentang Kami</Link>
+                <Link to="/#kredit-budaya">Kredit Budaya</Link>
+                <Link to="/#privasi">Privasi</Link>
+                <Link to="/#syarat">Syarat & Ketentuan</Link>
             </div>
             <div className="nt-footer-line" />
             <p>&copy; 2026 NusaTales: Sang Penjaga Cerita Nusantara.</p>
@@ -315,16 +300,19 @@ export function ImageFrame({ src, className = "", style = {}, children, alt = ""
 }
 
 export function VideoCard({ item, compact = false }) {
+    const image = item?.thumbnail_url ?? item?.image ?? mockups.watch;
+    const slug = item?.slug ?? item?.id ?? "demo-video";
+
     return (
-        <Link to={`/watch/${item.slug ?? item.id}`} className="nt-card" style={{ display: "block", overflow: "hidden", textDecoration: "none", color: "inherit" }}>
-            <ImageFrame src={item.image} style={{ height: compact ? "8.5rem" : "17rem", borderRadius: compact ? "1rem 1rem 0 0" : "1.1rem 1.1rem 0 0", position: "relative" }}>
-                {item.badge ? <span className="nt-pill green" style={{ position: "absolute", top: "0.75rem", left: "0.75rem", padding: "0.35rem 0.65rem", fontSize: "0.8rem" }}>{item.badge}</span> : null}
+        <Link to={`/watch/${slug}`} className="nt-card" style={{ display: "block", overflow: "hidden", textDecoration: "none", color: "inherit" }}>
+            <ImageFrame src={image} style={{ height: compact ? "8.5rem" : "17rem", borderRadius: compact ? "1rem 1rem 0 0" : "1.1rem 1.1rem 0 0", position: "relative" }}>
+                {item?.badge ? <span className="nt-pill green" style={{ position: "absolute", top: "0.75rem", left: "0.75rem", padding: "0.35rem 0.65rem", fontSize: "0.8rem" }}>{item.badge}</span> : null}
             </ImageFrame>
             <div style={{ padding: compact ? "0.85rem" : "1rem" }}>
-                <p className="nt-subtle" style={{ margin: 0, fontWeight: 800, fontSize: "0.85rem" }}>{item.genre ?? "Romance, Action, Drama"}</p>
-                <h3 style={{ margin: "0.25rem 0", color: "var(--nt-brown)", fontWeight: 950, fontSize: compact ? "1rem" : "1.2rem" }}>{item.title}</h3>
+                <p className="nt-subtle" style={{ margin: 0, fontWeight: 800, fontSize: "0.85rem" }}>{item?.genre ?? item?.category?.name ?? "Romance, Action, Drama"}</p>
+                <h3 style={{ margin: "0.25rem 0", color: "var(--nt-brown)", fontWeight: 950, fontSize: compact ? "1rem" : "1.2rem" }}>{item?.title ?? "Kisah Nusantara"}</h3>
                 <p style={{ margin: 0, color: "var(--nt-lime-dark)", fontWeight: 900 }}>
-                    <Icon name="heart" size={15} /> {item.likes ?? "12.8 M"}
+                    <Icon name="heart" size={15} /> {item?.likes ?? item?.like_count ?? "12.8 M"}
                 </p>
             </div>
         </Link>
@@ -332,36 +320,40 @@ export function VideoCard({ item, compact = false }) {
 }
 
 export function SeriesCard({ item, rank, large = false }) {
+    const image = item?.thumbnail_url ?? item?.image ?? mockups.explore;
+
     return (
-        <Link to={`/series/${item.slug}`} className="nt-card" style={{ display: "block", overflow: "hidden", textDecoration: "none", color: "inherit" }}>
-            <ImageFrame src={item.image} style={{ height: large ? "22rem" : "10rem", position: "relative" }}>
+        <Link to={`/series/${item?.slug ?? item?.id ?? "kisah-seribu-candi"}`} className="nt-card" style={{ display: "block", overflow: "hidden", textDecoration: "none", color: "inherit" }}>
+            <ImageFrame src={image} style={{ height: large ? "22rem" : "10rem", position: "relative" }}>
                 {large ? <span className="nt-pill green" style={{ position: "absolute", top: "1rem", right: "1rem", padding: "0.4rem 0.7rem", fontSize: "0.75rem" }}>SERIES BARU</span> : null}
                 <strong style={{ position: "absolute", right: "0.5rem", bottom: "-1.4rem", color: "#fff", fontSize: large ? "5.8rem" : "3.5rem", lineHeight: 1, textShadow: "0 6px 12px rgba(117,71,37,.45)" }}>
                     {rank}
                 </strong>
             </ImageFrame>
             <div style={{ padding: "1rem" }}>
-                <h3 style={{ margin: "0 0 0.5rem", color: "var(--nt-brown)", fontWeight: 950 }}>{item.title}</h3>
-                <p style={{ margin: "0 0 0.8rem", color: "var(--nt-brown-dark)", fontSize: "0.9rem" }}>{item.description}</p>
-                <p className="nt-subtle" style={{ margin: 0, fontSize: "0.8rem" }}>{item.episodes} Episode - {item.views} Penonton</p>
+                <h3 style={{ margin: "0 0 0.5rem", color: "var(--nt-brown)", fontWeight: 950 }}>{item?.title ?? "Kisah Seribu Candi"}</h3>
+                <p style={{ margin: "0 0 0.8rem", color: "var(--nt-brown-dark)", fontSize: "0.9rem" }}>{item?.description ?? "Kisah animasi Nusantara pilihan."}</p>
+                <p className="nt-subtle" style={{ margin: 0, fontSize: "0.8rem" }}>{item?.episodes ?? item?.episode_count ?? 10} Episode - {item?.views ?? item?.view_count ?? "850K"} Penonton</p>
             </div>
         </Link>
     );
 }
 
 export function EpisodeCard({ item }) {
+    const image = item?.thumbnail_url ?? item?.image ?? mockups.watch;
+
     return (
-        <Link to={`/watch/${item.slug}`} className="nt-card" style={{ display: "block", overflow: "hidden", borderColor: "rgba(90,127,7,.55)", textDecoration: "none", color: "inherit" }}>
-            <ImageFrame src={item.image} style={{ height: "6rem", position: "relative" }}>
-                <span className="nt-pill green" style={{ position: "absolute", top: "0.35rem", left: "0.35rem", padding: "0.25rem 0.45rem", fontSize: "0.65rem" }}>{item.episode}</span>
+        <Link to={`/watch/${item?.slug ?? item?.id ?? "demo-video"}`} className="nt-card" style={{ display: "block", overflow: "hidden", borderColor: "rgba(90,127,7,.55)", textDecoration: "none", color: "inherit" }}>
+            <ImageFrame src={image} style={{ height: "6rem", position: "relative" }}>
+                <span className="nt-pill green" style={{ position: "absolute", top: "0.35rem", left: "0.35rem", padding: "0.25rem 0.45rem", fontSize: "0.65rem" }}>{item?.episode ?? `Ep ${item?.episode_number ?? 1}`}</span>
                 <span className="nt-icon-btn" style={{ position: "absolute", right: "0.4rem", bottom: "0.4rem", width: "1.7rem", height: "1.7rem" }}>
                     <Icon name="play" size={12} />
                 </span>
             </ImageFrame>
             <div style={{ padding: "0.65rem" }}>
-                <p style={{ margin: 0, color: "var(--nt-muted)", fontSize: "0.7rem" }}>{item.series}</p>
-                <h3 style={{ margin: "0.15rem 0", color: "var(--nt-brown)", fontSize: "0.82rem", fontWeight: 950 }}>{item.title}</h3>
-                <p style={{ margin: 0, color: "var(--nt-brown)", fontSize: "0.65rem", fontWeight: 800 }}>{item.age}</p>
+                <p style={{ margin: 0, color: "var(--nt-muted)", fontSize: "0.7rem" }}>{item?.series?.title ?? item?.series ?? "NusaSaga"}</p>
+                <h3 style={{ margin: "0.15rem 0", color: "var(--nt-brown)", fontSize: "0.82rem", fontWeight: 950 }}>{item?.title ?? "Episode NusaTales"}</h3>
+                <p style={{ margin: 0, color: "var(--nt-brown)", fontSize: "0.65rem", fontWeight: 800 }}>{item?.age ?? item?.published_at ?? "Baru saja"}</p>
             </div>
         </Link>
     );
@@ -434,18 +426,20 @@ export function FavoriteButton() {
 }
 
 export function ShortVideoPlayer({ item }) {
+    const image = item?.thumbnail_url ?? item?.image ?? mockups.shorts;
+
     return (
         <section className="nt-card" style={{ position: "relative", width: "min(100%, 38rem)", aspectRatio: "9 / 16", overflow: "hidden", border: "4px solid #fff7e6", boxShadow: "0 0 3rem rgba(214, 155, 8, .35)" }}>
-            <ImageFrame src={item.image} style={{ height: "100%", borderRadius: "1.8rem", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "2rem 1.4rem", color: "#fff" }}>
+            <ImageFrame src={image} style={{ height: "100%", borderRadius: "1.8rem", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "2rem 1.4rem", color: "#fff" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
                     <span><Icon name="play" size={32} /></span>
                     <span style={{ fontSize: "2rem", lineHeight: 1 }}>...</span>
                 </div>
                 <div style={{ textShadow: "0 3px 14px rgba(0,0,0,.7)" }}>
-                    <h1 style={{ margin: 0, fontSize: "clamp(1.5rem, 4vw, 2.1rem)", fontWeight: 950 }}>{item.title}</h1>
-                    <p style={{ margin: "0.4rem 0 1rem", maxWidth: "28rem", lineHeight: 1.45 }}>{item.description}</p>
+                    <h1 style={{ margin: 0, fontSize: "clamp(1.5rem, 4vw, 2.1rem)", fontWeight: 950 }}>{item?.title ?? "Short NusaTales"}</h1>
+                    <p style={{ margin: "0.4rem 0 1rem", maxWidth: "28rem", lineHeight: 1.45 }}>{item?.description ?? "Cuplikan kisah Nusantara dalam format pendek."}</p>
                     <p style={{ margin: 0, display: "flex", gap: ".6rem", alignItems: "center", fontWeight: 900 }}>
-                        <Icon name="play" /> {item.audio}
+                        <Icon name="play" /> {item?.audio ?? "NusaTales Original"}
                     </p>
                 </div>
             </ImageFrame>
@@ -469,62 +463,179 @@ export function VideoPlayer({ item }) {
     );
 }
 
-export function CommentSection({ videoId, seed = fallbackComments }) {
-    const { isAuthenticated } = useAuth();
+export function CommentSection({ videoId, allowComments = true, seed = fallbackComments }) {
+    const { isAdmin, isAuthenticated, user } = useAuth();
+    const navigate = useNavigate();
     const [items, setItems] = useState(Array.isArray(seed) ? seed : fallbackComments);
     const [body, setBody] = useState("");
+    const [replyingId, setReplyingId] = useState(null);
+    const [replyBody, setReplyBody] = useState("");
     const [message, setMessage] = useState("");
+    const [fieldError, setFieldError] = useState("");
 
     useEffect(() => {
-        setItems(Array.isArray(seed) ? seed : fallbackComments);
-    }, [seed]);
+        let ignore = false;
+        const fallback = Array.isArray(seed) ? seed : fallbackComments;
+
+        async function loadComments() {
+            if (!videoId) {
+                setItems(fallback);
+                return;
+            }
+
+            try {
+                const response = await getVideoComments(videoId);
+                const nextItems = unwrapApiData(response, fallback);
+
+                if (!ignore) {
+                    setItems(Array.isArray(nextItems) ? nextItems : fallback);
+                }
+            } catch (_error) {
+                if (!ignore) {
+                    setItems(fallback);
+                }
+            }
+        }
+
+        loadComments();
+
+        return () => {
+            ignore = true;
+        };
+    }, [videoId, seed]);
 
     async function submit(event) {
         event.preventDefault();
         const text = body.trim();
+        setFieldError("");
+        setMessage("");
 
-        if (!text) {
+        if (!allowComments) {
+            setMessage("Komentar untuk video ini sedang dinonaktifkan.");
             return;
         }
 
         if (!isAuthenticated) {
-            setMessage("Masuk terlebih dahulu untuk ikut NusaRembug.");
+            navigate("/login", { state: { message: "Masuk terlebih dahulu untuk ikut NusaRembug." } });
+            return;
+        }
+
+        if (!text) {
+            setFieldError("Komentar wajib diisi.");
             return;
         }
 
         try {
-            const response = await postComment(videoId, { body: text });
-            const saved = response.data?.data?.comment ?? response.data?.data ?? { id: `local-${Date.now()}`, body: text };
-            setItems((current) => [saved, ...current]);
+            const response = await createVideoComment(videoId, { body: text });
+            const saved = response.data?.data?.comment ?? response.data?.data ?? { id: `local-${Date.now()}`, body: text, user };
+            setItems((current) => [saved, ...(Array.isArray(current) ? current : [])]);
             setBody("");
-            setMessage("");
         } catch (error) {
+            const errors = error.response?.data?.errors ?? {};
+            setFieldError(errors.body?.[0] ?? errors.content?.[0] ?? "");
             setMessage(error.response?.data?.message ?? "Komentar belum berhasil dikirim.");
         }
     }
+
+    async function submitReply(commentId) {
+        const text = replyBody.trim();
+        setFieldError("");
+        setMessage("");
+
+        if (!isAuthenticated) {
+            navigate("/login", { state: { message: "Masuk terlebih dahulu untuk membalas komentar." } });
+            return;
+        }
+
+        if (!text) {
+            setFieldError("Balasan wajib diisi.");
+            return;
+        }
+
+        try {
+            const response = await replyToComment(commentId, { body: text });
+            const saved = response.data?.data?.comment ?? response.data?.data ?? { id: `reply-${Date.now()}`, body: text, user };
+            setItems((current) => (Array.isArray(current) ? current : []).map((comment) => (
+                comment.id === commentId
+                    ? { ...comment, replies: [...(Array.isArray(comment.replies) ? comment.replies : []), saved] }
+                    : comment
+            )));
+            setReplyBody("");
+            setReplyingId(null);
+        } catch (error) {
+            const errors = error.response?.data?.errors ?? {};
+            setFieldError(errors.body?.[0] ?? errors.content?.[0] ?? "");
+            setMessage(error.response?.data?.message ?? "Balasan belum berhasil dikirim.");
+        }
+    }
+
+    async function removeComment(commentId) {
+        try {
+            await deleteCommentRequest(commentId);
+            setItems((current) => (Array.isArray(current) ? current : []).filter((comment) => comment.id !== commentId));
+        } catch (error) {
+            setMessage(error.response?.data?.message ?? "Komentar belum berhasil dihapus.");
+        }
+    }
+
+    const comments = Array.isArray(items) ? items : [];
 
     return (
         <section className="nt-card pad">
             <h2 className="nt-heading" style={{ fontSize: "1.8rem" }}>NusaRembug</h2>
             {message ? <div className="nt-status nt-error">{message}</div> : null}
             <form onSubmit={submit} style={{ display: "grid", gap: "0.8rem", margin: "1rem 0 1.4rem" }}>
-                <textarea className="nt-form-field" value={body} onChange={(event) => setBody(event.target.value)} placeholder="Tulis komentar budaya..." />
+                <textarea
+                    className="nt-form-field"
+                    value={body}
+                    onChange={(event) => setBody(event.target.value)}
+                    placeholder={isAuthenticated ? "Tulis komentar budaya..." : "Masuk untuk ikut NusaRembug."}
+                    disabled={!allowComments || !isAuthenticated}
+                />
+                {fieldError ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldError}</small> : null}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem" }}>
                     <div style={{ display: "flex", gap: "0.5rem" }}>
                         <button type="button" className="nt-icon-btn" aria-label="Lampirkan gambar"><Icon name="box" /></button>
                         <button type="button" className="nt-icon-btn" aria-label="Tambahkan stiker"><Icon name="heart" /></button>
                     </div>
-                    <button className="nt-btn green" type="submit">Kirim</button>
+                    <button className="nt-btn green" type="submit">{isAuthenticated ? "Kirim" : "Masuk"}</button>
                 </div>
             </form>
             <div style={{ display: "grid", gap: "0.85rem" }}>
-                {items.map((comment) => (
-                    <article key={comment.id} className="nt-card pad" style={{ background: comment.admin ? "#fff0dc" : "#fffdf7", boxShadow: "none" }}>
-                        <strong style={{ color: "var(--nt-brown)" }}>{comment.author ?? comment.user?.name ?? "Penjelajah Nusa"}</strong>
-                        <p style={{ margin: "0.35rem 0", lineHeight: 1.45 }}>{comment.body ?? comment.content}</p>
-                        <small className="nt-subtle">{comment.time ?? comment.created_at ?? "Baru saja"}</small>
-                    </article>
-                ))}
+                {comments.length === 0 ? <EmptyState title="Belum ada komentar" body="Jadilah penjelajah pertama yang membuka NusaRembug di video ini." /> : null}
+                {comments.map((comment) => {
+                    const canDelete = isAdmin || comment.user?.id === user?.id;
+                    const replies = Array.isArray(comment.replies) ? comment.replies : [];
+
+                    return (
+                        <article key={comment.id} className="nt-card pad" style={{ background: comment.admin || comment.is_admin_reply ? "#fff0dc" : "#fffdf7", boxShadow: "none" }}>
+                            <strong style={{ color: "var(--nt-brown)" }}>{comment.author ?? comment.user?.name ?? "Penjelajah Nusa"}</strong>
+                            <p style={{ margin: "0.35rem 0", lineHeight: 1.45 }}>{comment.body ?? comment.content ?? "Komentar NusaRembug"}</p>
+                            <small className="nt-subtle">{comment.time ?? comment.created_at ?? "Baru saja"}</small>
+                            <div style={{ display: "flex", gap: ".7rem", marginTop: ".65rem", flexWrap: "wrap" }}>
+                                <button type="button" className="nt-btn ghost" style={{ padding: ".45rem .8rem" }} onClick={() => setReplyingId(replyingId === comment.id ? null : comment.id)}>Balas</button>
+                                {canDelete ? <button type="button" className="nt-btn ghost" style={{ padding: ".45rem .8rem" }} onClick={() => removeComment(comment.id)}>Hapus</button> : null}
+                            </div>
+                            {replyingId === comment.id ? (
+                                <div style={{ display: "grid", gap: ".6rem", marginTop: ".8rem" }}>
+                                    <textarea className="nt-form-field" value={replyBody} onChange={(event) => setReplyBody(event.target.value)} placeholder="Tulis balasan..." />
+                                    <button type="button" className="nt-btn green" style={{ justifySelf: "end" }} onClick={() => submitReply(comment.id)}>Kirim Balasan</button>
+                                </div>
+                            ) : null}
+                            {replies.length ? (
+                                <div style={{ display: "grid", gap: ".65rem", marginTop: ".8rem", paddingLeft: "1rem", borderLeft: "3px solid var(--nt-line)" }}>
+                                    {replies.map((reply) => (
+                                        <article key={reply.id} className="nt-card pad" style={{ boxShadow: "none", background: "#fffaf0" }}>
+                                            <strong style={{ color: "var(--nt-brown)" }}>{reply.user?.name ?? reply.author ?? "Penjelajah Nusa"}</strong>
+                                            <p style={{ margin: ".25rem 0" }}>{reply.body ?? reply.content}</p>
+                                            <small className="nt-subtle">{reply.created_at ?? reply.time ?? "Baru saja"}</small>
+                                        </article>
+                                    ))}
+                                </div>
+                            ) : null}
+                        </article>
+                    );
+                })}
             </div>
         </section>
     );
@@ -543,6 +654,8 @@ export function CoinPackageCard({ item, onCheckout }) {
 }
 
 export function SubscriptionPlanCard({ item, onCheckout }) {
+    const features = Array.isArray(item?.features) ? item.features : ["Bebas iklan", "Akses cerita premium", "Dukung kreator lokal"];
+
     return (
         <article className="nt-card pad" style={{ background: item.featured ? "var(--nt-lime)" : "rgba(255,255,255,.12)", color: item.featured ? "#111" : "#fffdf7", borderColor: "rgba(255,255,255,.16)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -553,7 +666,7 @@ export function SubscriptionPlanCard({ item, onCheckout }) {
                 {item.price}<small style={{ fontSize: ".8rem" }}>{item.suffix}</small>
             </p>
             <ul style={{ padding: 0, margin: "0 0 1.2rem", listStyle: "none", display: "grid", gap: ".55rem" }}>
-                {item.features.map((feature) => (
+                {features.map((feature) => (
                     <li key={feature} style={{ display: "flex", gap: ".5rem", alignItems: "start", fontWeight: 800 }}>
                         <Icon name="check" size={16} /> {feature}
                     </li>
@@ -592,7 +705,7 @@ export function TransactionHistory({ items = transactions }) {
         <section className="nt-card pad nt-soft">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <h2 style={{ margin: 0, color: "var(--nt-brown)", fontSize: "1.7rem", fontWeight: 950 }}>Riwayat Transaksi</h2>
-                <a href="/premium" style={{ color: "var(--nt-brown)", fontWeight: 900 }}>Lihat Semua</a>
+                <Link to="/premium" style={{ color: "var(--nt-brown)", fontWeight: 900 }}>Lihat Semua</Link>
             </div>
             <div style={{ display: "grid", gap: "1rem", marginTop: "1rem" }}>
                 {items.map((item) => (
@@ -681,22 +794,24 @@ export function ThumbnailSelector({ images = [mockups.home, mockups.explore, moc
 }
 
 export function AssetCard({ item }) {
+    const image = item?.preview_url ?? item?.image ?? mockups.store;
+
     return (
         <article className="nt-card" style={{ overflow: "hidden" }}>
-            <ImageFrame src={item.image} style={{ height: "16rem", position: "relative" }}>
+            <ImageFrame src={image} style={{ height: "16rem", position: "relative" }}>
                 <button type="button" className="nt-icon-btn" style={{ position: "absolute", right: ".8rem", top: ".8rem" }} aria-label="Favorit aset">
                     <Icon name="heart" />
                 </button>
-                {item.hot ? <span className="nt-pill dark" style={{ position: "absolute", left: "1rem", bottom: ".8rem", padding: ".3rem .65rem", fontSize: ".75rem" }}>HOT ITEM</span> : null}
+                {item?.hot ? <span className="nt-pill dark" style={{ position: "absolute", left: "1rem", bottom: ".8rem", padding: ".3rem .65rem", fontSize: ".75rem" }}>HOT ITEM</span> : null}
             </ImageFrame>
             <div style={{ padding: "1.35rem" }}>
                 <p style={{ margin: 0, display: "flex", gap: ".75rem", color: "var(--nt-brown)", fontWeight: 900 }}>
-                    <span className="nt-pill green" style={{ padding: ".25rem .55rem", fontSize: ".7rem" }}>{item.category}</span>
-                    <span>* {item.rating}</span>
+                    <span className="nt-pill green" style={{ padding: ".25rem .55rem", fontSize: ".7rem" }}>{item?.category ?? "ASET"}</span>
+                    <span>* {item?.rating ?? "4.9"}</span>
                 </p>
-                <h3 style={{ margin: ".8rem 0 .5rem", fontWeight: 950 }}>{item.title}</h3>
-                <p className="nt-subtle">Aura kebangsawanan yang meningkatkan status petualanganmu.</p>
-                <p style={{ margin: 0, color: "var(--nt-brown)", fontWeight: 950 }}><Icon name="coin" size={18} /> {item.price}</p>
+                <h3 style={{ margin: ".8rem 0 .5rem", fontWeight: 950 }}>{item?.title ?? "Aset NusaTales"}</h3>
+                <p className="nt-subtle">{item?.description ?? "Aura kebangsawanan yang meningkatkan status petualanganmu."}</p>
+                <p style={{ margin: 0, color: "var(--nt-brown)", fontWeight: 950 }}><Icon name="coin" size={18} /> {item?.price ?? `${item?.coin_price ?? 4} NusaKoin`}</p>
             </div>
         </article>
     );
