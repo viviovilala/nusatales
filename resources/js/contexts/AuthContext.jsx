@@ -11,6 +11,7 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
+    const [token, setToken] = useState(getStoredToken());
     const [isLoading, setIsLoading] = useState(Boolean(getStoredToken()));
 
     useEffect(() => {
@@ -27,11 +28,13 @@ export function AuthProvider({ children }) {
 
                 if (!ignore) {
                     setUser(authenticatedUser);
+                    setToken(getStoredToken());
                 }
             } catch (_error) {
                 clearStoredToken();
                 if (!ignore) {
                     setUser(null);
+                    setToken(null);
                 }
             } finally {
                 if (!ignore) {
@@ -47,27 +50,45 @@ export function AuthProvider({ children }) {
         };
     }, []);
 
+    const setAuthenticatedUser = (nextUser) => {
+        setUser(nextUser);
+        setToken(getStoredToken());
+    };
+
+    const channel = user?.channel ?? null;
+    const hasChannel = Boolean(channel) || user?.has_channel === true;
+    const isAuthenticated = Boolean(user && token);
+
     const value = {
         user,
+        token,
+        channel,
+        hasChannel,
+        canUpload: isAuthenticated && hasChannel,
+        isAdmin: user?.role === "admin",
         isLoading,
-        isAuthenticated: Boolean(user),
+        loading: isLoading,
+        isAuthenticated,
         async refreshUser() {
             const authenticatedUser = await fetchMe();
             setUser(authenticatedUser);
+            setToken(getStoredToken());
 
             return authenticatedUser;
         },
         async updateProfile(payload) {
             const updatedUser = await updateProfileRequest(payload);
             setUser(updatedUser);
+            setToken(getStoredToken());
 
             return updatedUser;
         },
         async logout() {
             await logoutRequest();
             setUser(null);
+            setToken(null);
         },
-        setUser,
+        setUser: setAuthenticatedUser,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

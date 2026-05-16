@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Storage;
@@ -19,22 +20,58 @@ class Video extends Model
 
     protected $fillable = [
         'judul',
+        'slug',
         'deskripsi',
         'durasi',
         'url_video',
+        'video_path',
+        'video_url',
         'thumbnail',
+        'thumbnail_path',
         'status',
         'rejection_reason',
+        'visibility',
+        'scheduled_at',
+        'published_at',
+        'is_premium',
+        'monetization_type',
+        'coin_price',
+        'is_monetized',
+        'monetization_status',
+        'allow_comments',
+        'allow_download',
+        'view_count',
+        'like_count',
+        'comment_count',
         'tanggal_upload',
         'kreator_id',
+        'channel_id',
+        'content_type',
+        'format',
         'kategori_id',
         'cerita_id',
+        'series_id',
+        'episode_number',
+        'region_id',
+        'folklore_type',
+        'tags',
     ];
 
     protected function casts(): array
     {
         return [
             'tanggal_upload' => 'datetime',
+            'scheduled_at' => 'datetime',
+            'published_at' => 'datetime',
+            'is_premium' => 'boolean',
+            'is_monetized' => 'boolean',
+            'allow_comments' => 'boolean',
+            'allow_download' => 'boolean',
+            'view_count' => 'integer',
+            'like_count' => 'integer',
+            'comment_count' => 'integer',
+            'coin_price' => 'integer',
+            'tags' => 'array',
         ];
     }
 
@@ -48,6 +85,16 @@ class Video extends Model
         return $this->belongsTo(User::class, 'kreator_id', 'user_id');
     }
 
+    public function user(): BelongsTo
+    {
+        return $this->creator();
+    }
+
+    public function channel(): BelongsTo
+    {
+        return $this->belongsTo(Channel::class, 'channel_id');
+    }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(Kategori::class, 'kategori_id', 'kategori_id');
@@ -56,6 +103,21 @@ class Video extends Model
     public function story(): BelongsTo
     {
         return $this->belongsTo(CeritaRakyat::class, 'cerita_id', 'cerita_id');
+    }
+
+    public function series(): BelongsTo
+    {
+        return $this->belongsTo(Series::class, 'series_id', 'series_id');
+    }
+
+    public function region(): BelongsTo
+    {
+        return $this->belongsTo(Region::class, 'region_id');
+    }
+
+    public function genres(): BelongsToMany
+    {
+        return $this->belongsToMany(Genre::class, 'video_genre', 'video_id', 'genre_id', 'video_id', 'genre_id');
     }
 
     public function analytics(): HasOne
@@ -106,13 +168,62 @@ class Video extends Model
         return $categoryId ? $query->where('kategori_id', $categoryId) : $query;
     }
 
+    public function scopePublished(Builder $query): Builder
+    {
+        return $query->where('status', 'published');
+    }
+
+    public function scopeShorts(Builder $query): Builder
+    {
+        return $query->where('content_type', 'short');
+    }
+
+    public function scopeEpisodes(Builder $query): Builder
+    {
+        return $query->where('content_type', 'episode');
+    }
+
+    public function scopePubliclyVisible(Builder $query): Builder
+    {
+        return $query->where('visibility', 'public');
+    }
+
+    public function scopeVisibleToUser(Builder $query, ?User $user): Builder
+    {
+        if ($user?->isAdmin()) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $builder) use ($user) {
+            $builder->published()->publiclyVisible();
+
+            if ($user) {
+                $builder->orWhere('kreator_id', $user->user_id);
+            }
+        });
+    }
+
+    public function getSlugAttribute(?string $value): string
+    {
+        return $value ?: (string) $this->video_id;
+    }
+
     public function getVideoUrlAttribute(): ?string
     {
-        return $this->url_video ? Storage::disk('public')->url($this->url_video) : null;
+        $path = $this->video_path ?: $this->url_video;
+        $externalUrl = $this->attributes['video_url'] ?? null;
+
+        if ($externalUrl) {
+            return $externalUrl;
+        }
+
+        return $path ? Storage::disk('public')->url($path) : null;
     }
 
     public function getThumbnailUrlAttribute(): ?string
     {
-        return $this->thumbnail ? Storage::disk('public')->url($this->thumbnail) : null;
+        $path = $this->thumbnail_path ?: $this->thumbnail;
+
+        return $path ? Storage::disk('public')->url($path) : '/assets/nusatales/fallback-thumbnail.svg';
     }
 }

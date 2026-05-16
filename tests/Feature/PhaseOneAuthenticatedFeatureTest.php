@@ -91,7 +91,7 @@ class PhaseOneAuthenticatedFeatureTest extends TestCase
 
     protected function publishedEpisode(): Episode
     {
-        $creator = User::factory()->create(['role' => 'creator']);
+        $creator = User::factory()->create(['role' => 'user']);
         $category = Kategori::query()->create([
             'nama_kategori' => 'Folklore',
             'slug' => 'folklore',

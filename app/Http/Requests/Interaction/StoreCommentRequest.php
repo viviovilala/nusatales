@@ -11,6 +11,15 @@ class StoreCommentRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if (! $this->has('content') && $this->has('body')) {
+            $this->merge([
+                'content' => $this->input('body'),
+            ]);
+        }
+    }
+
     /**
      * @return array<string, mixed>
      */

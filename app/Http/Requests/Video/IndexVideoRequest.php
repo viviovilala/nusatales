@@ -19,8 +19,13 @@ class IndexVideoRequest extends FormRequest
     {
         return [
             'search' => ['nullable', 'string', 'max:255'],
-            'status' => ['nullable', Rule::in(['draft', 'published', 'rejected'])],
+            'keyword' => ['nullable', 'string', 'max:255'],
+            'status' => ['nullable', Rule::in(['draft', 'published', 'scheduled', 'archived', 'blocked', 'rejected'])],
+            'content_type' => ['nullable', Rule::in(['episode', 'short'])],
             'kategori_id' => ['nullable', 'integer', 'exists:kategori,kategori_id'],
+            'category_id' => ['nullable', 'integer', 'exists:kategori,kategori_id'],
+            'genre_id' => ['nullable', 'integer', 'exists:genres,genre_id'],
+            'region_id' => ['nullable', 'integer', 'exists:regions,id'],
             'kreator_id' => ['nullable', 'integer', 'exists:users,user_id'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ];

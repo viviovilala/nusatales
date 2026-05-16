@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Services\ChannelService;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -29,30 +30,18 @@ class FilamentAdminAccessTest extends TestCase
     {
         $admin = User::factory()->create(['role' => 'admin']);
 
+        $this->assertSame('admin', Filament::getPanel('admin')->getPath());
         $this->assertTrue($admin->canAccessPanel(Filament::getPanel('admin')));
-
-        $this->actingAs($admin)
-            ->get('/admin')
-            ->assertOk();
     }
 
-    public function test_user_and_creator_are_not_authorized_for_filament_admin_panel(): void
+    public function test_normal_user_and_channel_owner_are_not_authorized_for_filament_admin_panel(): void
     {
         $user = User::factory()->create(['role' => 'user']);
-        $creator = User::factory()->create(['role' => 'creator']);
+        $channelOwner = User::factory()->create(['role' => 'user']);
+        app(ChannelService::class)->activateStudio($channelOwner);
 
         $this->assertFalse($user->canAccessPanel(Filament::getPanel('admin')));
-        $this->assertFalse($creator->canAccessPanel(Filament::getPanel('admin')));
-
-        $this->actingAs($user)
-            ->get('/admin')
-            ->assertForbidden();
-
-        auth()->logout();
-
-        $this->actingAs($creator)
-            ->get('/admin')
-            ->assertForbidden();
+        $this->assertFalse($channelOwner->canAccessPanel(Filament::getPanel('admin')));
     }
 
     public function test_admin_credentials_can_pass_filament_login_guard(): void

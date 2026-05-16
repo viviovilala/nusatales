@@ -52,26 +52,48 @@ class InteractionService
     public function paginateComments(Video $video, int $perPage = 15): LengthAwarePaginator
     {
         return Comment::query()
-            ->with('user')
+            ->with(['user', 'replies.user'])
             ->where('video_id', $video->video_id)
+            ->whereNull('parent_id')
+            ->where('status', 'published')
             ->orderByDesc('tanggal')
             ->paginate($perPage);
     }
 
-    public function addComment(User $user, Video $video, string $content): Comment
+    public function addComment(User $user, Video $video, string $content, ?Comment $parent = null): Comment
     {
+        if (! ($video->allow_comments ?? true)) {
+            abort(422, 'Komentar untuk video ini sedang dinonaktifkan.');
+        }
+
+        if ($parent && (int) $parent->video_id !== (int) $video->video_id) {
+            abort(422, 'Komentar induk tidak sesuai dengan video.');
+        }
+
+        $body = trim(strip_tags($content));
+
+        if ($body === '') {
+            abort(422, 'Komentar tidak boleh kosong.');
+        }
+
         $comment = Comment::query()->create([
             'user_id' => $user->user_id,
             'video_id' => $video->video_id,
-            'isi_komentar' => $content,
+            'parent_id' => $parent?->comment_id,
+            'isi_komentar' => $body,
+            'body' => $body,
+            'status' => 'published',
             'tanggal' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
+        $this->refreshCommentCount($video);
         $this->awardPoints($user, 2);
         $this->missionService->progress($user, 'comment');
         $this->notifyCreator($video, "{$user->nama} commented on your animation \"{$video->judul}\".");
 
-        return $comment->load('user');
+        return $comment->load(['user', 'replies.user']);
     }
 
     public function deleteComment(User $user, Comment $comment): void
@@ -80,7 +102,14 @@ class InteractionService
             abort(403, 'You are not authorized to delete this comment.');
         }
 
+        $video = $comment->video;
+        $comment->status = 'deleted';
+        $comment->save();
         $comment->delete();
+
+        if ($video) {
+            $this->refreshCommentCount($video);
+        }
     }
 
     public function recordShare(User $user, Video $video, string $platform): Share
@@ -108,6 +137,7 @@ class InteractionService
         ]);
 
         $analytics->increment('views');
+        $video->increment('view_count');
     }
 
     protected function notifyCreator(Video $video, string $message): void
@@ -132,5 +162,12 @@ class InteractionService
         );
 
         $wallet->increment('total_point', $points);
+    }
+
+    protected function refreshCommentCount(Video $video): void
+    {
+        $video->forceFill([
+            'comment_count' => $video->comments()->where('status', 'published')->count(),
+        ])->save();
     }
 }

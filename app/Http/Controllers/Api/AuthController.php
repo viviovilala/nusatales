@@ -38,7 +38,10 @@ class AuthController extends Controller
 
     public function me(Request $request)
     {
-        return $this->successResponse('Authenticated user retrieved successfully.', new UserResource($request->user()));
+        return $this->successResponse(
+            'Authenticated user retrieved successfully.',
+            new UserResource($request->user()->load('channel'))
+        );
     }
 
     public function logout(Request $request)

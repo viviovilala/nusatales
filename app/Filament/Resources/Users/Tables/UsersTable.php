@@ -32,7 +32,6 @@ class UsersTable
                 SelectFilter::make('role')
                     ->options([
                         'user' => 'User',
-                        'creator' => 'Creator',
                         'admin' => 'Admin',
                     ]),
             ])

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Ad;
 use App\Models\Analytics;
+use App\Models\Channel;
 use App\Models\DailyMission;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
@@ -65,7 +66,7 @@ class AdminService
     {
         $stats = [
             'total_users' => User::count(),
-            'total_creators' => User::where('role', 'creator')->count(),
+            'total_creators' => Channel::count(),
             'total_admins' => User::where('role', 'admin')->count(),
             'total_videos' => Video::count(),
             'published_videos' => Video::where('status', 'published')->count(),

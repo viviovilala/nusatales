@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Resources\UserResource;
+use App\Http\Resources\ChannelResource;
 use App\Services\AdminCatalogService;
 use Illuminate\Http\Request;
 
@@ -21,10 +21,15 @@ class CreatorDirectoryController extends Controller
         );
 
         return $this->successResponse('Creators retrieved successfully.', [
-            'items' => collect($paginator->items())->map(function ($creator) {
-                $payload = (new UserResource($creator))->resolve();
-                $payload['followers_count'] = $creator->followers_count ?? 0;
-                $payload['videos_count'] = $creator->videos_count ?? 0;
+            'items' => collect($paginator->items())->map(function ($channel) {
+                $payload = (new ChannelResource($channel))->resolve();
+                $payload['user'] = $channel->user ? [
+                    'id' => $channel->user->user_id,
+                    'name' => $channel->user->nama,
+                    'email' => $channel->user->email,
+                ] : null;
+                $payload['followers_count'] = $channel->subscriber_count ?? 0;
+                $payload['videos_count'] = $channel->videos_count ?? $channel->video_count ?? 0;
 
                 return $payload;
             }),

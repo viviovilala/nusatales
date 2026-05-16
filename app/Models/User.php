@@ -52,7 +52,11 @@ class User extends Authenticatable implements FilamentUser
 
     public function isCreator(): bool
     {
-        return in_array($this->role, ['creator', 'admin'], true);
+        if ($this->relationLoaded('channel')) {
+            return (bool) $this->channel;
+        }
+
+        return $this->channel()->exists();
     }
 
     public function canAccessPanel(Panel $panel): bool
@@ -63,6 +67,11 @@ class User extends Authenticatable implements FilamentUser
     public function videos(): HasMany
     {
         return $this->hasMany(Video::class, 'kreator_id', 'user_id');
+    }
+
+    public function channel(): HasOne
+    {
+        return $this->hasOne(Channel::class, 'user_id', 'user_id');
     }
 
     public function series(): HasMany

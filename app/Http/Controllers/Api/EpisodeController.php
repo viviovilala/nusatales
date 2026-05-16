@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Requests\Episode\StoreEpisodeProgressRequest;
 use App\Http\Resources\EpisodeProgressResource;
 use App\Http\Resources\EpisodeResource;
+use App\Models\Episode;
 use App\Services\CatalogService;
 use Illuminate\Http\Request;
 
@@ -21,6 +22,19 @@ class EpisodeController extends Controller
             'Episode retrieved successfully.',
             new EpisodeResource($this->catalogService->findPublishedEpisode($episode, $request->user()))
         );
+    }
+
+    public function latest()
+    {
+        $episodes = Episode::query()
+            ->with(['series.creator', 'series.category', 'series.genres'])
+            ->whereHas('series', fn ($query) => $query->published())
+            ->published()
+            ->orderByDesc('published_at')
+            ->limit(12)
+            ->get();
+
+        return $this->successResponse('Latest episodes retrieved successfully.', EpisodeResource::collection($episodes)->resolve());
     }
 
     public function storeProgress(StoreEpisodeProgressRequest $request, int $episode)
@@ -46,4 +60,3 @@ class EpisodeController extends Controller
         );
     }
 }
-

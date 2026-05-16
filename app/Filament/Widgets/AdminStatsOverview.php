@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Analytics;
+use App\Models\Channel;
 use App\Models\User;
 use App\Models\Video;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
@@ -14,7 +15,7 @@ class AdminStatsOverview extends BaseWidget
     {
         return [
             Stat::make('Total Users', User::count()),
-            Stat::make('Creators', User::where('role', 'creator')->count()),
+            Stat::make('Creators', Channel::count()),
             Stat::make('Animations', Video::count()),
             Stat::make('Published', Video::where('status', 'published')->count()),
             Stat::make('Pending Drafts', Video::where('status', 'draft')->count()),

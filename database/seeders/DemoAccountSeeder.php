@@ -24,9 +24,14 @@ class DemoAccountSeeder extends Seeder
                 'role' => 'user',
             ],
             [
+                'name' => 'Demo Uploader',
+                'email' => 'uploader@nusatales.test',
+                'role' => 'user',
+            ],
+            [
                 'name' => 'Demo Creator',
                 'email' => 'creator@nusatales.test',
-                'role' => 'creator',
+                'role' => 'user',
             ],
             [
                 'name' => 'Demo Admin',

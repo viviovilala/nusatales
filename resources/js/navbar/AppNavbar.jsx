@@ -59,11 +59,7 @@ export default function AppNavbar({ current = "home" }) {
                             className="px-5 py-2 rounded-full text-sm font-semibold text-white transition hover:opacity-90"
                             style={{ backgroundColor: "#3B2A0E" }}
                         >
-                            {user?.role === "admin"
-                                ? "Admin Panel"
-                                : user?.role === "creator"
-                                    ? "Dashboard"
-                                    : "Akun"}
+                            {user?.role === "admin" ? "Admin Panel" : "Akun"}
                         </Link>
                     ) : current === "login" ? (
                         <Link

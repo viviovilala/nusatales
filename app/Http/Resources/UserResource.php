@@ -22,6 +22,8 @@ class UserResource extends JsonResource
             'role' => $this->role,
             'profile_photo' => $this->foto_profil ? Storage::disk('public')->url($this->foto_profil) : null,
             'joined_at' => optional($this->tanggal_daftar)->toISOString(),
+            'channel' => $this->whenLoaded('channel', fn () => $this->channel ? new ChannelResource($this->channel) : null),
+            'has_channel' => $this->relationLoaded('channel') ? (bool) $this->channel : null,
         ];
     }
 }

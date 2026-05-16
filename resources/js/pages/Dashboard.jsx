@@ -31,9 +31,9 @@ function StatCard({ label, value }) {
 }
 
 export default function Dashboard() {
-    const { user, logout } = useAuth();
+    const { hasChannel, user, logout } = useAuth();
     const isAdmin = user.role === "admin";
-    const isCreator = user.role === "creator";
+    const isCreator = hasChannel;
     const [dashboard, setDashboard] = useState(null);
     const [wallet, setWallet] = useState(null);
     const [plans, setPlans] = useState([]);
@@ -134,13 +134,13 @@ export default function Dashboard() {
                             >
                                 Filament Admin
                             </a>
-                        ) : user.role === "creator" ? (
+                        ) : isCreator ? (
                             <Link
-                                to="/creator/studio"
+                                to="/studio"
                                 className="px-5 py-3 rounded-full text-sm font-semibold"
                                 style={{ backgroundColor: "#8DC63F", color: "#FFFFFF" }}
                             >
-                                Creator Studio
+                                Studio NusaKarya
                             </Link>
                         ) : null}
                         <Link

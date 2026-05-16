@@ -19,6 +19,7 @@ class GenreSeeder extends Seeder
             ['name' => 'Comedy', 'description' => 'Light folklore adaptations for family viewing.'],
             ['name' => 'Drama', 'description' => 'Character-led cultural stories with emotional stakes.'],
             ['name' => 'Education', 'description' => 'Episodes focused on values, history, and cultural literacy.'],
+            ['name' => 'Historical', 'description' => 'Kingdoms, monuments, and historically inspired legends.'],
         ];
 
         foreach ($genres as $genre) {

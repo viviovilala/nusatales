@@ -31,7 +31,9 @@ class CreatorVideoController extends Controller
     {
         $video = $this->videoService->create($request->user(), $request->validated());
 
-        return $this->successResponse('Animation uploaded successfully.', new VideoResource($video), 201);
+        return $this->successResponse('Video berhasil diunggah.', [
+            'video' => new VideoResource($video),
+        ], 201);
     }
 
     public function show(Request $request, int $video)

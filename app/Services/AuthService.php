@@ -28,6 +28,8 @@ class AuthService
 
         $token = $user->createToken($data['device_name'] ?? 'web-client')->plainTextToken;
 
+        $user->load('channel');
+
         return compact('user', 'token');
     }
 
@@ -40,6 +42,8 @@ class AuthService
         }
 
         $token = $user->createToken($credentials['device_name'] ?? 'web-client')->plainTextToken;
+
+        $user->load('channel');
 
         return compact('user', 'token');
     }
@@ -79,6 +83,6 @@ class AuthService
 
         $user->save();
 
-        return $user->refresh();
+        return $user->refresh()->load('channel');
     }
 }

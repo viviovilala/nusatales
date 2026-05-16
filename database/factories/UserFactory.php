@@ -29,7 +29,7 @@ class UserFactory extends Factory
             'password' => static::$password ??= Hash::make('password'),
             'foto_profil' => fake()->imageUrl(200, 200, 'people'),
             'tanggal_daftar' => now(),
-            'role' => fake()->randomElement(['user', 'creator']),
+            'role' => 'user',
         ];
     }
 

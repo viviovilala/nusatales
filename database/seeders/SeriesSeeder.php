@@ -16,7 +16,8 @@ class SeriesSeeder extends Seeder
     public function run(): void
     {
         $creator = User::query()->where('email', 'creator@nusatales.test')->first()
-            ?? User::query()->where('role', 'creator')->first();
+            ?? User::query()->whereHas('channel')->first();
+        $channel = $creator?->channel()->first();
         $category = Kategori::query()->where('slug', 'folklore')->first()
             ?? Kategori::query()->first();
 
@@ -28,6 +29,7 @@ class SeriesSeeder extends Seeder
             ['slug' => 'legenda-timun-mas'],
             [
                 'creator_id' => $creator->user_id,
+                'channel_id' => $channel?->id,
                 'kategori_id' => $category->kategori_id,
                 'title' => 'Legenda Timun Mas',
                 'synopsis' => 'A brave child faces a giant through wit, courage, and gifts from the forest.',
@@ -55,6 +57,7 @@ class SeriesSeeder extends Seeder
             ['slug' => 'malin-kundang-remastered'],
             [
                 'creator_id' => $creator->user_id,
+                'channel_id' => $channel?->id,
                 'kategori_id' => $category->kategori_id,
                 'title' => 'Malin Kundang Remastered',
                 'synopsis' => 'A modern animated retelling about pride, family, and consequence.',

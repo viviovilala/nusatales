@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Models\Ad;
 use App\Models\DailyMission;
 use App\Models\SubscriptionPlan;
-use App\Models\User;
+use App\Models\Channel;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class AdminCatalogService
@@ -86,17 +86,19 @@ class AdminCatalogService
 
     public function creators(int $perPage = 15, ?string $search = null): LengthAwarePaginator
     {
-        return User::query()
-            ->whereIn('role', ['creator', 'admin'])
+        return Channel::query()
+            ->with('user')
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($builder) use ($search) {
                     $builder
-                        ->where('nama', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%");
+                        ->where('name', 'like', "%{$search}%")
+                        ->orWhereHas('user', fn ($userQuery) => $userQuery
+                            ->where('nama', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%"));
                 });
             })
-            ->withCount(['followers', 'videos'])
-            ->orderBy('nama')
+            ->withCount(['videos'])
+            ->orderBy('name')
             ->paginate($perPage);
     }
 }

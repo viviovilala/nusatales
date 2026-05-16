@@ -20,7 +20,7 @@ class AdminUserController extends Controller
     {
         $paginator = $this->adminService->userList($request->validate([
             'search' => ['nullable', 'string', 'max:255'],
-            'role' => ['nullable', 'in:user,creator,admin'],
+            'role' => ['nullable', 'in:user,admin'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]));
 

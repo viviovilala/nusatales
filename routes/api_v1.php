@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\Admin\AdminPlanController;
 use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\Admin\AdminVideoController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\CommunityController;
 use App\Http\Controllers\Api\CreatorDirectoryController;
 use App\Http\Controllers\Api\CreatorDashboardController;
@@ -18,10 +19,12 @@ use App\Http\Controllers\Api\GenreController;
 use App\Http\Controllers\Api\InteractionController;
 use App\Http\Controllers\Api\MissionController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\PlatformController;
 use App\Http\Controllers\Api\PublicVideoController;
 use App\Http\Controllers\Api\RatingController;
 use App\Http\Controllers\Api\ReferenceController;
 use App\Http\Controllers\Api\SeriesController;
+use App\Http\Controllers\Api\StudioController;
 use App\Http\Controllers\Api\SubscriptionController;
 use Illuminate\Support\Facades\Route;
 
@@ -43,14 +46,38 @@ Route::prefix('v1')->group(function () {
 
     Route::get('/references/categories', [ReferenceController::class, 'categories']);
     Route::get('/references/stories', [ReferenceController::class, 'stories']);
+    Route::get('/categories', [CatalogController::class, 'categories']);
     Route::get('/genres', [GenreController::class, 'index']);
+    Route::get('/regions', [CatalogController::class, 'regions']);
+    Route::get('/regions/{slug}/series', [CatalogController::class, 'regionSeries']);
+    Route::get('/search', [CatalogController::class, 'search']);
+    Route::get('/coin-packages', [PlatformController::class, 'coinPackages']);
+    Route::get('/assets', [PlatformController::class, 'assets']);
+    Route::get('/assets/{slug}', [PlatformController::class, 'asset']);
+    Route::get('/challenges', [PlatformController::class, 'challenges']);
+    Route::get('/challenges/{slug}', [PlatformController::class, 'challenge']);
+    Route::get('/challenges/{challenge}/leaderboard', [PlatformController::class, 'challengeLeaderboard'])->whereNumber('challenge');
+    Route::get('/cultural-progress', [PlatformController::class, 'culturalProgress']);
+    Route::get('/badges', [PlatformController::class, 'badges']);
     Route::get('/subscriptions/plans', [SubscriptionController::class, 'plans']);
     Route::get('/creators', [CreatorDirectoryController::class, 'index']);
 
     Route::get('/series', [SeriesController::class, 'index']);
+    Route::get('/series/popular', [SeriesController::class, 'popular']);
     Route::get('/series/{slug}', [SeriesController::class, 'show']);
+    Route::get('/series/{slug}/episodes', [SeriesController::class, 'episodes']);
+    Route::get('/episodes/latest', [EpisodeController::class, 'latest']);
     Route::get('/episodes/{episode}', [EpisodeController::class, 'show']);
 
+    Route::get('/videos', [PublicVideoController::class, 'index']);
+    Route::get('/videos/featured', [PublicVideoController::class, 'featured']);
+    Route::get('/videos/trending', [PublicVideoController::class, 'trending']);
+    Route::get('/videos/latest', [PublicVideoController::class, 'latest']);
+    Route::get('/videos/recommended', [PublicVideoController::class, 'recommended']);
+    Route::get('/shorts', [PublicVideoController::class, 'shorts']);
+    Route::get('/videos/{video}/comments', [InteractionController::class, 'comments']);
+    Route::post('/videos/{video}/view', [InteractionController::class, 'view']);
+    Route::get('/videos/{video}', [PublicVideoController::class, 'show']);
     Route::get('/animations', [PublicVideoController::class, 'index']);
     Route::get('/animations/{video}', [PublicVideoController::class, 'show']);
     Route::post('/animations/{video}/view', [InteractionController::class, 'view']);
@@ -63,6 +90,10 @@ Route::prefix('v1')->group(function () {
         Route::get('/notifications', [NotificationController::class, 'index']);
         Route::patch('/notifications/{notification}', [NotificationController::class, 'updateStatus']);
         Route::get('/wallet', [NotificationController::class, 'wallet']);
+        Route::post('/coin-packages/{package}/checkout', [PlatformController::class, 'checkoutCoinPackage']);
+        Route::get('/me/billing', [PlatformController::class, 'billing']);
+        Route::get('/me/cultural-progress', [PlatformController::class, 'culturalProgress']);
+        Route::get('/me/badges', [PlatformController::class, 'badges']);
         Route::get('/missions', [MissionController::class, 'index']);
         Route::get('/continue-watching', [EpisodeController::class, 'continueWatching']);
         Route::post('/episodes/{episode}/progress', [EpisodeController::class, 'storeProgress']);
@@ -78,14 +109,22 @@ Route::prefix('v1')->group(function () {
         Route::get('/watch-history', [CommunityController::class, 'history']);
 
         Route::post('/animations/{video}/like', [InteractionController::class, 'like']);
+        Route::post('/videos/{video}/like', [InteractionController::class, 'like']);
+        Route::delete('/videos/{video}/like', [InteractionController::class, 'like']);
         Route::post('/animations/{video}/comments', [InteractionController::class, 'storeComment']);
+        Route::post('/videos/{video}/comments', [InteractionController::class, 'storeComment']);
+        Route::post('/comments/{comment}/reply', [InteractionController::class, 'replyComment']);
         Route::delete('/comments/{comment}', [InteractionController::class, 'destroyComment']);
         Route::post('/animations/{video}/share', [InteractionController::class, 'share']);
+        Route::post('/videos/{video}/share', [InteractionController::class, 'share']);
 
-        Route::middleware('role:creator,admin')->prefix('creator')->group(function () {
+        Route::prefix('creator')->group(function () {
+            Route::get('/studio-status', [StudioController::class, 'status']);
+            Route::post('/activate-studio', [StudioController::class, 'activate']);
             Route::get('/dashboard', [CreatorDashboardController::class, 'index']);
             Route::get('/monetization/summary', [CreatorMonetizationController::class, 'summary']);
             Route::get('/monetization/earnings', [CreatorMonetizationController::class, 'earnings']);
+            Route::post('/monetization/agree', [CreatorMonetizationController::class, 'agree']);
             Route::get('/animations', [CreatorVideoController::class, 'index']);
             Route::post('/animations', [CreatorVideoController::class, 'store']);
             Route::get('/animations/{video}', [CreatorVideoController::class, 'show']);

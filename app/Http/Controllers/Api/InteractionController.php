@@ -18,7 +18,7 @@ class InteractionController extends Controller
     ) {
     }
 
-    public function like(Request $request, int $video)
+    public function like(Request $request, int|string $video)
     {
         $record = $this->videoService->findPublishedVideoOrFail($video);
         $result = $this->interactionService->toggleLike($request->user(), $record);
@@ -26,24 +26,36 @@ class InteractionController extends Controller
         return $this->successResponse('Like state updated successfully.', $result);
     }
 
-    public function comments(Request $request, int $video)
+    public function comments(Request $request, int|string $video)
     {
         $record = $this->videoService->findPublishedVideoOrFail($video);
         $paginator = $this->interactionService->paginateComments($record, (int) $request->integer('per_page', 15));
 
         return $this->paginatedResponse(
-            'Comments retrieved successfully.',
+            'Komentar berhasil dimuat.',
             $paginator,
             CommentResource::collection($paginator)
         );
     }
 
-    public function storeComment(StoreCommentRequest $request, int $video)
+    public function storeComment(StoreCommentRequest $request, int|string $video)
     {
         $record = $this->videoService->findPublishedVideoOrFail($video);
         $comment = $this->interactionService->addComment($request->user(), $record, $request->validated()['content']);
 
-        return $this->successResponse('Comment added successfully.', new CommentResource($comment), 201);
+        return $this->successResponse('Komentar berhasil dikirim.', [
+            'comment' => new CommentResource($comment),
+        ], 201);
+    }
+
+    public function replyComment(StoreCommentRequest $request, Comment $comment)
+    {
+        $record = $this->videoService->findPublishedVideoOrFail($comment->video_id);
+        $reply = $this->interactionService->addComment($request->user(), $record, $request->validated()['content'], $comment);
+
+        return $this->successResponse('Komentar berhasil dikirim.', [
+            'comment' => new CommentResource($reply),
+        ], 201);
     }
 
     public function destroyComment(Request $request, Comment $comment)
@@ -53,7 +65,7 @@ class InteractionController extends Controller
         return $this->successResponse('Comment deleted successfully.', null);
     }
 
-    public function share(StoreShareRequest $request, int $video)
+    public function share(StoreShareRequest $request, int|string $video)
     {
         $record = $this->videoService->findPublishedVideoOrFail($video);
         $share = $this->interactionService->recordShare(
@@ -68,7 +80,7 @@ class InteractionController extends Controller
         ], 201);
     }
 
-    public function view(int $video)
+    public function view(int|string $video)
     {
         $record = $this->videoService->findPublishedVideoOrFail($video);
         $this->interactionService->incrementView($record);

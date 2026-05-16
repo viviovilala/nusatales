@@ -21,6 +21,7 @@ class Series extends Model
 
     protected $fillable = [
         'creator_id',
+        'channel_id',
         'kategori_id',
         'title',
         'slug',
@@ -51,6 +52,11 @@ class Series extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'creator_id', 'user_id');
+    }
+
+    public function channel(): BelongsTo
+    {
+        return $this->belongsTo(Channel::class, 'channel_id');
     }
 
     public function category(): BelongsTo
@@ -114,4 +120,3 @@ class Series extends Model
         return $this->banner_image ? Storage::disk('public')->url($this->banner_image) : null;
     }
 }
-

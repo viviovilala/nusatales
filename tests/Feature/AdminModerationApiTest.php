@@ -15,7 +15,7 @@ class AdminModerationApiTest extends TestCase
     public function test_admin_can_moderate_animation_status(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $creator = User::factory()->create(['role' => 'creator']);
+        $creator = User::factory()->create(['role' => 'user']);
         $video = Video::query()->create([
             'judul' => 'Moderation Candidate',
             'deskripsi' => 'Needs review.',
@@ -46,7 +46,7 @@ class AdminModerationApiTest extends TestCase
 
     public function test_non_admin_cannot_access_admin_moderation_routes(): void
     {
-        $creator = User::factory()->create(['role' => 'creator']);
+        $creator = User::factory()->create(['role' => 'user']);
 
         Sanctum::actingAs($creator);
 
@@ -59,7 +59,7 @@ class AdminModerationApiTest extends TestCase
     public function test_admin_dashboard_returns_core_statistics(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $creator = User::factory()->create(['role' => 'creator']);
+        $creator = User::factory()->create(['role' => 'user']);
 
         Video::query()->create([
             'judul' => 'Dashboard Video',

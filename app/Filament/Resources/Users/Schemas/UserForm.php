@@ -34,7 +34,7 @@ class UserForm
                     ->default(now())
                     ->required(),
                 Select::make('role')
-                    ->options(['user' => 'User', 'creator' => 'Creator', 'admin' => 'Admin'])
+                    ->options(['user' => 'User', 'admin' => 'Admin'])
                     ->default('user')
                     ->required(),
             ]);

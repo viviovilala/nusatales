@@ -19,7 +19,7 @@ class CreatorUserSeeder extends Seeder
                 'password' => 'Password123!',
                 'foto_profil' => null,
                 'tanggal_daftar' => now(),
-                'role' => 'creator',
+                'role' => 'user',
             ]
         );
     }

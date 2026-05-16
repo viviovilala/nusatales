@@ -3,13 +3,16 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Resources\EarningResource;
+use App\Http\Resources\ChannelResource;
+use App\Services\ChannelService;
 use App\Services\MonetizationService;
 use Illuminate\Http\Request;
 
 class CreatorMonetizationController extends Controller
 {
     public function __construct(
-        protected MonetizationService $monetizationService
+        protected MonetizationService $monetizationService,
+        protected ChannelService $channelService
     ) {
     }
 
@@ -30,5 +33,20 @@ class CreatorMonetizationController extends Controller
             $paginator,
             EarningResource::collection($paginator)
         );
+    }
+
+    public function agree(Request $request)
+    {
+        $validated = $request->validate([
+            'agreed' => ['required', 'accepted'],
+        ]);
+
+        $result = $this->monetizationService->agree($request->user(), $request, $this->channelService);
+
+        return $this->successResponse('Perjanjian monetisasi berhasil disetujui.', [
+            'agreed' => (bool) $validated['agreed'],
+            'agreement_text' => $result['agreement_text'],
+            'channel' => new ChannelResource($result['channel']),
+        ]);
     }
 }

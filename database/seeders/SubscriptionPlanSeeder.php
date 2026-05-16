@@ -14,16 +14,23 @@ class SubscriptionPlanSeeder extends Seeder
     {
         $plans = [
             [
-                'name' => 'Explorer',
-                'description' => 'Basic access for active community members.',
-                'price' => 50,
+                'name' => 'Supporter',
+                'description' => 'Akses fitur dasar NusaAdhi untuk mendukung kreator lokal.',
+                'price' => 15000,
                 'duration_days' => 30,
                 'status' => 'active',
             ],
             [
-                'name' => 'Creator Plus',
-                'description' => 'Additional creator-oriented benefits and priority visibility.',
-                'price' => 150,
+                'name' => 'Explorer',
+                'description' => 'Bebas iklan, akses lebih cepat, dan sneak peek episode yang belum dirilis.',
+                'price' => 35000,
+                'duration_days' => 30,
+                'status' => 'active',
+            ],
+            [
+                'name' => 'VIP/Creator Pack',
+                'description' => 'Benefit lengkap Explorer ditambah akses unduhan aset kreator.',
+                'price' => 75000,
                 'duration_days' => 30,
                 'status' => 'active',
             ],

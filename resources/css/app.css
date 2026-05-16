@@ -4,8 +4,638 @@
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
 @source '../**/*.js';
+@source '../**/*.jsx';
 
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+:root {
+    --nt-cream: #fff7e6;
+    --nt-cream-2: #f8eed4;
+    --nt-card: #fffdf7;
+    --nt-brown: #754725;
+    --nt-brown-2: #8b5b38;
+    --nt-brown-dark: #4f2f18;
+    --nt-gold: #d69b08;
+    --nt-gold-2: #f2cf68;
+    --nt-lime: #c7f36a;
+    --nt-lime-dark: #5a7f07;
+    --nt-muted: #9b856f;
+    --nt-line: rgba(117, 71, 37, 0.18);
+    --nt-shadow: 0 18px 40px rgba(92, 58, 30, 0.14);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    background: var(--nt-cream);
+    scroll-behavior: smooth;
+}
+
+body {
+    margin: 0;
+    min-width: 320px;
+    background: var(--nt-cream);
+    color: #21190f;
+    font-family: "Nunito", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+}
+
+button,
+input,
+textarea,
+select {
+    font: inherit;
+}
+
+button {
+    cursor: pointer;
+}
+
+img {
+    max-width: 100%;
+}
+
+.nt-page {
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at 80% 10%, rgba(199, 243, 106, 0.16), transparent 28rem),
+        var(--nt-cream);
+}
+
+.nt-page-dark {
+    background:
+        radial-gradient(circle at 52% 42%, rgba(214, 155, 8, 0.22), transparent 22rem),
+        #050403;
+    color: #fffdf7;
+}
+
+.nt-container {
+    width: min(100% - 4rem, 1280px);
+    margin-inline: auto;
+}
+
+.nt-section {
+    padding: 2rem 0;
+}
+
+.nt-navbar-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    padding: 1rem 0 0.5rem;
+    pointer-events: none;
+}
+
+.nt-navbar {
+    pointer-events: auto;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 1rem;
+    min-height: 4.25rem;
+    padding: 0.65rem 1rem 0.65rem 1.35rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: var(--nt-shadow);
+}
+
+.nt-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--nt-brown);
+    text-decoration: none;
+    font-weight: 900;
+    font-size: 1.45rem;
+    white-space: nowrap;
+}
+
+.nt-brand-mark {
+    width: 1.45rem;
+    height: 1.45rem;
+    border-radius: 0.35rem;
+    background:
+        linear-gradient(135deg, transparent 31%, #fff 32% 39%, transparent 40%),
+        linear-gradient(45deg, var(--nt-gold), #f5bd2e);
+    transform: rotate(45deg);
+    box-shadow: inset 0 0 0 3px #fff5cc, 0 0 0 1px rgba(117, 71, 37, 0.18);
+}
+
+.nt-brand-mark.small {
+    width: 1rem;
+    height: 1rem;
+}
+
+.nt-menu {
+    justify-self: center;
+    display: flex;
+    align-items: center;
+    gap: clamp(1rem, 3vw, 3.2rem);
+}
+
+.nt-menu a {
+    position: relative;
+    padding: 0.75rem 0;
+    color: rgba(92, 58, 30, 0.38);
+    text-decoration: none;
+    font-weight: 800;
+}
+
+.nt-menu a.active,
+.nt-menu a:hover {
+    color: var(--nt-brown);
+}
+
+.nt-menu a.active::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0.32rem;
+    height: 0.15rem;
+    border-radius: 1rem;
+    background: var(--nt-lime);
+}
+
+.nt-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.nt-search {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-width: 8rem;
+    padding: 0.65rem 0.9rem;
+    border: 2px solid rgba(117, 71, 37, 0.22);
+    border-radius: 999px;
+    color: var(--nt-brown);
+    background: #fffdf8;
+}
+
+.nt-search input {
+    width: 9rem;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--nt-brown);
+    font-weight: 800;
+}
+
+.nt-search input::placeholder {
+    color: var(--nt-brown);
+    opacity: 0.9;
+}
+
+.nt-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    border: 0;
+    border-radius: 999px;
+    padding: 0.72rem 1.15rem;
+    color: var(--nt-brown);
+    background: #fff1c7;
+    text-decoration: none;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.nt-pill.dark,
+.nt-btn.dark {
+    background: var(--nt-brown);
+    color: #fffdf7;
+}
+
+.nt-pill.green,
+.nt-btn.green {
+    background: var(--nt-lime);
+    color: var(--nt-lime-dark);
+}
+
+.nt-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    border: 0;
+    border-radius: 999px;
+    padding: 0.85rem 1.55rem;
+    background: var(--nt-gold);
+    color: #fffdf7;
+    font-weight: 900;
+    text-decoration: none;
+    box-shadow: 0 0.6rem 1.25rem rgba(117, 71, 37, 0.16);
+}
+
+.nt-btn.ghost {
+    background: transparent;
+    color: var(--nt-brown);
+    border: 1.5px solid rgba(117, 71, 37, 0.34);
+    box-shadow: none;
+}
+
+.nt-icon-btn {
+    display: inline-grid;
+    place-items: center;
+    width: 2.65rem;
+    height: 2.65rem;
+    border-radius: 50%;
+    border: 2px solid rgba(117, 71, 37, 0.18);
+    background: #fffdf8;
+    color: var(--nt-brown);
+    font-weight: 900;
+    text-decoration: none;
+}
+
+.nt-avatar {
+    width: 2.55rem;
+    height: 2.55rem;
+    overflow: hidden;
+    border-radius: 50%;
+    border: 3px solid var(--nt-brown);
+    background: #f6d99b;
+}
+
+.nt-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top center;
+}
+
+.nt-card {
+    border: 1px solid var(--nt-line);
+    border-radius: 2rem;
+    background: rgba(255, 253, 247, 0.9);
+    box-shadow: 0 0.8rem 2rem rgba(117, 71, 37, 0.08);
+}
+
+.nt-card.pad {
+    padding: clamp(1.25rem, 2.5vw, 2rem);
+}
+
+.nt-soft {
+    background: rgba(245, 236, 210, 0.82);
+}
+
+.nt-title {
+    margin: 0;
+    color: var(--nt-brown);
+    font-size: clamp(2rem, 4vw, 4rem);
+    line-height: 1.06;
+    font-weight: 950;
+    letter-spacing: 0;
+}
+
+.nt-heading {
+    margin: 0;
+    color: var(--nt-brown);
+    font-size: clamp(1.7rem, 2.8vw, 2.45rem);
+    line-height: 1.1;
+    font-weight: 950;
+}
+
+.nt-subtle {
+    color: var(--nt-muted);
+}
+
+.nt-grid {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.nt-grid-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.nt-grid-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.nt-grid-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.nt-thumb {
+    display: block;
+    width: 100%;
+    background: #eadbb5 center / cover no-repeat;
+}
+
+.nt-footer {
+    position: relative;
+    padding: 2.4rem 1.5rem 3.6rem;
+    background: var(--nt-brown);
+    color: #f8ead3;
+    text-align: center;
+}
+
+.nt-footer h2 {
+    margin: 0 0 1.4rem;
+    color: var(--nt-lime);
+    font-size: 2.55rem;
+    font-weight: 950;
+}
+
+.nt-footer-links {
+    display: flex;
+    justify-content: center;
+    gap: clamp(1.1rem, 4vw, 3rem);
+    flex-wrap: wrap;
+    margin-bottom: 1.2rem;
+}
+
+.nt-footer a {
+    color: #f8ead3;
+    text-decoration: none;
+    font-weight: 800;
+}
+
+.nt-footer-line {
+    width: 6rem;
+    height: 1px;
+    margin: 0 auto 1.5rem;
+    background: rgba(199, 243, 106, 0.46);
+}
+
+.nt-footer-up {
+    position: absolute;
+    left: 50%;
+    bottom: 1rem;
+    transform: translateX(-50%);
+    width: 2rem;
+    height: 2rem;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(199, 243, 106, 0.18);
+    color: var(--nt-lime);
+    font-weight: 950;
+}
+
+.nt-status {
+    border-radius: 1rem;
+    padding: 0.8rem 1rem;
+    background: rgba(199, 243, 106, 0.22);
+    color: var(--nt-brown);
+    font-weight: 800;
+}
+
+.nt-error {
+    background: #fff0eb;
+    color: #9a3b22;
+}
+
+.nt-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    display: grid;
+    place-items: center;
+    padding: 1.25rem;
+    background: rgba(59, 42, 14, 0.42);
+}
+
+.nt-modal {
+    width: min(34rem, 100%);
+    border-radius: 1.5rem;
+    box-shadow: 0 1.5rem 4rem rgba(59, 42, 14, 0.24);
+}
+
+.nt-form-field {
+    width: 100%;
+    border: 1px solid rgba(117, 71, 37, 0.08);
+    outline: 0;
+    border-radius: 999px;
+    padding: 1rem 1.25rem;
+    background: #f0f1f4;
+    color: var(--nt-brown-dark);
+    font-weight: 800;
+}
+
+textarea.nt-form-field {
+    border-radius: 1.5rem;
+    min-height: 8rem;
+    resize: vertical;
+}
+
+.nt-sidebar-layout {
+    display: grid;
+    grid-template-columns: 16rem 1fr;
+    gap: 2rem;
+    align-items: start;
+}
+
+.nt-studio-sidebar {
+    position: sticky;
+    top: 6rem;
+    padding: 1.75rem;
+    border-radius: 2rem;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 1rem 2rem rgba(117, 71, 37, 0.08);
+}
+
+.nt-studio-sidebar .side-link {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.9rem 1rem;
+    border-radius: 999px;
+    color: var(--nt-brown);
+    text-decoration: none;
+    font-weight: 850;
+}
+
+.nt-studio-sidebar .side-link.active {
+    background: var(--nt-lime);
+    color: #1d2602;
+}
+
+.nt-mini-img {
+    border-radius: 1rem;
+    object-fit: cover;
+}
+
+.nt-segmented {
+    display: inline-grid;
+    grid-auto-flow: column;
+    min-width: min(100%, 19rem);
+    border: 1.5px solid var(--nt-gold);
+    border-radius: 999px;
+    overflow: hidden;
+    background: #fffaf0;
+}
+
+.nt-segmented button {
+    border: 0;
+    background: transparent;
+    color: var(--nt-gold);
+    padding: 0.85rem 2rem;
+    font-weight: 900;
+}
+
+.nt-segmented button.active {
+    background: var(--nt-gold);
+    color: #fffdf7;
+}
+
+.nt-map-page {
+    min-height: 100vh;
+    background:
+        linear-gradient(rgba(0, 0, 0, 0.03), rgba(0, 0, 0, 0.03)),
+        url("/assets/nusatales/mockups/NusaLanglang_%20Progres%20Pengetahuan-4.png") center / cover no-repeat;
+}
+
+.nt-map-stage {
+    position: relative;
+    min-height: calc(100vh - 6rem);
+}
+
+.nt-pin {
+    position: absolute;
+    width: 3.7rem;
+    height: 3.7rem;
+    border-radius: 50%;
+    border: 4px solid #fffdf7;
+    background: #fffaf0;
+    color: var(--nt-brown);
+    box-shadow: 0 0 0 3px rgba(117, 71, 37, 0.55);
+    font-weight: 950;
+}
+
+.nt-pin.java {
+    left: 46%;
+    top: 60%;
+}
+
+.nt-pin.kalimantan {
+    left: 38%;
+    top: 42%;
+}
+
+.nt-pin.sulawesi {
+    left: 75%;
+    top: 38%;
+}
+
+.nt-map-panel {
+    position: absolute;
+    left: 4.5vw;
+    top: 7rem;
+    width: min(29rem, calc(100vw - 2rem));
+    border-radius: 1.75rem;
+    padding: 1.25rem;
+    background: rgba(255, 247, 230, 0.96);
+    box-shadow: var(--nt-shadow);
+}
+
+.nt-progress-line {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    align-items: center;
+    gap: 0.2rem;
+}
+
+.nt-progress-step {
+    text-align: center;
+    color: var(--nt-muted);
+    font-weight: 850;
+    font-size: 0.85rem;
+}
+
+.nt-progress-dot {
+    display: grid;
+    place-items: center;
+    width: 3.25rem;
+    height: 3.25rem;
+    margin: 0 auto 0.5rem;
+    border-radius: 50%;
+    border: 4px solid #fffdf7;
+    background: rgba(117, 71, 37, 0.1);
+    color: var(--nt-muted);
+}
+
+.nt-progress-step.done .nt-progress-dot,
+.nt-progress-step.active .nt-progress-dot {
+    background: var(--nt-lime);
+    color: var(--nt-lime-dark);
+    box-shadow: 0 0 0 4px rgba(117, 71, 37, 0.9);
+}
+
+.nt-progress-step.done .nt-progress-dot {
+    background: #557500;
+    color: #fffdf7;
+}
+
+@media (max-width: 980px) {
+    .nt-navbar {
+        grid-template-columns: 1fr auto;
+        border-radius: 2rem;
+    }
+
+    .nt-menu {
+        grid-column: 1 / -1;
+        justify-self: stretch;
+        overflow-x: auto;
+        justify-content: space-between;
+        gap: 1rem;
+        order: 3;
+    }
+
+    .nt-search input {
+        width: 4.5rem;
+    }
+
+    .nt-sidebar-layout,
+    .nt-grid-4,
+    .nt-grid-3,
+    .nt-grid-2 {
+        grid-template-columns: 1fr;
+    }
+
+    .nt-studio-sidebar {
+        position: static;
+    }
+}
+
+@media (max-width: 700px) {
+    .nt-container {
+        width: min(100% - 1.5rem, 1280px);
+    }
+
+    .nt-navbar-wrap {
+        padding-top: 0.5rem;
+    }
+
+    .nt-navbar {
+        padding: 0.8rem;
+    }
+
+    .nt-actions {
+        gap: 0.35rem;
+    }
+
+    .nt-pill,
+    .nt-search {
+        padding: 0.55rem 0.75rem;
+    }
+
+    .nt-search input,
+    .nt-hide-mobile {
+        display: none;
+    }
+
+    .nt-map-panel {
+        position: relative;
+        top: auto;
+        left: auto;
+        margin: 1rem auto;
+    }
 }

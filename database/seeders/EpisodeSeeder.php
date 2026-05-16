@@ -20,10 +20,15 @@ class EpisodeSeeder extends Seeder
         if ($timunMas) {
             $this->episode($timunMas, 'A Gift From the Forest', 1, false, 0);
             $this->episode($timunMas, 'The Giant Returns', 2, true, 25);
+            $this->episode($timunMas, 'Seeds of Courage', 3, false, 0);
+            $this->episode($timunMas, 'The Golden Cucumber', 4, false, 0);
         }
 
         if ($malinKundang) {
             $this->episode($malinKundang, 'Leaving the Harbor', 1, false, 0);
+            $this->episode($malinKundang, 'A Promise Forgotten', 2, false, 0);
+            $this->episode($malinKundang, 'Storm Over Padang', 3, true, 20);
+            $this->episode($malinKundang, 'Stone on the Shore', 4, false, 0);
         }
     }
 
