@@ -19,7 +19,7 @@ class AuthService
         $user = User::create([
             'nama' => $data['name'],
             'email' => $data['email'],
-            'password' => $data['password'],
+            'password' => Hash::make($data['password']),
             'foto_profil' => $profilePhotoPath,
             'tanggal_daftar' => now(),
             'role' => 'user',
