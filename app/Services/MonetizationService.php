@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Http\Resources\ChannelResource;
 use App\Models\Earning;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -17,7 +18,16 @@ class MonetizationService
     {
         $query = Earning::query()->where('kreator_id', $user->user_id);
 
+        $channel = $user->channel()->first();
+        $active = $channel?->monetization_status === 'active';
+
         return [
+            'active' => $active,
+            'status' => $channel?->monetization_status ?? 'inactive',
+            'can_monetize' => $active,
+            'creator_share_percentage' => 60,
+            'platform_fee_percentage' => 40,
+            'channel' => $channel ? (new ChannelResource($channel))->resolve() : null,
             'total_earnings' => (float) $query->sum('jumlah_pendapatan'),
             'current_month_earnings' => (float) Earning::query()
                 ->where('kreator_id', $user->user_id)

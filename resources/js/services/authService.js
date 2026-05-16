@@ -1,7 +1,23 @@
 import api, { clearStoredToken, setStoredToken } from "./api";
 
 function unwrap(response) {
-    return response.data?.data ?? response.data ?? {};
+    return response?.data?.data ?? response?.data ?? {};
+}
+
+function normalizeAuth(response) {
+    const data = unwrap(response);
+
+    return {
+        ...data,
+        token: data?.token ?? data?.access_token ?? null,
+        user: data?.user ?? null,
+    };
+}
+
+function normalizeUser(response) {
+    const data = unwrap(response);
+
+    return data?.user ?? data ?? null;
 }
 
 export async function login(payload = {}) {
@@ -9,7 +25,11 @@ export async function login(payload = {}) {
         email: payload.email,
         password: payload.password,
     });
-    const { token, user } = unwrap(response);
+    const { token, user } = normalizeAuth(response);
+
+    if (!token) {
+        throw new Error("Token login tidak ditemukan dari server.");
+    }
 
     setStoredToken(token);
 
@@ -21,10 +41,15 @@ export async function register(payload = {}) {
         name: payload.name,
         email: payload.email,
         password: payload.password,
-        password_confirmation: payload.password_confirmation ?? payload.passwordConfirm,
+        password_confirmation: payload.password_confirmation,
     });
 
-    const { token, user } = unwrap(response);
+    const { token, user } = normalizeAuth(response);
+
+    if (!token) {
+        throw new Error("Token registrasi tidak ditemukan dari server.");
+    }
+
     setStoredToken(token);
 
     return { token, user };
@@ -33,7 +58,7 @@ export async function register(payload = {}) {
 export async function me() {
     const response = await api.get("/auth/me");
 
-    return unwrap(response);
+    return normalizeUser(response);
 }
 
 export async function updateProfile(payload) {
@@ -45,13 +70,9 @@ export async function updateProfile(payload) {
         }
     });
 
-    const response = await api.post("/auth/profile", formData, {
-        headers: {
-            "Content-Type": "multipart/form-data",
-        },
-    });
+    const response = await api.post("/auth/profile", formData);
 
-    return unwrap(response);
+    return normalizeUser(response);
 }
 
 export async function logout() {

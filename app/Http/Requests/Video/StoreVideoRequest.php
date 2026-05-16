@@ -76,7 +76,7 @@ class StoreVideoRequest extends FormRequest
             'folklore_type' => ['nullable', 'string', 'max:100'],
             'series_id' => ['nullable', 'integer', 'exists:series,series_id'],
             'episode_number' => ['nullable', 'integer', 'min:1'],
-            'video_file' => ['required', 'file', 'mimetypes:video/mp4,video/quicktime,video/x-msvideo,video/webm', 'max:102400'],
+            'video_file' => ['required', 'file', 'mimes:mp4,mov,avi,webm', 'max:512000'],
             'thumbnail_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ];
     }

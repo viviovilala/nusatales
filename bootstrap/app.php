@@ -18,17 +18,20 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (\Illuminate\Validation\ValidationException $e, \Illuminate\Http\Request $request) {
-            if ($request->is('api/*')) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                $errors = $e->errors();
+                $firstError = collect($errors)->flatten()->first();
+
                 return response()->json([
                     'success' => false,
-                    'message' => 'Validation failed.',
-                    'errors' => $e->errors(),
+                    'message' => $firstError ?: 'Validasi gagal.',
+                    'errors' => $errors,
                 ], 422);
             }
         });
 
         $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, \Illuminate\Http\Request $request) {
-            if ($request->is('api/*')) {
+            if ($request->is('api/*') || $request->expectsJson()) {
                 return response()->json([
                     'success' => false,
                     'message' => $e->getMessage() ?: 'Unauthenticated.',
@@ -37,18 +40,28 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
-        $exceptions->render(function (\Illuminate\Database\Eloquent\ModelNotFoundException $e, \Illuminate\Http\Request $request) {
-            if ($request->is('api/*')) {
+        $exceptions->render(function (\Illuminate\Auth\Access\AuthorizationException $e, \Illuminate\Http\Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Requested resource was not found.',
+                    'message' => $e->getMessage() ?: 'Aksi ini tidak diizinkan.',
+                    'errors' => (object) [],
+                ], 403);
+            }
+        });
+
+        $exceptions->render(function (\Illuminate\Database\Eloquent\ModelNotFoundException $e, \Illuminate\Http\Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Data tidak ditemukan.',
                     'errors' => (object) [],
                 ], 404);
             }
         });
 
         $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e, \Illuminate\Http\Request $request) {
-            if ($request->is('api/*')) {
+            if ($request->is('api/*') || $request->expectsJson()) {
                 return response()->json([
                     'success' => false,
                     'message' => $e->getMessage() ?: 'Request could not be processed.',
@@ -58,12 +71,12 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (\Throwable $e, \Illuminate\Http\Request $request) {
-            if ($request->is('api/*')) {
+            if ($request->is('api/*') || $request->expectsJson()) {
                 report($e);
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'An unexpected error occurred.',
+                    'message' => config('app.debug') ? $e->getMessage() : 'Terjadi kesalahan server.',
                     'errors' => (object) [],
                 ], 500);
             }

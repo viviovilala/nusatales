@@ -7,6 +7,7 @@ import {
     getVideoComments,
     replyToComment,
 } from "../../services/commentApi";
+import { getApiErrorMessage, getApiValidationErrors } from "../../utils/errorMessage";
 import {
     coinPackages,
     comments as fallbackComments,
@@ -137,7 +138,11 @@ export function Navbar({ active, studio = false, dark = false }) {
             setActivationOpen(false);
             navigate("/studio/upload");
         } catch (error) {
-            setActivationMessage(error.response?.data?.message ?? "Studio belum bisa diaktifkan saat ini.");
+            if (import.meta.env.DEV) {
+                console.error("API error:", error?.response?.status, error?.response?.data || error);
+            }
+
+            setActivationMessage(getApiErrorMessage(error, "Studio belum bisa diaktifkan saat ini."));
         } finally {
             setActivationLoading(false);
         }
@@ -472,10 +477,49 @@ export function CommentSection({ videoId, allowComments = true, seed = fallbackC
     const [replyBody, setReplyBody] = useState("");
     const [message, setMessage] = useState("");
     const [fieldError, setFieldError] = useState("");
+    const fallback = Array.isArray(seed) ? seed : fallbackComments;
+
+    function logApiError(error) {
+        if (import.meta.env.DEV) {
+            console.error("API error:", error?.response?.status, error?.response?.data || error);
+        }
+    }
+
+    function getCommentFieldError(error, fallbackMessage) {
+        const errors = getApiValidationErrors(error);
+
+        return errors.body?.[0]
+            ?? errors.content?.[0]
+            ?? getApiErrorMessage(error, fallbackMessage);
+    }
+
+    async function reloadComments(showError = true) {
+        if (!videoId) {
+            setItems(fallback);
+            return;
+        }
+
+        try {
+            const response = await getVideoComments(videoId);
+            const nextItems = unwrapApiData(response, fallback);
+
+            setItems(Array.isArray(nextItems) ? nextItems : fallback);
+
+            if (showError) {
+                setMessage("");
+            }
+        } catch (error) {
+            logApiError(error);
+            setItems(fallback);
+
+            if (showError) {
+                setMessage(getApiErrorMessage(error, "Komentar belum berhasil dimuat."));
+            }
+        }
+    }
 
     useEffect(() => {
         let ignore = false;
-        const fallback = Array.isArray(seed) ? seed : fallbackComments;
 
         async function loadComments() {
             if (!videoId) {
@@ -489,10 +533,14 @@ export function CommentSection({ videoId, allowComments = true, seed = fallbackC
 
                 if (!ignore) {
                     setItems(Array.isArray(nextItems) ? nextItems : fallback);
+                    setMessage("");
                 }
-            } catch (_error) {
+            } catch (error) {
+                logApiError(error);
+
                 if (!ignore) {
                     setItems(fallback);
+                    setMessage(getApiErrorMessage(error, "Komentar belum berhasil dimuat."));
                 }
             }
         }
@@ -526,14 +574,13 @@ export function CommentSection({ videoId, allowComments = true, seed = fallbackC
         }
 
         try {
-            const response = await createVideoComment(videoId, { body: text });
-            const saved = response.data?.data?.comment ?? response.data?.data ?? { id: `local-${Date.now()}`, body: text, user };
-            setItems((current) => [saved, ...(Array.isArray(current) ? current : [])]);
+            await createVideoComment(videoId, { body: text });
             setBody("");
+            await reloadComments(false);
         } catch (error) {
-            const errors = error.response?.data?.errors ?? {};
-            setFieldError(errors.body?.[0] ?? errors.content?.[0] ?? "");
-            setMessage(error.response?.data?.message ?? "Komentar belum berhasil dikirim.");
+            logApiError(error);
+            setFieldError(getCommentFieldError(error, "Komentar belum berhasil dikirim."));
+            setMessage(getApiErrorMessage(error, "Komentar belum berhasil dikirim."));
         }
     }
 
@@ -553,28 +600,24 @@ export function CommentSection({ videoId, allowComments = true, seed = fallbackC
         }
 
         try {
-            const response = await replyToComment(commentId, { body: text });
-            const saved = response.data?.data?.comment ?? response.data?.data ?? { id: `reply-${Date.now()}`, body: text, user };
-            setItems((current) => (Array.isArray(current) ? current : []).map((comment) => (
-                comment.id === commentId
-                    ? { ...comment, replies: [...(Array.isArray(comment.replies) ? comment.replies : []), saved] }
-                    : comment
-            )));
+            await replyToComment(commentId, { body: text });
             setReplyBody("");
             setReplyingId(null);
+            await reloadComments(false);
         } catch (error) {
-            const errors = error.response?.data?.errors ?? {};
-            setFieldError(errors.body?.[0] ?? errors.content?.[0] ?? "");
-            setMessage(error.response?.data?.message ?? "Balasan belum berhasil dikirim.");
+            logApiError(error);
+            setFieldError(getCommentFieldError(error, "Balasan belum berhasil dikirim."));
+            setMessage(getApiErrorMessage(error, "Balasan belum berhasil dikirim."));
         }
     }
 
     async function removeComment(commentId) {
         try {
             await deleteCommentRequest(commentId);
-            setItems((current) => (Array.isArray(current) ? current : []).filter((comment) => comment.id !== commentId));
+            await reloadComments(false);
         } catch (error) {
-            setMessage(error.response?.data?.message ?? "Komentar belum berhasil dihapus.");
+            logApiError(error);
+            setMessage(getApiErrorMessage(error, "Komentar belum berhasil dihapus."));
         }
     }
 

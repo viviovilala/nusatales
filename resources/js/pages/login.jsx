@@ -3,12 +3,14 @@ import { Link, useNavigate } from "react-router-dom";
 import { login } from "../services/authService";
 import { useAuth } from "../contexts/AuthContext";
 import AppNavbar from "../navbar/AppNavbar.jsx";
+import { getApiErrorMessage, getApiValidationErrors } from "../utils/errorMessage";
 
 export default function Login() {
     const [showPassword, setShowPassword] = useState(false);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [errorMessage, setErrorMessage] = useState("");
+    const [fieldErrors, setFieldErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const navigate = useNavigate();
     const { isAuthenticated, isLoading, setUser } = useAuth();
@@ -22,23 +24,24 @@ export default function Login() {
     async function handleSubmit(event) {
         event.preventDefault();
         setErrorMessage("");
+        setFieldErrors({});
         setIsSubmitting(true);
 
         try {
             const { user } = await login({
                 email,
                 password,
-                device_name: "react-web",
             });
 
             setUser(user);
             navigate("/dashboard", { replace: true });
         } catch (error) {
-            const message =
-                error.response?.data?.message ||
-                "Login failed. Please check your credentials.";
+            if (import.meta.env.DEV) {
+                console.error("API error:", error?.response?.status, error?.response?.data || error);
+            }
 
-            setErrorMessage(message);
+            setFieldErrors(getApiValidationErrors(error));
+            setErrorMessage(getApiErrorMessage(error, "Login failed. Please check your credentials."));
         } finally {
             setIsSubmitting(false);
         }
@@ -70,6 +73,9 @@ export default function Login() {
                             className="w-full px-5 py-4 rounded-full text-sm outline-none transition"
                             style={{ backgroundColor: "#F0EEE8", color: "#3B2A0E", border: "none" }}
                         />
+                        {fieldErrors.email ? (
+                            <p className="mt-2 text-xs" style={{ color: "#A63B1F" }}>{fieldErrors.email[0]}</p>
+                        ) : null}
                     </div>
 
                     {/* Password */}
@@ -100,6 +106,9 @@ export default function Login() {
                                 </svg>
                             )}
                         </button>
+                        {fieldErrors.password ? (
+                            <p className="mt-2 text-xs" style={{ color: "#A63B1F" }}>{fieldErrors.password[0]}</p>
+                        ) : null}
                     </div>
 
                     {/* Forgot password */}

@@ -18,6 +18,18 @@ class StoreCommentRequest extends FormRequest
                 'content' => $this->input('body'),
             ]);
         }
+
+        if (! $this->has('content') && $this->has('comment')) {
+            $this->merge([
+                'content' => $this->input('comment'),
+            ]);
+        }
+
+        if (! $this->has('content') && $this->has('text')) {
+            $this->merge([
+                'content' => $this->input('text'),
+            ]);
+        }
     }
 
     /**

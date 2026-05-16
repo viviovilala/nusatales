@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getApiErrorMessage, getApiValidationErrors } from "../utils/errorMessage";
 
 export const baseURL = import.meta.env.VITE_API_BASE_URL || "/api/v1";
 
@@ -7,6 +8,15 @@ const LEGACY_TOKEN_STORAGE_KEY = "nusatales_auth_token";
 
 function localStorageSafe() {
     return typeof window !== "undefined" ? window.localStorage : null;
+}
+
+function removeHeader(headers, key) {
+    if (typeof headers?.delete === "function") {
+        headers.delete(key);
+        return;
+    }
+
+    delete headers[key];
 }
 
 const api = axios.create({
@@ -63,31 +73,25 @@ export function clearStoredToken() {
     setStoredToken(null);
 }
 
-export function getValidationErrors(error) {
-    return error?.response?.data?.errors ?? error?.errors ?? {};
-}
-
-export function getErrorMessage(error, fallback = "Terjadi kendala. Silakan coba lagi.") {
-    const data = error?.response?.data;
-
-    if (data?.message) {
-        return data.message;
-    }
-
-    if (error?.message && !error.message.includes("status code")) {
-        return error.message;
-    }
-
-    return fallback;
-}
+export const getValidationErrors = getApiValidationErrors;
+export const getErrorMessage = getApiErrorMessage;
 
 api.interceptors.request.use((config) => {
     const token = getStoredToken();
 
+    config.headers = config.headers || {};
+
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     } else {
-        delete config.headers.Authorization;
+        removeHeader(config.headers, "Authorization");
+    }
+
+    if (config.data instanceof FormData) {
+        removeHeader(config.headers, "Content-Type");
+        removeHeader(config.headers, "content-type");
+    } else {
+        config.headers["Content-Type"] = "application/json";
     }
 
     return config;
@@ -96,21 +100,16 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        const status = error.response?.status;
-        const url = error.config?.url ?? "";
+        const status = error?.response?.status;
 
         error.api = {
             status,
-            message: getErrorMessage(error),
-            errors: getValidationErrors(error),
+            message: getApiErrorMessage(error),
+            errors: getApiValidationErrors(error),
         };
 
-        if (status === 401 && getStoredToken() && !url.includes("/auth/login") && !url.includes("/auth/register")) {
+        if (status === 401) {
             clearStoredToken();
-        }
-
-        if (status >= 500) {
-            console.warn("NusaTales API error", error.api.message);
         }
 
         return Promise.reject(error);

@@ -27,10 +27,7 @@ function toFormData(payload = {}) {
     return formData;
 }
 
-export const createStudioVideo = (payload, config = {}) => api.post("/creator/animations", toFormData(payload), {
-    headers: { "Content-Type": "multipart/form-data" },
-    ...config,
-});
+export const createStudioVideo = (payload, config = {}) => api.post("/creator/animations", toFormData(payload), config);
 export const getStudioVideo = (id) => api.get(`/creator/animations/${id}`);
 export const updateStudioVideo = (id, payload) => api.post(`/creator/animations/${id}`, payload);
 export const deleteStudioVideo = (id) => api.delete(`/creator/animations/${id}`);

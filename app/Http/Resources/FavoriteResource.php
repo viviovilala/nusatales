@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\Episode;
 use App\Models\Series;
+use App\Models\Video;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -25,7 +26,9 @@ class FavoriteResource extends JsonResource
             'created_at' => optional($this->created_at)->toISOString(),
             'target' => $target instanceof Series
                 ? new SeriesResource($target)
-                : ($target instanceof Episode ? new EpisodeResource($target) : null),
+                : ($target instanceof Episode
+                    ? new EpisodeResource($target)
+                    : ($target instanceof Video ? new VideoResource($target) : null)),
         ];
     }
 
@@ -34,8 +37,8 @@ class FavoriteResource extends JsonResource
         return match ($this->favoritable_type) {
             Series::class => 'series',
             Episode::class => 'episode',
+            Video::class => 'video',
             default => 'unknown',
         };
     }
 }
-

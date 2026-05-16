@@ -20,9 +20,9 @@ class AuthController extends Controller
     {
         $result = $this->authService->register($request->validated());
 
-        return $this->successResponse('Registration successful.', [
-            'token' => $result['token'],
+        return $this->successResponse('Registrasi berhasil.', [
             'user' => new UserResource($result['user']),
+            'token' => $result['token'],
         ], 201);
     }
 
@@ -30,17 +30,19 @@ class AuthController extends Controller
     {
         $result = $this->authService->login($request->validated());
 
-        return $this->successResponse('Login successful.', [
-            'token' => $result['token'],
+        return $this->successResponse('Login berhasil.', [
             'user' => new UserResource($result['user']),
+            'token' => $result['token'],
         ]);
     }
 
     public function me(Request $request)
     {
         return $this->successResponse(
-            'Authenticated user retrieved successfully.',
-            new UserResource($request->user()->load('channel'))
+            'Data pengguna berhasil dimuat.',
+            [
+                'user' => new UserResource($request->user()->load('channel')),
+            ]
         );
     }
 
@@ -48,13 +50,13 @@ class AuthController extends Controller
     {
         $this->authService->logout($request->user());
 
-        return $this->successResponse('Logout successful.', null);
+        return $this->successResponse('Logout berhasil.', null);
     }
 
     public function updateProfile(UpdateProfileRequest $request)
     {
         $user = $this->authService->updateProfile($request->user(), $request->validated());
 
-        return $this->successResponse('Profile updated successfully.', new UserResource($user));
+        return $this->successResponse('Profil berhasil diperbarui.', new UserResource($user));
     }
 }

@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import AppNavbar from "../navbar/AppNavbar.jsx";
 import { register } from "../services/authService";
+import { getApiErrorMessage, getApiValidationErrors } from "../utils/errorMessage";
 
 export default function Register() {
     const navigate = useNavigate();
@@ -35,13 +36,29 @@ export default function Register() {
                 setUser(user);
                 navigate("/dashboard");
             } catch (error) {
-                setFieldErrors(error.response?.data?.errors || {});
-                setErrorMessage(
-                    error.response?.data?.message || "Registration failed. Please review your input."
-                );
+                if (import.meta.env.DEV) {
+                    console.error("API error:", error?.response?.status, error?.response?.data || error);
+                }
+
+                const errors = getApiValidationErrors(error);
+                const passwordError = Array.isArray(errors.password) ? errors.password[0] : errors.password;
+                const shouldMoveConfirmationError = passwordError
+                    && /confirmation|konfirmasi|match/i.test(passwordError)
+                    && !errors.password_confirmation;
+
+                setFieldErrors(shouldMoveConfirmationError
+                    ? { ...errors, password_confirmation: [passwordError] }
+                    : errors);
+                setErrorMessage(getApiErrorMessage(error, "Registration failed. Please review your input."));
             }
         });
     }
+
+    const passwordFieldError = Array.isArray(fieldErrors.password) ? fieldErrors.password[0] : fieldErrors.password;
+    const confirmationFieldError = Array.isArray(fieldErrors.password_confirmation) ? fieldErrors.password_confirmation[0] : fieldErrors.password_confirmation;
+    const passwordConfirmationError = confirmationFieldError
+        || (passwordFieldError && /confirmation|konfirmasi|match/i.test(passwordFieldError) ? passwordFieldError : "");
+    const visiblePasswordError = passwordConfirmationError === passwordFieldError ? "" : passwordFieldError;
 
     return (
         <div className="min-h-screen pb-10" style={{ backgroundColor: "#F5F0E0" }}>
@@ -93,10 +110,11 @@ export default function Register() {
                         </div>
                         <div>
                             <input type="password" value={form.password} onChange={(event) => updateField("password", event.target.value)} placeholder="Password" className="w-full px-5 py-4 rounded-2xl outline-none" style={{ backgroundColor: "#F7F3EA", color: "#3B2A0E" }} />
-                            {fieldErrors.password ? <p className="mt-2 text-xs" style={{ color: "#A63B1F" }}>{fieldErrors.password[0]}</p> : null}
+                            {visiblePasswordError ? <p className="mt-2 text-xs" style={{ color: "#A63B1F" }}>{visiblePasswordError}</p> : null}
                         </div>
                         <div>
                             <input type="password" value={form.password_confirmation} onChange={(event) => updateField("password_confirmation", event.target.value)} placeholder="Confirm password" className="w-full px-5 py-4 rounded-2xl outline-none" style={{ backgroundColor: "#F7F3EA", color: "#3B2A0E" }} />
+                            {passwordConfirmationError ? <p className="mt-2 text-xs" style={{ color: "#A63B1F" }}>{passwordConfirmationError}</p> : null}
                         </div>
                     </div>
 

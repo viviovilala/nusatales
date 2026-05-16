@@ -18,9 +18,8 @@ class StoreFavoriteRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'target_type' => ['required', Rule::in(['series', 'episode'])],
+            'target_type' => ['required', Rule::in(['series', 'episode', 'video'])],
             'target_id' => ['required', 'integer', 'min:1'],
         ];
     }
 }
-

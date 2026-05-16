@@ -26,12 +26,10 @@ trait ApiResponse
     protected function paginatedResponse(string $message, LengthAwarePaginator $paginator, AnonymousResourceCollection $collection): JsonResponse
     {
         return $this->successResponse($message, $collection->resolve(), 200, [
-            'pagination' => [
-                'current_page' => $paginator->currentPage(),
-                'per_page' => $paginator->perPage(),
-                'total' => $paginator->total(),
-                'last_page' => $paginator->lastPage(),
-            ],
+            'current_page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+            'per_page' => $paginator->perPage(),
+            'total' => $paginator->total(),
         ]);
     }
 }

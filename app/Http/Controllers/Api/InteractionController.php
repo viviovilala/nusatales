@@ -21,7 +21,9 @@ class InteractionController extends Controller
     public function like(Request $request, int|string $video)
     {
         $record = $this->videoService->findPublishedVideoOrFail($video);
-        $result = $this->interactionService->toggleLike($request->user(), $record);
+        $result = $request->isMethod('delete')
+            ? $this->interactionService->unlike($request->user(), $record)
+            : $this->interactionService->like($request->user(), $record);
 
         return $this->successResponse('Like state updated successfully.', $result);
     }

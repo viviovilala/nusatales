@@ -67,7 +67,6 @@ import { checkoutCoinPackage, getCoinPackages, getWallet, getWalletTransactions 
 import { checkoutSubscription, getBilling, getSubscriptionPlans } from "../services/subscriptionApi";
 import {
     agreeMonetization,
-    activateStudio,
     createStudioVideo,
     getStudioAnalytics,
     getStudioDashboard,
@@ -92,9 +91,10 @@ import {
     saveWatchLater,
     unlockVideo,
 } from "../services/videoApi";
+import { getApiErrorMessage, getApiValidationErrors } from "../utils/errorMessage";
 
 function StudioActivationPrompt() {
-    const { refreshUser } = useAuth();
+    const { activateStudio } = useAuth();
     const [message, setMessage] = useState("");
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
@@ -105,11 +105,14 @@ function StudioActivationPrompt() {
 
         try {
             await activateStudio();
-            await refreshUser();
             setMessage("Studio NusaKarya berhasil diaktifkan.");
             navigate("/studio/upload");
         } catch (error) {
-            setMessage(error.response?.data?.message ?? "Studio belum bisa diaktifkan saat ini.");
+            if (import.meta.env.DEV) {
+                console.error("API error:", error?.response?.status, error?.response?.data || error);
+            }
+
+            setMessage(getApiErrorMessage(error, "Studio belum bisa diaktifkan saat ini."));
         } finally {
             setLoading(false);
         }
@@ -570,21 +573,42 @@ function AuthCard({ mode }) {
                     password_confirmation: form.password_confirmation,
                 });
             } else {
-                await login(form.email, form.password);
+                await login({
+                    email: form.email,
+                    password: form.password,
+                });
             }
 
             setMessage(isRegister ? "Akun NusaTales berhasil dibuat." : "Berhasil masuk ke NusaTales.");
             window.setTimeout(() => navigate(isRegister ? "/" : intendedPath), 350);
         } catch (requestError) {
-            const errors = requestError.response?.data?.errors ?? {};
+            if (import.meta.env.DEV) {
+                console.error("API error:", requestError?.response?.status, requestError?.response?.data || requestError);
+            }
 
-            setFieldErrors(errors);
-            setError(requestError.response?.data?.message ?? "Validasi gagal. Periksa kembali isian formulir.");
+            const errors = getApiValidationErrors(requestError);
+            const passwordError = Array.isArray(errors.password) ? errors.password[0] : errors.password;
+            const shouldMoveConfirmationError = isRegister
+                && passwordError
+                && /confirmation|konfirmasi|match/i.test(passwordError)
+                && !errors.password_confirmation;
+            const nextErrors = shouldMoveConfirmationError
+                ? { ...errors, password_confirmation: [passwordError] }
+                : errors;
+
+            setFieldErrors(nextErrors);
+            setError(getApiErrorMessage(requestError, "Validasi gagal. Periksa kembali isian formulir."));
             setForm((current) => ({ ...current, password: "", password_confirmation: "" }));
         } finally {
             setLoading(false);
         }
     }
+
+    const passwordFieldError = Array.isArray(fieldErrors.password) ? fieldErrors.password[0] : fieldErrors.password;
+    const confirmationFieldError = Array.isArray(fieldErrors.password_confirmation) ? fieldErrors.password_confirmation[0] : fieldErrors.password_confirmation;
+    const passwordConfirmationError = confirmationFieldError
+        || (isRegister && passwordFieldError && /confirmation|konfirmasi|match/i.test(passwordFieldError) ? passwordFieldError : "");
+    const visiblePasswordError = passwordConfirmationError === passwordFieldError ? "" : passwordFieldError;
 
     return (
         <PageShell active="">
@@ -607,12 +631,12 @@ function AuthCard({ mode }) {
                         <div style={{ position: "relative" }}>
                             <input className="nt-form-field" value={form.password} onChange={(event) => update("password", event.target.value)} type="password" minLength={isRegister ? 8 : undefined} placeholder="Masukkan password anda..." required />
                             <span style={{ position: "absolute", right: "1.3rem", top: "50%", transform: "translateY(-50%)", color: "var(--nt-muted)" }}>hide</span>
-                            {fieldErrors.password ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.password[0]}</small> : null}
+                            {visiblePasswordError ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{visiblePasswordError}</small> : null}
                         </div>
                         {isRegister ? (
                             <label>
                                 <input className="nt-form-field" value={form.password_confirmation} onChange={(event) => update("password_confirmation", event.target.value)} type="password" minLength={8} placeholder="Ulangi password anda..." required />
-                                {fieldErrors.password_confirmation ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.password_confirmation[0]}</small> : null}
+                                {passwordConfirmationError ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{passwordConfirmationError}</small> : null}
                             </label>
                         ) : (
                             <Link to="/login" style={{ justifySelf: "end", color: "#ff6975", textDecoration: "none", fontWeight: 850 }}>Lupa Password ?</Link>
@@ -888,7 +912,7 @@ export function StudioUploadPage() {
         }
 
         try {
-            const status = form.scheduled ? "scheduled" : (draft ? "draft" : "published");
+            const status = draft ? "draft" : (form.scheduled ? "scheduled" : "published");
             const response = await createStudioVideo({
                 title: form.title,
                 description: form.description,
@@ -904,7 +928,7 @@ export function StudioUploadPage() {
                 thumbnail: form.thumbnailFile,
                 visibility: form.visibility,
                 status,
-                scheduled_at: form.scheduled ? form.date : "",
+                scheduled_at: status === "scheduled" ? form.date : "",
                 is_premium: premium ? 1 : 0,
                 coin_price: premium ? form.coinPrice || 1 : 0,
                 allow_comments: form.allowComments ? 1 : 0,
@@ -920,10 +944,12 @@ export function StudioUploadPage() {
             setMessage(draft ? "Draft tersimpan di Studio NusaKarya." : "Video berhasil diunggah.");
             window.setTimeout(() => navigate(slug && !draft ? `/watch/${slug}` : "/studio/karya"), 650);
         } catch (requestError) {
-            const errors = requestError.response?.data?.errors;
-            setFieldErrors(errors ?? {});
-            const firstError = errors ? Object.values(errors).flat()[0] : null;
-            setError(firstError ?? requestError.response?.data?.message ?? "Unggahan belum berhasil.");
+            if (import.meta.env.DEV) {
+                console.error("API error:", requestError?.response?.status, requestError?.response?.data || requestError);
+            }
+
+            setFieldErrors(getApiValidationErrors(requestError));
+            setError(getApiErrorMessage(requestError, "Unggahan belum berhasil."));
         }
     }
 
@@ -933,7 +959,11 @@ export function StudioUploadPage() {
             setModalOpen(false);
             setMessage("Perjanjian monetisasi berhasil disetujui.");
         } catch (requestError) {
-            setError(requestError.response?.data?.message ?? "Perjanjian monetisasi belum berhasil.");
+            if (import.meta.env.DEV) {
+                console.error("API error:", requestError?.response?.status, requestError?.response?.data || requestError);
+            }
+
+            setError(getApiErrorMessage(requestError, "Perjanjian monetisasi belum berhasil."));
         }
     }
 

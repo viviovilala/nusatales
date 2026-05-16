@@ -9,6 +9,7 @@ use App\Models\Genre;
 use App\Models\Rating;
 use App\Models\Series;
 use App\Models\User;
+use App\Models\Video;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -130,6 +131,7 @@ class CatalogService
                     $morphTo->morphWith([
                         Series::class => ['genres', 'category', 'creator'],
                         Episode::class => ['series'],
+                        Video::class => ['channel', 'creator', 'category'],
                     ]);
                 },
             ])
@@ -186,6 +188,11 @@ class CatalogService
                 ->whereHas('series', fn ($query) => $query->published())
                 ->where('episode_id', $id)
                 ->firstOrFail(),
+            'video' => Video::query()
+                ->published()
+                ->publiclyVisible()
+                ->where('video_id', $id)
+                ->firstOrFail(),
             default => abort(422, 'Unsupported favorite or rating target.'),
         };
     }
@@ -216,4 +223,3 @@ class CatalogService
             ], 'score');
     }
 }
-

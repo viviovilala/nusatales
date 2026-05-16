@@ -27,11 +27,7 @@ export async function createAnimation(payload) {
         }
     });
 
-    const response = await apiClient.post("/creator/animations", formData, {
-        headers: {
-            "Content-Type": "multipart/form-data",
-        },
-    });
+    const response = await apiClient.post("/creator/animations", formData);
 
     return response.data.data;
 }
@@ -45,11 +41,7 @@ export async function updateAnimation(id, payload) {
         }
     });
 
-    const response = await apiClient.post(`/creator/animations/${id}`, formData, {
-        headers: {
-            "Content-Type": "multipart/form-data",
-        },
-    });
+    const response = await apiClient.post(`/creator/animations/${id}`, formData);
 
     return response.data.data;
 }

@@ -20,17 +20,20 @@ class InteractionService
 
     public function toggleLike(User $user, Video $video): array
     {
+        return $this->like($user, $video);
+    }
+
+    public function like(User $user, Video $video): array
+    {
         $existing = Like::query()
             ->where('user_id', $user->user_id)
             ->where('video_id', $video->video_id)
             ->first();
 
         if ($existing) {
-            $existing->delete();
-
             return [
-                'liked' => false,
-                'likes_count' => $video->likes()->count(),
+                'liked' => true,
+                'likes_count' => $this->refreshLikeCount($video),
             ];
         }
 
@@ -45,7 +48,20 @@ class InteractionService
 
         return [
             'liked' => true,
-            'likes_count' => $video->likes()->count(),
+            'likes_count' => $this->refreshLikeCount($video),
+        ];
+    }
+
+    public function unlike(User $user, Video $video): array
+    {
+        Like::query()
+            ->where('user_id', $user->user_id)
+            ->where('video_id', $video->video_id)
+            ->delete();
+
+        return [
+            'liked' => false,
+            'likes_count' => $this->refreshLikeCount($video),
         ];
     }
 
@@ -169,5 +185,16 @@ class InteractionService
         $video->forceFill([
             'comment_count' => $video->comments()->where('status', 'published')->count(),
         ])->save();
+    }
+
+    protected function refreshLikeCount(Video $video): int
+    {
+        $count = $video->likes()->count();
+
+        $video->forceFill([
+            'like_count' => $count,
+        ])->save();
+
+        return $count;
     }
 }

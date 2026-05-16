@@ -16,6 +16,10 @@ import { activateStudio as activateStudioRequest } from "../services/studioApi";
 
 const AuthContext = createContext(null);
 
+function isUnauthorized(error) {
+    return error?.response?.status === 401;
+}
+
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [token, setToken] = useState(getStoredToken());
@@ -30,18 +34,28 @@ export function AuthProvider({ children }) {
                 return;
             }
 
+            const storedToken = getStoredToken();
+
+            if (!storedToken) {
+                setLoading(false);
+                return;
+            }
+
             try {
                 const authenticatedUser = await fetchMe();
 
                 if (!ignore) {
                     setUser(authenticatedUser);
-                    setToken(getStoredToken());
+                    setToken(storedToken);
                 }
-            } catch (_error) {
-                clearStoredToken();
+            } catch (error) {
+                if (isUnauthorized(error)) {
+                    clearStoredToken();
+                }
+
                 if (!ignore) {
                     setUser(null);
-                    setToken(null);
+                    setToken(isUnauthorized(error) ? null : getStoredToken());
                 }
             } finally {
                 if (!ignore) {
@@ -96,19 +110,14 @@ export function AuthProvider({ children }) {
 
             return authenticatedUser;
         } catch (error) {
-            clearStoredToken();
+            if (isUnauthorized(error)) {
+                clearStoredToken();
+            }
+
             setUser(null);
-            setToken(null);
+            setToken(isUnauthorized(error) ? null : getStoredToken());
 
             throw error;
-        }
-    }
-
-    async function loadUserWithChannel(fallbackUser) {
-        try {
-            return await fetchMe();
-        } catch (_error) {
-            return fallbackUser ?? null;
         }
     }
 
@@ -122,36 +131,41 @@ export function AuthProvider({ children }) {
         canUpload: isAuthenticated && hasChannel,
         isAdmin: user?.role === "admin",
         isAuthenticated,
-        async login(email, password) {
-            const result = await loginRequest({ email, password });
-            const nextToken = result.token ?? getStoredToken();
+        async login(credentials, passwordArg) {
+            const payload = typeof credentials === "object"
+                ? { email: credentials?.email, password: credentials?.password }
+                : { email: credentials, password: passwordArg };
+            const result = await loginRequest(payload);
+            const nextToken = result.token ?? result.access_token;
 
-            if (nextToken) {
-                setStoredToken(nextToken);
+            if (!nextToken) {
+                throw new Error("Token login tidak ditemukan dari server.");
             }
 
-            const nextUser = await loadUserWithChannel(result.user);
-            setAuthenticatedUser(nextUser, nextToken);
+            setStoredToken(nextToken);
+            setAuthenticatedUser(result.user ?? null, nextToken);
+            const refreshedUser = await refreshUser();
 
-            return { ...result, user: nextUser };
+            return { ...result, token: nextToken, user: refreshedUser ?? result.user ?? null };
         },
         async register(payload) {
             const result = await registerRequest({
                 name: payload?.name,
                 email: payload?.email,
                 password: payload?.password,
-                password_confirmation: payload?.password_confirmation ?? payload?.passwordConfirm,
+                password_confirmation: payload?.password_confirmation,
             });
-            const nextToken = result.token ?? getStoredToken();
+            const nextToken = result.token ?? result.access_token;
 
-            if (nextToken) {
-                setStoredToken(nextToken);
+            if (!nextToken) {
+                throw new Error("Token registrasi tidak ditemukan dari server.");
             }
 
-            const nextUser = await loadUserWithChannel(result.user);
-            setAuthenticatedUser(nextUser, nextToken);
+            setStoredToken(nextToken);
+            setAuthenticatedUser(result.user ?? null, nextToken);
+            const refreshedUser = await refreshUser();
 
-            return { ...result, user: nextUser };
+            return { ...result, token: nextToken, user: refreshedUser ?? result.user ?? null };
         },
         refreshUser,
         async updateProfile(payload) {
@@ -163,7 +177,9 @@ export function AuthProvider({ children }) {
         },
         async activateStudio() {
             const response = await activateStudioRequest();
-            const channel = response.data?.data?.channel ?? response.data?.channel ?? null;
+            const payload = response?.data;
+            const data = payload?.data || payload;
+            const channel = data?.channel ?? null;
 
             try {
                 const refreshed = await refreshUser();

@@ -13,10 +13,22 @@ class RegisterRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $merge = [];
+
         if (! $this->has('name') && $this->has('nama')) {
-            $this->merge([
-                'name' => $this->input('nama'),
-            ]);
+            $merge['name'] = $this->input('nama');
+        }
+
+        if (! $this->has('password_confirmation') && $this->has('passwordConfirm')) {
+            $merge['password_confirmation'] = $this->input('passwordConfirm');
+        }
+
+        if (! $this->has('password_confirmation') && $this->has('confirmPassword')) {
+            $merge['password_confirmation'] = $this->input('confirmPassword');
+        }
+
+        if ($merge !== []) {
+            $this->merge($merge);
         }
     }
 

@@ -17,7 +17,7 @@ class StudioController extends Controller
     {
         $channel = $request->user()->channel()->first();
 
-        return $this->successResponse('Studio status retrieved.', [
+        return $this->successResponse('Status Studio NusaKarya berhasil dimuat.', [
             'has_channel' => (bool) $channel,
             'can_upload' => (bool) $channel && $channel->status === 'active',
             'can_monetize' => $channel?->monetization_status === 'active',

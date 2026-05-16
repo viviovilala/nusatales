@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import { AuthProvider } from "./contexts/AuthContext.jsx";
 import AdminStudio from "./pages/AdminStudio.jsx";
+import DebugApiPage from "./pages/DebugApi.jsx";
 import {
     ChannelPage,
     ExplorePage,
@@ -113,6 +114,7 @@ function App() {
                     <Route path="/studio/monetization" element={<ProtectedRoute allowedRoles={studioRoles}><StudioDashboardPage /></ProtectedRoute>} />
                     <Route path="/studio/revenue" element={<ProtectedRoute allowedRoles={studioRoles}><SimpleStudioPage title="Pendapatan Kreator" active="Analisis" /></ProtectedRoute>} />
                     <Route path="/studio/assets" element={<ProtectedRoute allowedRoles={studioRoles}><SimpleStudioPage title="Aset Studio" active="Karya" /></ProtectedRoute>} />
+                    {import.meta.env.DEV ? <Route path="/debug-api" element={<DebugApiPage />} /> : null}
                     <Route path="/admin" element={<ProtectedRoute allowedRoles={["admin"]}><AdminStudio /></ProtectedRoute>} />
                     <Route path="*" element={<NotFoundPage />} />
                 </Routes>

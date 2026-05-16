@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\User;
-use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -26,7 +25,7 @@ class AuthService
             'role' => 'user',
         ]);
 
-        $token = $user->createToken($data['device_name'] ?? 'web-client')->plainTextToken;
+        $token = $user->createToken('web-client')->plainTextToken;
 
         $user->load('channel');
 
@@ -38,10 +37,12 @@ class AuthService
         $user = User::query()->where('email', $credentials['email'])->first();
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
-            throw new AuthenticationException('Invalid credentials.');
+            throw ValidationException::withMessages([
+                'email' => ['Email atau password salah.'],
+            ]);
         }
 
-        $token = $user->createToken($credentials['device_name'] ?? 'web-client')->plainTextToken;
+        $token = $user->createToken('web-client')->plainTextToken;
 
         $user->load('channel');
 
