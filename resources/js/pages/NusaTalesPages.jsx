@@ -37,7 +37,7 @@ import {
 import {
     categories as fallbackCategories,
     challenge as fallbackChallenge,
-    koinPackages,
+    coinPackages,
     comments,
     creators,
     culturalProgress,
@@ -807,7 +807,7 @@ export function RegisterPage() {
 
 export function PremiumPage() {
     const wallet = useApiFallback(getWallet, { balance: 1250 }, []);
-    const packages = useApiFallback(getCoinPackages, koinPackages, []);
+    const packages = useApiFallback(getCoinPackages, coinPackages, []);
     const plans = useApiFallback(getSubscriptionPlans, subscriptionPlans, []);
     const history = useApiFallback(getWalletTransactions, undefined, []);
     const billing = useApiFallback(getBilling, [], []);
