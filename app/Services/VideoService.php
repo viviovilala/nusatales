@@ -64,7 +64,7 @@ class VideoService
         return DB::transaction(function () use ($user, $data) {
             $channel = $this->channelService->activateStudio($user);
             $contentType = $data['content_type'] ?? 'episode';
-            $status = $data['status'] ?? 'draft';
+            $status = $data['status'] ?? 'published';
             $visibility = $data['visibility'] ?? 'public';
             $isPremium = (bool) ($data['is_premium'] ?? false);
             $coinPrice = (int) ($data['coin_price'] ?? 0);

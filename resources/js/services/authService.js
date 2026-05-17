@@ -48,7 +48,7 @@ export async function register(payload = {}) {
     const { token, user } = normalizeAuth(response);
 
     if (!token) {
-        throw new Error("Token registrasi tidak ditemukan dari server.");
+        throw new Error("Token login tidak ditemukan dari server.");
     }
 
     setStoredToken(token);

@@ -91,11 +91,7 @@ function App() {
                     />
                     <Route
                         path="/studio/upload"
-                        element={
-                            <ProtectedRoute allowedRoles={studioRoles}>
-                                <StudioUploadPage />
-                            </ProtectedRoute>
-                        }
+                        element={<StudioUploadPage />}
                     />
                     <Route
                         path="/studio/karya"

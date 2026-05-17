@@ -1,7 +1,7 @@
 import axios from "axios";
 import { getApiErrorMessage, getApiValidationErrors } from "../utils/errorMessage";
 
-export const baseURL = import.meta.env.VITE_API_BASE_URL || "/api/v1";
+export const baseURL = "/api/v1";
 
 const TOKEN_STORAGE_KEY = "token";
 const LEGACY_TOKEN_STORAGE_KEY = "nusatales_auth_token";

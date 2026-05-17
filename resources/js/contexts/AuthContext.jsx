@@ -79,7 +79,7 @@ export function AuthProvider({ children }) {
         setToken(nextToken);
     };
 
-    const channel = user?.channel ?? null;
+    const channel = user?.channel || null;
     const hasChannel = Boolean(channel);
     const isAuthenticated = Boolean(user);
 
@@ -145,7 +145,7 @@ export function AuthProvider({ children }) {
             const nextToken = result.token ?? result.access_token;
 
             if (!nextToken) {
-                throw new Error("Token registrasi tidak ditemukan dari server.");
+                throw new Error("Token login tidak ditemukan dari server.");
             }
 
             setStoredToken(nextToken);

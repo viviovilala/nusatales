@@ -26,6 +26,9 @@ use App\Http\Controllers\Api\ReferenceController;
 use App\Http\Controllers\Api\SeriesController;
 use App\Http\Controllers\Api\StudioController;
 use App\Http\Controllers\Api\SubscriptionController;
+use App\Models\User;
+use App\Services\ChannelService;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -42,6 +45,38 @@ Route::prefix('v1')->group(function () {
     Route::middleware('throttle:10,1')->group(function () {
         Route::post('/auth/register', [AuthController::class, 'register']);
         Route::post('/auth/login', [AuthController::class, 'login']);
+    });
+
+    Route::post('/dev/demo-upload-login', function (ChannelService $channelService) {
+        if (! app()->environment(['local', 'testing'])) {
+            abort(404);
+        }
+
+        $user = User::query()->updateOrCreate(
+            ['email' => 'uploader@nusatales.test'],
+            [
+                'nama' => 'Demo Uploader',
+                'password' => Hash::make('Password123!'),
+                'foto_profil' => null,
+                'tanggal_daftar' => now(),
+                'role' => 'user',
+            ]
+        );
+
+        $channel = $channelService->activateStudio($user);
+
+        if ($channel->status !== 'active') {
+            $channel->forceFill(['status' => 'active'])->save();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Demo uploader login berhasil.',
+            'data' => [
+                'user' => $user->refresh()->load('channel'),
+                'token' => $user->createToken('demo-upload')->plainTextToken,
+            ],
+        ]);
     });
 
     Route::get('/references/categories', [ReferenceController::class, 'categories']);

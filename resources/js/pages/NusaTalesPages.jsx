@@ -59,6 +59,7 @@ import {
     subscriptionPlans,
     unwrapApiData,
 } from "../data/nusatalesData";
+import api, { setStoredToken } from "../services/api";
 import { getAssets } from "../services/assetApi";
 import { getChallenge, getChallengeLeaderboard, getChallenges } from "../services/challengeApi";
 import { addFavorite, getBadges, getCulturalProgress, getMissions, getRegions } from "../services/culturalApi";
@@ -554,7 +555,7 @@ export function FavoritPage() {
 function AuthCard({ mode }) {
     const navigate = useNavigate();
     const location = useLocation();
-    const { login, register, refreshUser, setUser } = useAuth();
+    const { login, register, setUser } = useAuth();
     const [form, setForm] = useState({ name: "", email: "", password: "", password_confirmation: "" });
     const [message, setMessage] = useState(location.state?.message ?? "");
     const [error, setError] = useState("");
@@ -563,7 +564,6 @@ function AuthCard({ mode }) {
     const [showPassword, setShowPassword] = useState(false);
     const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
     const isRegister = mode === "register";
-    const intendedPath = location.state?.from || "/";
 
     function update(key, value) {
         setForm((current) => ({ ...current, [key]: value }));
@@ -598,15 +598,7 @@ function AuthCard({ mode }) {
                 setUser?.(result.user, result.token);
             }
 
-            if (refreshUser) {
-                await refreshUser();
-            }
-
-            if (isRegister) {
-                navigate("/", { replace: true });
-            } else {
-                navigate(intendedPath, { replace: true });
-            }
+            navigate("/", { replace: true });
         } catch (requestError) {
             if (import.meta.env.DEV) {
                 console.error("API error:", requestError?.response?.status, requestError?.response?.data || requestError);
@@ -908,12 +900,13 @@ export function StudioDashboardPage() {
 }
 
 export function StudioUploadPage() {
-    const { hasChannel, isAuthenticated } = useAuth();
+    const { isAuthenticated, setUser } = useAuth();
     const navigate = useNavigate();
     const [progress, setProgress] = useState(0);
     const [message, setMessage] = useState("");
     const [error, setError] = useState("");
     const [fieldErrors, setFieldErrors] = useState({});
+    const [demoLoading, setDemoLoading] = useState(false);
     const [premium, setPremium] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
     const [form, setForm] = useState({
@@ -957,6 +950,34 @@ export function StudioUploadPage() {
         }, 220);
     }
 
+    async function demoUploadLogin() {
+        setDemoLoading(true);
+        setError("");
+        setFieldErrors({});
+
+        try {
+            const response = await api.post("/dev/demo-upload-login");
+            const data = response.data?.data ?? {};
+            const token = data.token;
+
+            if (!token) {
+                throw new Error("Token login tidak ditemukan dari server.");
+            }
+
+            setStoredToken(token);
+            setUser?.(data.user ?? null, token);
+            setMessage("Demo uploader siap digunakan.");
+        } catch (requestError) {
+            if (import.meta.env.DEV) {
+                console.error("API error:", requestError?.response?.status, requestError?.response?.data || requestError);
+            }
+
+            setError(getApiErrorMessage(requestError, "Demo uploader belum bisa digunakan."));
+        } finally {
+            setDemoLoading(false);
+        }
+    }
+
     async function publish(draft = false) {
         setError("");
         setMessage("");
@@ -979,14 +1000,8 @@ export function StudioUploadPage() {
             return;
         }
 
-        if (form.scheduled && !form.date) {
-            setFieldErrors({ scheduled_at: ["Tanggal rilis wajib diisi untuk jadwal."] });
-            setError("Tanggal rilis wajib diisi untuk jadwal.");
-            return;
-        }
-
         try {
-            const status = draft ? "draft" : (form.scheduled ? "scheduled" : "published");
+            const status = draft ? "draft" : "published";
             const response = await createStudioVideo({
                 title: form.title,
                 description: form.description,
@@ -1041,8 +1056,33 @@ export function StudioUploadPage() {
         }
     }
 
-    if (!hasChannel) {
-        return <StudioActivationPrompt />;
+    if (!isAuthenticated) {
+        return (
+            <PageShell active="">
+                <main className="nt-container" style={{ minHeight: "28rem", display: "grid", alignItems: "center", padding: "2rem 0 5rem" }}>
+                    <section className="nt-card pad" style={{ maxWidth: "44rem", margin: "0 auto", textAlign: "center" }}>
+                        <h1 className="nt-title" style={{ fontSize: "2.6rem" }}>Masuk untuk Mengunggah Karya</h1>
+                        <p style={{ fontSize: "1.15rem", fontWeight: 850, lineHeight: 1.6 }}>
+                            Gunakan akun NusaTales untuk mengunggah episode atau short ke Studio NusaKarya.
+                        </p>
+                        {error ? <div className="nt-status nt-error">{error}</div> : null}
+                        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "1rem", marginTop: "1.2rem" }}>
+                            <Link to="/login" state={{ from: "/studio/upload", message: "Masuk terlebih dahulu untuk mengunggah karya." }} className="nt-btn green">
+                                Masuk
+                            </Link>
+                            <Link to="/register" className="nt-btn ghost">
+                                Daftar
+                            </Link>
+                            {import.meta.env.DEV ? (
+                                <button type="button" className="nt-btn dark" onClick={demoUploadLogin} disabled={demoLoading}>
+                                    {demoLoading ? "Memproses..." : "Masuk sebagai Demo Uploader"}
+                                </button>
+                            ) : null}
+                        </div>
+                    </section>
+                </main>
+            </PageShell>
+        );
     }
 
     return (
@@ -1140,7 +1180,7 @@ export function StudioUploadPage() {
                             <input type="checkbox" checked={form.allowComments} onChange={(event) => update("allowComments", event.target.checked)} />
                         </label>
                         <button type="button" className="nt-btn green" style={{ width: "100%", marginTop: "1rem" }} onClick={() => publish(false)}>Terbitkan Sekarang</button>
-                        <button type="button" className="nt-btn ghost" style={{ width: "100%", marginTop: ".7rem" }} onClick={() => publish(true)}>Simpan Sebagai Draft</button>
+                        <button type="button" className="nt-btn ghost" style={{ width: "100%", marginTop: ".7rem" }} onClick={() => publish(true)}>Simpan Draft</button>
                         <div className="nt-status" style={{ marginTop: "1rem" }}>Validasi file, judul, deskripsi, thumbnail, kategori, dan tags aktif.</div>
                     </section>
                 </aside>
