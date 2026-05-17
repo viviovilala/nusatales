@@ -422,7 +422,7 @@ export function ExplorePage() {
                             ADI BAGAS KORO
                         </p>
                         <h1 className="nt-title" style={{ color: "#fff" }}>KISAH SERIBU CANDI</h1>
-                        <p style={{ lineHeight: 1.5, fontWeight: 800 }}>Temukan rahasia di balik terciptanya seribu candi dalam 1 malam melalui kisah cinta dan janji yang terlanggar.</p>
+                        <p style={{ lineHeight: 1.5, fontWeight: 800 }}>Temukan rahasia di balik terciptanya seribu candi dalam 1 malam melalui kisah cinta dan janji yang terlanggari.</p>
                         <Link to="/watch/kisah-seribu-candi" className="nt-btn green">Tonton Sekarang</Link>
                     </div>
                 </ImageFrame>
