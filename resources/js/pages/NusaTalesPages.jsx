@@ -120,7 +120,7 @@ function StudioActivationPrompt() {
     }
 
     return (
-        <StudioShell active="Beranda">
+        <CleanStudioShell active="Beranda">
             <section className="nt-card pad nt-soft" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 14rem", gap: "1.5rem", alignItems: "center" }}>
                 <div>
                     <h1 className="nt-title" style={{ fontSize: "2.6rem" }}>Aktifkan Studio NusaKarya</h1>
@@ -134,7 +134,7 @@ function StudioActivationPrompt() {
                 </div>
                 <img src={mascotImage} alt="" style={{ width: "13rem", justifySelf: "center" }} />
             </section>
-        </StudioShell>
+        </CleanStudioShell>
     );
 }
 
@@ -197,21 +197,238 @@ const cleanTheme = {
     cream: "#F5F0E0",
     brown: "#3B2A0E",
     darkBrown: "#5C3A1E",
+    deepBrown: "#2a1200",
     muted: "#6B5A3E",
+    softMuted: "#9B8E7A",
     lime: "#8DC63F",
-    soft: "#DCCDAA",
+    card: "#D4C5A0",
+    cardSoft: "#DCCDAA",
+    media: "#C4A882",
     panel: "#fff8e8",
 };
 
 const cleanTwoColumn = "repeat(auto-fit, minmax(18rem, 1fr))";
 const cleanFourGrid = "repeat(auto-fit, minmax(13rem, 1fr))";
 
+function LandingStyle() {
+    return (
+        <style>
+            {`
+                :root {
+                    --nt-cream: #F5F0E0;
+                    --nt-brown: #3B2A0E;
+                    --nt-brown-dark: #5C3A1E;
+                    --nt-brown-deep: #2a1200;
+                    --nt-muted: #6B5A3E;
+                    --nt-soft-muted: #9B8E7A;
+                    --nt-lime: #8DC63F;
+                    --nt-lime-dark: #5f8f1f;
+                    --nt-gold: #d69b08;
+                    --nt-card: #D4C5A0;
+                    --nt-card-soft: #DCCDAA;
+                    --nt-media: #C4A882;
+                    --nt-line: rgba(92, 58, 30, .16);
+                    --nt-shadow: 0 1.1rem 2.4rem rgba(59, 42, 14, .10);
+                }
+
+                body {
+                    background: #F5F0E0;
+                }
+
+                .nt-container {
+                    max-width: 72rem !important;
+                    margin-left: auto !important;
+                    margin-right: auto !important;
+                    padding-left: 1.5rem !important;
+                    padding-right: 1.5rem !important;
+                }
+
+                .nt-section {
+                    margin-top: 1rem;
+                    margin-bottom: 2.5rem;
+                }
+
+                .nt-title {
+                    color: #3B2A0E;
+                    font-family: Georgia, serif;
+                    font-weight: 950;
+                    letter-spacing: -.045em;
+                    line-height: .96;
+                }
+
+                .nt-heading {
+                    color: #3B2A0E;
+                    font-family: Georgia, serif;
+                    font-weight: 900;
+                    letter-spacing: -.035em;
+                    line-height: 1.05;
+                }
+
+                .nt-subtle {
+                    color: #6B5A3E;
+                    font-size: .875rem;
+                    line-height: 1.55;
+                }
+
+                .nt-card {
+                    border-radius: 1.5rem;
+                    border: 1px solid rgba(92, 58, 30, .12);
+                    background: rgba(255, 250, 236, .82);
+                    box-shadow: 0 .75rem 1.8rem rgba(59, 42, 14, .07);
+                }
+
+                .nt-card.pad {
+                    padding: 1.25rem;
+                }
+
+                .nt-soft {
+                    background: #DCCDAA !important;
+                }
+
+                .nt-btn,
+                .nt-pill {
+                    border-radius: 999px;
+                    font-size: .875rem;
+                    font-weight: 800;
+                    letter-spacing: -.01em;
+                }
+
+                .nt-btn {
+                    min-height: 2.75rem;
+                    padding: .78rem 1.45rem;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: .45rem;
+                    text-decoration: none;
+                    transition: transform .18s ease, opacity .18s ease;
+                }
+
+                .nt-btn:hover {
+                    transform: translateY(-1px);
+                    opacity: .92;
+                }
+
+                .nt-btn.green,
+                .nt-pill.green {
+                    background: #8DC63F !important;
+                    color: #fff !important;
+                    border-color: transparent !important;
+                }
+
+                .nt-btn.dark,
+                .nt-pill.dark {
+                    background: #5C3A1E !important;
+                    color: #F5F0E0 !important;
+                }
+
+                .nt-btn.ghost,
+                .nt-pill.ghost {
+                    background: rgba(255, 250, 236, .74) !important;
+                    color: #5C3A1E !important;
+                    border: 1px solid rgba(92, 58, 30, .22) !important;
+                    box-shadow: none !important;
+                }
+
+                .nt-form-field {
+                    width: 100%;
+                    min-height: 3.4rem;
+                    border-radius: 999px;
+                    border: 1px solid rgba(92, 58, 30, .10);
+                    background: rgba(255, 255, 255, .72);
+                    color: #3B2A0E;
+                    font-size: 1rem;
+                    font-weight: 650;
+                    padding: .95rem 1.25rem;
+                    outline: none;
+                }
+
+                textarea.nt-form-field {
+                    border-radius: 1.25rem;
+                    min-height: 8rem;
+                    resize: vertical;
+                }
+
+                .nt-form-field:focus {
+                    border-color: #8DC63F;
+                    box-shadow: 0 0 0 .2rem rgba(141, 198, 63, .20);
+                }
+
+                .nt-grid {
+                    gap: 1rem;
+                }
+
+                .nt-avatar,
+                .nt-icon-btn {
+                    border-color: #5C3A1E;
+                    box-shadow: 0 .35rem 1rem rgba(59, 42, 14, .10);
+                }
+
+                .nt-status {
+                    border-radius: 1rem;
+                    background: rgba(141, 198, 63, .22);
+                    color: #5f8f1f;
+                    padding: .85rem 1rem;
+                    font-size: .875rem;
+                    font-weight: 850;
+                    border: 1px solid rgba(141, 198, 63, .32);
+                }
+
+                .nt-error {
+                    background: rgba(154, 59, 34, .10) !important;
+                    color: #9a3b22 !important;
+                    border-color: rgba(154, 59, 34, .20) !important;
+                }
+
+                .nt-map-panel {
+                    background: rgba(255, 250, 236, .92);
+                    border: 1px solid rgba(92, 58, 30, .12);
+                    box-shadow: 0 1rem 2.2rem rgba(59, 42, 14, .12);
+                }
+
+                @media (max-width: 860px) {
+                    .nt-container {
+                        padding-left: 1rem !important;
+                        padding-right: 1rem !important;
+                    }
+
+                    .nt-title {
+                        font-size: clamp(2.25rem, 11vw, 4rem) !important;
+                    }
+
+                    .nt-hide-mobile {
+                        display: none !important;
+                    }
+                }
+            `}
+        </style>
+    );
+}
+
+function CleanPageShell({ children, ...props }) {
+    return (
+        <>
+            <LandingStyle />
+            <PageShell {...props}>{children}</PageShell>
+        </>
+    );
+}
+
+function CleanStudioShell({ children, ...props }) {
+    return (
+        <>
+            <LandingStyle />
+            <StudioShell {...props}>{children}</StudioShell>
+        </>
+    );
+}
+
 function cleanCardStyle(extra = {}) {
     return {
-        borderRadius: "1.8rem",
-        background: extra.background ?? "rgba(255,255,255,.72)",
-        border: "1px solid rgba(92,58,30,.08)",
-        boxShadow: "0 1.2rem 2.6rem rgba(59,42,14,.08)",
+        borderRadius: extra.borderRadius ?? "1.5rem",
+        background: extra.background ?? "rgba(255,250,236,.82)",
+        border: extra.border ?? "1px solid rgba(92,58,30,.12)",
+        boxShadow: extra.boxShadow ?? "0 .75rem 1.8rem rgba(59,42,14,.07)",
         ...extra,
     };
 }
@@ -321,7 +538,7 @@ export function HomePage() {
     const episodeItems = Array.isArray(episodes.data) ? episodes.data : latestEpisodes;
 
     return (
-        <PageShell active="Beranda">
+        <CleanPageShell active="Beranda">
             <HomeHero item={{ ...featuredVideo, ...mainFeature }} />
             <main className="nt-container" style={{ display: "grid", gap: "2.4rem", paddingBottom: "3rem" }}>
                 <CleanIntro
@@ -405,7 +622,7 @@ export function HomePage() {
                     <img src={mascotImage} alt="" style={{ width: "12rem", justifySelf: "center" }} />
                 </section>
             </main>
-        </PageShell>
+        </CleanPageShell>
     );
 }
 
@@ -417,7 +634,7 @@ export function ShortsPage() {
     const current = items[active] ?? shorts[0];
 
     return (
-        <PageShell active="Shorts" dark>
+        <CleanPageShell active="Shorts" dark>
             <main className="nt-container" style={{ display: "grid", gridTemplateColumns: "19rem minmax(20rem, 38rem) 6rem", gap: "2.5rem", alignItems: "center", minHeight: "58rem", padding: "2rem 0" }}>
                 <aside>
                     <StatusLine status={status} />
@@ -458,7 +675,7 @@ export function ShortsPage() {
                     ))}
                 </aside>
             </main>
-        </PageShell>
+        </CleanPageShell>
     );
 }
 
@@ -468,7 +685,7 @@ export function ExplorePage() {
     const [activeGenre, setActiveGenre] = useState("Semua Genre");
 
     return (
-        <PageShell active="Jelajah">
+        <CleanPageShell active="Jelajah">
             <main className="nt-container" style={{ padding: "2rem 0 3rem" }}>
                 <StatusLine status={series.status} />
                 <ImageFrame src={mockups.explore} style={{ minHeight: "29rem", borderRadius: "2rem", padding: "2.5rem", color: "#fff", display: "grid", alignItems: "center", position: "relative", overflow: "hidden" }}>
@@ -506,7 +723,7 @@ export function ExplorePage() {
                     ))}
                 </div>
             </main>
-        </PageShell>
+        </CleanPageShell>
     );
 }
 
@@ -521,7 +738,7 @@ export function FavoritPage() {
     }
 
     return (
-        <PageShell active="Favorit">
+        <CleanPageShell active="Favorit">
             <main className="nt-container" style={{ padding: "2rem 0 3rem" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap", marginBottom: "1.5rem" }}>
                     <div style={{ display: "flex", gap: ".75rem", flexWrap: "wrap" }}>
@@ -535,7 +752,7 @@ export function FavoritPage() {
                 </div>
                 <StatusLine status={favorites.status} />
                 {mode === "dashboard" ? (
-                    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(18rem, 28rem)", gap: "1.5rem" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(17rem, 27rem)", gap: "1.5rem" }}>
                         <section style={{ display: "grid", gap: "1.5rem" }}>
                             {(Array.isArray(favorites.data) ? favorites.data : favoriteItems).map((item) => {
                                 const target = item.target ?? item.video ?? item;
@@ -606,7 +823,7 @@ export function FavoritPage() {
                     </>
                 )}
             </main>
-        </PageShell>
+        </CleanPageShell>
     );
 }
 
@@ -695,7 +912,7 @@ function AuthCard({ mode }) {
         : "Lanjutkan petualangan budaya dan kelola ruang NusaTales milikmu.";
 
     return (
-        <PageShell active="">
+        <CleanPageShell active="">
             <main className="nt-container" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 21rem", gap: "2rem", alignItems: "center", padding: "2rem 0 5rem" }}>
                 <section className="nt-card pad" style={{ border: "0.7rem solid rgba(199,243,106,.22)", background: "rgba(255,255,255,.7)" }}>
                     <h1 className="nt-title" style={{ textAlign: "center", fontSize: "3rem" }}>{isRegister ? "Daftar" : "Masuk"}</h1>
@@ -793,7 +1010,7 @@ function AuthCard({ mode }) {
                     <img src={mascotImage} alt="" style={{ width: "15rem", margin: "0 auto" }} />
                 </aside>
             </main>
-        </PageShell>
+        </CleanPageShell>
     );
 }
 
@@ -833,7 +1050,7 @@ export function PremiumPage() {
     }
 
     return (
-        <PageShell active="">
+        <CleanPageShell active="">
             <main className="nt-container" style={{ padding: "2rem 0 3rem" }}>
                 <h1 className="nt-title">Layanan Premium & Dompet</h1>
                 <p style={{ fontSize: "1.35rem", fontWeight: 850 }}>
@@ -841,7 +1058,7 @@ export function PremiumPage() {
                 </p>
                 {message ? <div className="nt-status" style={{ marginBottom: "1rem" }}>{message}</div> : null}
                 <StatusLine status={wallet.status === "fallback" || packages.status === "fallback" || plans.status === "fallback" || billing.status === "fallback" ? "fallback" : "ready"} />
-                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(18rem, 26rem)", gap: "1.5rem" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(17rem, 25rem)", gap: "1.5rem" }}>
                     <div style={{ display: "grid", gap: "1.5rem" }}>
                         <WalletBalanceCard onCheckout={(item) => checkout("koin", item)} />
                         <TransactionHistory items={Array.isArray(history.data) ? history.data : undefined} />
@@ -849,7 +1066,7 @@ export function PremiumPage() {
                     <NusaAdhiPanel onCheckout={(item) => checkout("subscription", item)} />
                 </div>
             </main>
-        </PageShell>
+        </CleanPageShell>
     );
 }
 
@@ -884,11 +1101,11 @@ export function StudioDashboardPage() {
     }
 
     return (
-        <StudioShell active="Beranda">
+        <CleanStudioShell active="Beranda">
             <StatusLine status={dashboard.status === "fallback" || analytics.status === "fallback" ? "fallback" : "ready"} />
             <h1 className="nt-title">Studio NusaKarya</h1>
             <p style={{ fontSize: "1.25rem", fontWeight: 850 }}>Kelola Animasi dan Cerita Nusantara</p>
-            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 18rem", gap: "1.5rem", marginTop: "2rem" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 17rem", gap: "1.5rem", marginTop: "2rem" }}>
                 <section className="nt-card pad">
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1.5rem" }}>
                         <h2 style={{ margin: 0, color: "var(--nt-brown)", fontWeight: 950 }}><Icon name="chart" /> Ringkasan Performa Karya</h2>
@@ -953,7 +1170,7 @@ export function StudioDashboardPage() {
                 </aside>
             </div>
             <MonetizationAgreementModal open={modalOpen} onClose={() => setModalOpen(false)} onAgree={agree} />
-        </StudioShell>
+        </CleanStudioShell>
     );
 }
 
@@ -1116,7 +1333,7 @@ export function StudioUploadPage() {
 
     if (!isAuthenticated) {
         return (
-            <PageShell active="">
+            <CleanPageShell active="">
                 <main className="nt-container" style={{ minHeight: "28rem", display: "grid", alignItems: "center", padding: "2rem 0 5rem" }}>
                     <section className="nt-card pad" style={{ maxWidth: "44rem", margin: "0 auto", textAlign: "center" }}>
                         <h1 className="nt-title" style={{ fontSize: "2.6rem" }}>Masuk untuk Mengunggah Karya</h1>
@@ -1139,17 +1356,17 @@ export function StudioUploadPage() {
                         </div>
                     </section>
                 </main>
-            </PageShell>
+            </CleanPageShell>
         );
     }
 
     return (
-        <StudioShell active="Karya">
+        <CleanStudioShell active="Karya">
             <h1 className="nt-title">Unggah Animasi Baru</h1>
             <p style={{ fontSize: "1.25rem", fontWeight: 800 }}>Bagikan karya indahmu ke seluruh Nusantara.</p>
             {message ? <div className="nt-status">{message}</div> : null}
             {error ? <div className="nt-status nt-error">{error}</div> : null}
-            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(18rem, 24rem)", gap: "1.5rem", marginTop: "1.5rem" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(17rem, 24rem)", gap: "1.5rem", marginTop: "1.5rem" }}>
                 <div style={{ display: "grid", gap: "1.5rem" }}>
                     <UploadDropzone onFile={handleFile} progress={progress} />
                     {getFirstFieldError(fieldErrors, "video") ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{getFirstFieldError(fieldErrors, "video")}</small> : null}
@@ -1244,7 +1461,7 @@ export function StudioUploadPage() {
                 </aside>
             </div>
             <MonetizationAgreementModal open={modalOpen} onClose={() => setModalOpen(false)} onAgree={agreePremium} />
-        </StudioShell>
+        </CleanStudioShell>
     );
 }
 
@@ -1257,7 +1474,7 @@ export function StudioKaryaPage() {
     }
 
     return (
-        <StudioShell active="Karya">
+        <CleanStudioShell active="Karya">
             <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "start" }}>
                 <div>
                     <h1 className="nt-heading">Karya Terbaru</h1>
@@ -1293,7 +1510,7 @@ export function StudioKaryaPage() {
                     ))}
                 </div>
             </section>
-        </StudioShell>
+        </CleanStudioShell>
     );
 }
 
@@ -1304,7 +1521,7 @@ export function ChannelPage() {
     const current = { ...creator, ...(channel.data ?? {}) };
 
     return (
-        <PageShell>
+        <CleanPageShell>
             <main className="nt-container" style={{ padding: "2rem 0 3rem" }}>
                 <StatusLine status={channel.status} />
                 <section className="nt-card" style={{ overflow: "hidden" }}>
@@ -1341,7 +1558,7 @@ export function ChannelPage() {
                     <BadgeCard />
                 </section>
             </main>
-        </PageShell>
+        </CleanPageShell>
     );
 }
 
@@ -1359,7 +1576,7 @@ export function ProfilePage() {
     }
 
     return (
-        <PageShell>
+        <CleanPageShell>
             <main className="nt-container" style={{ padding: "2rem 0 3rem" }}>
                 <section className="nt-card pad" style={{ display: "grid", gridTemplateColumns: "12rem 1fr", gap: "1.5rem", alignItems: "center", borderWidth: "4px" }}>
                     <div className="nt-avatar" style={{ width: "11rem", height: "11rem", borderRadius: "2rem" }}><img src={user?.profile_photo ?? mockups.studio} alt="" /></div>
@@ -1421,7 +1638,7 @@ export function ProfilePage() {
                     </section>
                 </div>
             </main>
-        </PageShell>
+        </CleanPageShell>
     );
 }
 
@@ -1453,11 +1670,11 @@ export function WatchPage() {
     }
 
     return (
-        <PageShell>
+        <CleanPageShell>
             <main className="nt-container" style={{ padding: "1rem 0 3rem" }}>
                 <div className="nt-status" style={{ marginBottom: "1rem" }}>Wah, kamu sedang menonton! Selesaikan video untuk +50 XP Budaya.</div>
                 {message ? <div className="nt-status" style={{ marginBottom: "1rem" }}>{message}</div> : null}
-                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(18rem, 22rem)", gap: "1.5rem" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(17rem, 21rem)", gap: "1.5rem" }}>
                     <div style={{ display: "grid", gap: "1.5rem" }}>
                         <div style={{ position: "relative" }}>
                             <VideoPlayer item={{ ...currentVideo, image: currentImage }} />
@@ -1503,7 +1720,7 @@ export function WatchPage() {
                     </aside>
                 </div>
             </main>
-        </PageShell>
+        </CleanPageShell>
     );
 }
 
@@ -1606,7 +1823,7 @@ export function LanglangPage() {
     const data = { ...culturalProgress, ...(progress.data ?? {}) };
 
     return (
-        <PageShell>
+        <CleanPageShell>
             <main className="nt-container" style={{ padding: "2rem 0 3rem" }}>
                 <StatusLine status={progress.status === "fallback" || missions.status === "fallback" || badges.status === "fallback" ? "fallback" : "ready"} />
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", marginBottom: "2rem" }}>
@@ -1614,7 +1831,7 @@ export function LanglangPage() {
                     <h2 style={{ color: "var(--nt-muted)", fontSize: "1.7rem" }}>Tahap: {data.stage}</h2>
                 </div>
                 <CulturalProgressPath levels={data.levels} />
-                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(18rem, 24rem)", gap: "2rem", marginTop: "2rem" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(17rem, 24rem)", gap: "2rem", marginTop: "2rem" }}>
                     <div style={{ display: "grid", gap: "2rem" }}>
                         <section>
                             <h2 className="nt-heading"><Icon name="map" /> Misi Berjalan</h2>
@@ -1670,7 +1887,7 @@ export function LanglangPage() {
                     </aside>
                 </div>
             </main>
-        </PageShell>
+        </CleanPageShell>
     );
 }
 
@@ -1678,7 +1895,7 @@ export function StorePage() {
     const assetData = useApiFallback(getAssets, products, []);
 
     return (
-        <PageShell>
+        <CleanPageShell>
             <main className="nt-container" style={{ display: "grid", gridTemplateColumns: "minmax(13rem, 16rem) minmax(0,1fr)", gap: "2rem", padding: "2rem 0 3rem" }}>
                 <aside style={{ display: "grid", gap: "1.5rem", alignContent: "start" }}>
                     <section className="nt-card pad nt-soft">
@@ -1712,7 +1929,7 @@ export function StorePage() {
                     </div>
                 </section>
             </main>
-        </PageShell>
+        </CleanPageShell>
     );
 }
 
@@ -1735,7 +1952,7 @@ export function SayembaraPage() {
     }
 
     return (
-        <PageShell>
+        <CleanPageShell>
             <main className="nt-container" style={{ padding: "1rem 0 4rem" }}>
                 <StatusLine status={challengeList.status === "fallback" || challengeDetail.status === "fallback" ? "fallback" : "ready"} />
                 {joinMessage ? <div className="nt-status" style={{ marginBottom: "1rem" }}>{joinMessage}</div> : null}
@@ -1757,7 +1974,7 @@ export function SayembaraPage() {
                 <div className="nt-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(14rem, 1fr))" }}>
                     {data.rewards.slice(0, 3).map((reward) => <ChallengeCard key={reward.title} reward={reward} />)}
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(18rem, 24rem)", gap: "2rem", marginTop: "2rem" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(17rem, 24rem)", gap: "2rem", marginTop: "2rem" }}>
                     <section>
                         <h2 className="nt-heading">Papan Peringkat Peserta</h2>
                         <p className="nt-subtle">Karya dengan dukungan suara terbanyak dari komunitas minggu ini.</p>
@@ -1791,7 +2008,7 @@ export function SayembaraPage() {
                     </aside>
                 </div>
             </main>
-        </PageShell>
+        </CleanPageShell>
     );
 }
 
@@ -1801,7 +2018,7 @@ export function SearchPage() {
     const results = useMemo(() => exploreCards.filter((item) => item.title.toLowerCase().includes(query.toLowerCase()) || !query), [query]);
 
     return (
-        <PageShell>
+        <CleanPageShell>
             <main className="nt-container" style={{ padding: "2rem 0 3rem" }}>
                 <h1 className="nt-heading">Hasil Pencarian</h1>
                 <p className="nt-subtle">Menampilkan kisah untuk "{query || "semua"}".</p>
@@ -1811,7 +2028,7 @@ export function SearchPage() {
                     </div>
                 ) : <EmptyState title="Kisah tidak ditemukan" body="Coba kata kunci legenda, mitologi, atau daerah Nusantara." />}
             </main>
-        </PageShell>
+        </CleanPageShell>
     );
 }
 
@@ -1821,7 +2038,7 @@ export function SeriesPage() {
     const series = useApiFallback(() => getSeriesDetail(slug), fallback, [slug]);
 
     return (
-        <PageShell active="Jelajah">
+        <CleanPageShell active="Jelajah">
             <main className="nt-container" style={{ padding: "2rem 0 3rem" }}>
                 <StatusLine status={series.status} />
                 <section className="nt-card pad" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 24rem", gap: "2rem", alignItems: "center" }}>
@@ -1838,22 +2055,22 @@ export function SeriesPage() {
                     {latestEpisodes.map((episode) => <EpisodeCard key={episode.id} item={episode} />)}
                 </div>
             </main>
-        </PageShell>
+        </CleanPageShell>
     );
 }
 
 export function SimpleStudioPage({ title = "Studio NusaKarya", active = "Beranda" }) {
     return (
-        <StudioShell active={active}>
+        <CleanStudioShell active={active}>
             <h1 className="nt-title">{title}</h1>
             <EmptyState title="Halaman studio siap dikembangkan" body="Struktur NusaKarya sudah terhubung dengan navigasi dan fallback data." />
-        </StudioShell>
+        </CleanStudioShell>
     );
 }
 
 export function NotFoundPage() {
     return (
-        <PageShell>
+        <CleanPageShell>
             <main className="nt-container" style={{ minHeight: "28rem", display: "grid", gridTemplateColumns: "minmax(0,1fr) 14rem", gap: "2rem", alignItems: "center", padding: "3rem 0" }}>
                 <section>
                     <span className="nt-pill green">404</span>
@@ -1868,6 +2085,6 @@ export function NotFoundPage() {
                 </section>
                 <img src={mascotImage} alt="" style={{ width: "13rem", justifySelf: "center" }} />
             </main>
-        </PageShell>
+        </CleanPageShell>
     );
 }
