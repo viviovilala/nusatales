@@ -37,7 +37,7 @@ import {
 import {
     categories as fallbackCategories,
     challenge as fallbackChallenge,
-    coinPackages,
+    koinPackages,
     comments,
     creators,
     culturalProgress,
@@ -193,19 +193,75 @@ function getFirstFieldError(errors, key) {
     return typeof error === "string" ? error : "";
 }
 
+const cleanTheme = {
+    cream: "#F5F0E0",
+    brown: "#3B2A0E",
+    darkBrown: "#5C3A1E",
+    muted: "#6B5A3E",
+    lime: "#8DC63F",
+    soft: "#DCCDAA",
+    panel: "#fff8e8",
+};
+
+const cleanTwoColumn = "repeat(auto-fit, minmax(18rem, 1fr))";
+const cleanFourGrid = "repeat(auto-fit, minmax(13rem, 1fr))";
+
+function cleanCardStyle(extra = {}) {
+    return {
+        borderRadius: "1.8rem",
+        background: extra.background ?? "rgba(255,255,255,.72)",
+        border: "1px solid rgba(92,58,30,.08)",
+        boxShadow: "0 1.2rem 2.6rem rgba(59,42,14,.08)",
+        ...extra,
+    };
+}
+
 function SectionHeader({ title, subtitle, link }) {
     return (
-        <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "end", marginBottom: "1rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "end", marginBottom: "1rem", flexWrap: "wrap" }}>
             <div>
-                <h2 className="nt-heading">{title}</h2>
-                {subtitle ? <p className="nt-subtle" style={{ margin: ".4rem 0 0", fontWeight: 800 }}>{subtitle}</p> : null}
+                <h2 className="nt-heading" style={{ color: cleanTheme.brown, letterSpacing: "-.03em" }}>{title}</h2>
+                {subtitle ? <p className="nt-subtle" style={{ margin: ".35rem 0 0", fontWeight: 750, color: cleanTheme.muted, lineHeight: 1.55 }}>{subtitle}</p> : null}
             </div>
             {link ? (
-                <Link to={link.to} style={{ color: "var(--nt-lime-dark)", fontWeight: 950, textDecoration: "none" }}>
+                <Link to={link.to} style={{ color: cleanTheme.lime, fontWeight: 950, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: ".35rem" }}>
                     {link.label} -&gt;
                 </Link>
             ) : null}
         </div>
+    );
+}
+
+function CleanIntro({ badge, title, subtitle, action, mascot = true }) {
+    return (
+        <section className="nt-card pad" style={cleanCardStyle({ display: "grid", gridTemplateColumns: mascot ? "minmax(0, 1fr) 12rem" : "1fr", gap: "1.5rem", alignItems: "center", background: "#ded4bd" })}>
+            <div>
+                {badge ? <span className="nt-pill green">{badge}</span> : null}
+                <h1 className="nt-title" style={{ marginTop: badge ? "1rem" : 0, color: cleanTheme.brown }}>{title}</h1>
+                {subtitle ? <p style={{ maxWidth: "48rem", color: cleanTheme.muted, lineHeight: 1.6, fontWeight: 800 }}>{subtitle}</p> : null}
+                {action ? <div style={{ display: "flex", gap: ".8rem", flexWrap: "wrap", marginTop: "1.1rem" }}>{action}</div> : null}
+            </div>
+            {mascot ? <img className="nt-hide-mobile" src={mascotImage} alt="" style={{ width: "11rem", justifySelf: "center" }} /> : null}
+        </section>
+    );
+}
+
+function SeriesCard({ item, rank = "1", large = false }) {
+    const image = item?.thumbnail_url ?? item?.image ?? mockups.explore;
+    const slug = item?.slug ?? item?.id ?? "kisah-seribu-candi";
+
+    return (
+        <Link to={`/watch/${slug}`} className="nt-card" style={cleanCardStyle({ overflow: "hidden", textDecoration: "none", color: "inherit", display: "block" })}>
+            <ImageFrame src={image} style={{ height: large ? "20rem" : "10.8rem", borderRadius: "1.4rem 1.4rem 0 0", position: "relative", overflow: "hidden" }}>
+                <span style={{ position: "absolute", left: "1rem", bottom: ".5rem", color: "rgba(255,255,255,.35)", fontFamily: "Georgia, serif", fontSize: large ? "5.8rem" : "3.8rem", fontWeight: 950, lineHeight: 1 }}>{rank}</span>
+                {large ? <span className="nt-pill green" style={{ position: "absolute", right: "1rem", top: "1rem" }}>Series Baru</span> : null}
+            </ImageFrame>
+            <div style={{ padding: "1rem" }}>
+                <h3 style={{ margin: 0, color: cleanTheme.brown, fontWeight: 950, fontSize: large ? "1.35rem" : "1rem" }}>{item?.title ?? "Kisah Nusantara"}</h3>
+                <p style={{ color: cleanTheme.muted, lineHeight: 1.45, fontWeight: 700, fontSize: ".88rem" }}>{item?.description ?? "Cerita budaya Indonesia dalam animasi singkat."}</p>
+                <small className="nt-subtle">{item?.genre ?? item?.category?.name ?? "Legenda"} • {item?.views ?? item?.view_count ?? "850K"} tayangan</small>
+            </div>
+        </Link>
     );
 }
 
@@ -218,30 +274,34 @@ function HomeHero({ item }) {
             <ImageFrame
                 src={image}
                 style={{
-                    minHeight: "28rem",
-                    borderRadius: "2.2rem",
+                    minHeight: "31rem",
+                    borderRadius: "2.4rem",
                     overflow: "hidden",
                     position: "relative",
                     display: "grid",
                     alignItems: "center",
-                    padding: "2.5rem",
+                    padding: "2.8rem",
                     color: "#fffdf7",
-                    boxShadow: "var(--nt-shadow)",
+                    boxShadow: "0 1.8rem 4rem rgba(59,42,14,.22)",
+                    backgroundColor: "#2a1200",
                 }}
             >
-                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, rgba(41,17,4,.88), rgba(41,17,4,.38), rgba(41,17,4,.05))" }} />
-                <div style={{ position: "relative", maxWidth: "39rem" }}>
-                    <div className="nt-avatar" style={{ width: "3.7rem", height: "3.7rem", marginBottom: "1rem" }}>
+                <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 76% 45%, rgba(192,64,0,.55) 0%, rgba(42,8,0,.7) 58%), linear-gradient(90deg, rgba(10,5,0,.94) 34%, rgba(10,5,0,.12) 100%)" }} />
+                <div style={{ position: "relative", maxWidth: "42rem" }}>
+                    <div className="nt-avatar" style={{ width: "4rem", height: "4rem", marginBottom: "1rem", borderColor: cleanTheme.lime }}>
                         <img src={mascotImage} alt="" />
                     </div>
-                    <h1 className="nt-title" style={{ color: "#fffdf7" }}>{item?.title ?? "RORO JONGGRANG"}</h1>
-                    <p style={{ maxWidth: "35rem", lineHeight: 1.55, fontWeight: 850 }}>{item?.subtitle ?? item?.description ?? "Kisah Seribu Candi dalam balutan animasi Nusantara."}</p>
-                    <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", marginTop: "1.4rem" }}>
-                        <Link className="nt-btn ghost" style={{ color: "#fffdf7", borderColor: "rgba(255,255,255,.5)" }} to="/register">Daftar</Link>
+                    <span className="nt-pill green">Lakon & NusaSaga</span>
+                    <h1 className="nt-title" style={{ color: "#fffdf7", fontSize: "clamp(3rem, 7vw, 6.4rem)", lineHeight: .95, marginTop: "1rem" }}>{item?.title ?? "RORO JONGGRANG"}</h1>
+                    <p style={{ maxWidth: "35rem", lineHeight: 1.6, fontWeight: 800, color: "#C8B89A" }}>
+                        {item?.subtitle ?? item?.description ?? "Temukan rahasia di balik terciptanya seribu candi dalam satu malam melalui kisah cinta dan janji yang terlanggari."}
+                    </p>
+                    <div style={{ display: "flex", gap: ".8rem", flexWrap: "wrap", marginTop: "1.5rem" }}>
                         <Link className="nt-btn green" to={`/watch/${slug}`}>
                             <Icon name="play" />
                             Tonton Sekarang
                         </Link>
+                        <Link className="nt-btn ghost" style={{ color: "#fffdf7", borderColor: "rgba(255,255,255,.45)" }} to="/register">Daftar Gratis</Link>
                     </div>
                 </div>
             </ImageFrame>
@@ -264,24 +324,22 @@ export function HomePage() {
         <PageShell active="Beranda">
             <HomeHero item={{ ...featuredVideo, ...mainFeature }} />
             <main className="nt-container" style={{ display: "grid", gap: "2.4rem", paddingBottom: "3rem" }}>
-                <section style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 16rem", alignItems: "center", gap: "2rem" }}>
-                    <div style={{ maxWidth: "46rem", margin: "0 auto" }}>
-                        <h2 className="nt-heading">yuk, jelajahi cerita nusantara !!!</h2>
-                        <p style={{ lineHeight: 1.55, fontWeight: 800 }}>
-                            Yuk, temukan cerita legenda, mitologi, hingga sejarah dari berbagai daerah di Indonesia lewat animasi pendek yang seru untuk dinikmati.
-                        </p>
+                <CleanIntro
+                    badge="Penjelajah Nusantara"
+                    title="Yuk, jelajahi cerita Nusantara!"
+                    subtitle="Temukan legenda, mitologi, dan sejarah dari berbagai daerah di Indonesia lewat animasi pendek yang seru, ringan, dan modern."
+                    action={
                         <Link to="/jelajah" className="nt-btn green">
                             <Icon name="play" />
-                            Mulai
+                            Mulai Jelajah
                         </Link>
-                    </div>
-                    <img className="nt-hide-mobile" src={mascotImage} alt="" style={{ width: "14rem", justifySelf: "center" }} />
-                </section>
+                    }
+                />
 
                 <section>
                     <SectionHeader title="Series Populer" subtitle="Kisah paling banyak ditonton minggu ini." link={{ to: "/jelajah", label: "Lihat Semua" }} />
                     <StatusLine status={series.status} />
-                    <div className="nt-grid" style={{ gridTemplateColumns: "minmax(18rem,1.18fr) minmax(18rem,1fr)" }}>
+                    <div className="nt-grid" style={{ gridTemplateColumns: cleanTwoColumn }}>
                         <SeriesCard item={seriesItems[0] ?? seriesPopular[0]} rank="1" large />
                         <div className="nt-grid nt-grid-2">
                             {seriesItems.slice(1, 5).map((item, index) => <SeriesCard key={item.id ?? item.slug} item={item} rank={index + 2} />)}
@@ -307,7 +365,7 @@ export function HomePage() {
                 <section>
                     <SectionHeader title="Episode Terbaru" link={{ to: "/jelajah", label: "Lihat Semua" }} />
                     <StatusLine status={episodes.status} />
-                    <div className="nt-grid" style={{ gridTemplateColumns: "repeat(5, minmax(10rem, 1fr))" }}>
+                    <div className="nt-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(10rem, 1fr))" }}>
                         {episodeItems.slice(0, 5).map((item) => <EpisodeCard key={item.id} item={item} />)}
                     </div>
                 </section>
@@ -374,7 +432,7 @@ export function ShortsPage() {
                             <Icon name="play" />
                         </Link>
                     </section>
-                    <h3 style={{ color: "#fffdf7" }}>Kreator Yang Serupa :</h3>
+                    <h3 style={{ color: "#fffdf7" }}>Kreator Serupa</h3>
                     <div style={{ display: "grid", gap: "0.8rem" }}>
                         {items.concat(items).slice(0, 6).map((item, index) => (
                             <button key={`${item.id}-${index}`} type="button" onClick={() => setActive(index % items.length)} style={{ display: "grid", gridTemplateColumns: "3rem 1fr", gap: ".55rem", alignItems: "center", background: "transparent", border: 0, color: index > 2 ? "rgba(255,255,255,.45)" : "#fff", textAlign: "left" }}>
@@ -407,7 +465,7 @@ export function ShortsPage() {
 export function ExplorePage() {
     const series = useApiFallback(getSeries, exploreCards, []);
     const genres = useApiFallback(getGenres, fallbackGenres, []);
-    const [activeGenre, setActiveGenre] = useState("All Genre");
+    const [activeGenre, setActiveGenre] = useState("Semua Genre");
 
     return (
         <PageShell active="Jelajah">
@@ -422,7 +480,7 @@ export function ExplorePage() {
                             ADI BAGAS KORO
                         </p>
                         <h1 className="nt-title" style={{ color: "#fff" }}>KISAH SERIBU CANDI</h1>
-                        <p style={{ lineHeight: 1.5, fontWeight: 800 }}>Temukan rahasia di balik terciptanya seribu candi dalam 1 malam melalui kisah cinta dan janji yang terlanggari.</p>
+                        <p style={{ lineHeight: 1.5, fontWeight: 800 }}>Temukan rahasia di balik terciptanya seribu candi dalam satu malam melalui kisah cinta dan janji yang terlanggari.</p>
                         <Link to="/watch/kisah-seribu-candi" className="nt-btn green">Tonton Sekarang</Link>
                     </div>
                 </ImageFrame>
@@ -477,7 +535,7 @@ export function FavoritPage() {
                 </div>
                 <StatusLine status={favorites.status} />
                 {mode === "dashboard" ? (
-                    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 28rem", gap: "1.5rem" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(18rem, 28rem)", gap: "1.5rem" }}>
                         <section style={{ display: "grid", gap: "1.5rem" }}>
                             {(Array.isArray(favorites.data) ? favorites.data : favoriteItems).map((item) => {
                                 const target = item.target ?? item.video ?? item;
@@ -497,7 +555,7 @@ export function FavoritPage() {
                             })}
                         </section>
                         <aside className="nt-card pad" style={{ background: "var(--nt-brown)", color: "#fffdf7", overflow: "hidden" }}>
-                            <h2 style={{ fontSize: "2rem", margin: 0 }}>Hallo petualang Nusa !!</h2>
+                            <h2 style={{ fontSize: "2rem", margin: 0 }}>Halo, Petualang Nusa!</h2>
                             <p style={{ marginTop: ".3rem", fontSize: "1.2rem" }}>Ternyata kamu tim ini ya!</p>
                             <div className="nt-card pad" style={{ background: "rgba(255,255,255,.14)", boxShadow: "none", marginBottom: "1.2rem" }}>
                                 <h3>Genre Favoritmu :</h3>
@@ -516,7 +574,7 @@ export function FavoritPage() {
                                 <div className="nt-card pad">
                                     <strong style={{ color: "var(--nt-gold)" }}>Supporter</strong>
                                     <p style={{ color: "#d94c12", fontSize: "1.5rem", fontWeight: 950, margin: ".2rem 0" }}>Rp15.000<small>/Bulan</small></p>
-                                    <Link to="/premium" className="nt-btn dark" style={{ width: "100%" }}>Upgrade plan</Link>
+                                    <Link to="/premium" className="nt-btn dark" style={{ width: "100%" }}>Upgrade Paket</Link>
                                 </div>
                                 <img src={mascotImage} alt="" style={{ width: "10rem", marginLeft: "-2rem" }} />
                             </div>
@@ -535,7 +593,7 @@ export function FavoritPage() {
                                         <div>
                                             <h2 style={{ color: "var(--nt-brown)", margin: "1.5rem 0 .3rem", fontSize: "1.55rem", fontWeight: 950 }}>{item.title}</h2>
                                             <h3 style={{ margin: 0, color: "var(--nt-brown)" }}>{item.creator}</h3>
-                                            <p className="nt-subtle">Terakhir di perbarui pada 26 Maret 2026</p>
+                                            <p className="nt-subtle">Terakhir diperbarui pada 26 Maret 2026</p>
                                         </div>
                                     </article>
                                 ))}
@@ -598,7 +656,7 @@ function AuthCard({ mode }) {
                 setUser?.(result.user, result.token);
             }
 
-            navigate("/", { replace: true });
+            navigate("/dashboard", { replace: true });
         } catch (requestError) {
             if (import.meta.env.DEV) {
                 console.error("API error:", requestError?.response?.status, requestError?.response?.data || requestError);
@@ -749,7 +807,7 @@ export function RegisterPage() {
 
 export function PremiumPage() {
     const wallet = useApiFallback(getWallet, { balance: 1250 }, []);
-    const packages = useApiFallback(getCoinPackages, coinPackages, []);
+    const packages = useApiFallback(getCoinPackages, koinPackages, []);
     const plans = useApiFallback(getSubscriptionPlans, subscriptionPlans, []);
     const history = useApiFallback(getWalletTransactions, undefined, []);
     const billing = useApiFallback(getBilling, [], []);
@@ -758,7 +816,7 @@ export function PremiumPage() {
     async function checkout(type, item) {
         setMessage("Membuat pembayaran Midtrans Snap...");
         try {
-            const response = type === "coin"
+            const response = type === "koin"
                 ? await checkoutCoinPackage(item.id)
                 : await checkoutSubscription(item.id);
             const token = response.data?.data?.snap_token;
@@ -783,9 +841,9 @@ export function PremiumPage() {
                 </p>
                 {message ? <div className="nt-status" style={{ marginBottom: "1rem" }}>{message}</div> : null}
                 <StatusLine status={wallet.status === "fallback" || packages.status === "fallback" || plans.status === "fallback" || billing.status === "fallback" ? "fallback" : "ready"} />
-                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 26rem", gap: "1.5rem" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(18rem, 26rem)", gap: "1.5rem" }}>
                     <div style={{ display: "grid", gap: "1.5rem" }}>
-                        <WalletBalanceCard onCheckout={(item) => checkout("coin", item)} />
+                        <WalletBalanceCard onCheckout={(item) => checkout("koin", item)} />
                         <TransactionHistory items={Array.isArray(history.data) ? history.data : undefined} />
                     </div>
                     <NusaAdhiPanel onCheckout={(item) => checkout("subscription", item)} />
@@ -860,7 +918,7 @@ export function StudioDashboardPage() {
                     </div>
                 </section>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 23rem", gap: "1.5rem", marginTop: "1.5rem" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(18rem, 23rem)", gap: "1.5rem", marginTop: "1.5rem" }}>
                 <section className="nt-card pad nt-soft">
                     <SectionHeader title="Kelola Seri" link={{ to: "/studio/videos", label: "Lihat Semua" }} />
                     <div style={{ display: "grid", gap: "1rem" }}>
@@ -917,7 +975,7 @@ export function StudioUploadPage() {
         date: "",
         contentType: "episode",
         visibility: "public",
-        coinPrice: "",
+        koinPrice: "",
         categoryId: "",
         genreIds: "",
         regionId: "",
@@ -1019,7 +1077,7 @@ export function StudioUploadPage() {
                 status,
                 scheduled_at: status === "scheduled" ? form.date : "",
                 is_premium: premium ? 1 : 0,
-                coin_price: premium ? form.coinPrice || 1 : 0,
+                koin_price: premium ? form.koinPrice || 1 : 0,
                 allow_comments: form.allowComments ? 1 : 0,
             }, {
                 onUploadProgress: (event) => {
@@ -1091,7 +1149,7 @@ export function StudioUploadPage() {
             <p style={{ fontSize: "1.25rem", fontWeight: 800 }}>Bagikan karya indahmu ke seluruh Nusantara.</p>
             {message ? <div className="nt-status">{message}</div> : null}
             {error ? <div className="nt-status nt-error">{error}</div> : null}
-            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 24rem", gap: "1.5rem", marginTop: "1.5rem" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(18rem, 24rem)", gap: "1.5rem", marginTop: "1.5rem" }}>
                 <div style={{ display: "grid", gap: "1.5rem" }}>
                     <UploadDropzone onFile={handleFile} progress={progress} />
                     {getFirstFieldError(fieldErrors, "video") ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{getFirstFieldError(fieldErrors, "video")}</small> : null}
@@ -1168,12 +1226,12 @@ export function StudioUploadPage() {
                         </label>
                         {form.scheduled ? <input className="nt-form-field" type="datetime-local" value={form.date} onChange={(event) => update("date", event.target.value)} /> : null}
                         {getFirstFieldError(fieldErrors, "scheduled_at") ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{getFirstFieldError(fieldErrors, "scheduled_at")}</small> : null}
-                        {premium ? <input className="nt-form-field" type="number" min="1" value={form.coinPrice} onChange={(event) => update("coinPrice", event.target.value)} placeholder="Harga NusaKoin" style={{ marginTop: "1rem" }} /> : null}
-                        {getFirstFieldError(fieldErrors, "coin_price") ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{getFirstFieldError(fieldErrors, "coin_price")}</small> : null}
+                        {premium ? <input className="nt-form-field" type="number" min="1" value={form.koinPrice} onChange={(event) => update("koinPrice", event.target.value)} placeholder="Harga NusaKoin" style={{ marginTop: "1rem" }} /> : null}
+                        {getFirstFieldError(fieldErrors, "koin_price") ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{getFirstFieldError(fieldErrors, "koin_price")}</small> : null}
                         <select className="nt-form-field" value={form.visibility} onChange={(event) => update("visibility", event.target.value)} style={{ marginTop: "1rem" }}>
-                            <option value="public">Public</option>
-                            <option value="unlisted">Unlisted</option>
-                            <option value="private">Private</option>
+                            <option value="public">Publik</option>
+                            <option value="unlisted">Tidak Terdaftar</option>
+                            <option value="private">Privat</option>
                         </select>
                         <label style={{ display: "flex", justifyContent: "space-between", marginTop: "1rem", fontWeight: 900 }}>
                             Izinkan NusaRembug
@@ -1256,7 +1314,7 @@ export function ChannelPage() {
                             <img src={current.avatar_url ?? current.avatar ?? mockups.studio} alt="" />
                         </div>
                         <div>
-                            <h1 className="nt-title" style={{ fontSize: "3rem" }}>{current.name ?? "Kadek Wijaya"} {current.verified || current.is_verified ? <span style={{ color: "var(--nt-lime-dark)", fontSize: "1.4rem" }}>verified</span> : null}</h1>
+                            <h1 className="nt-title" style={{ fontSize: "3rem" }}>{current.name ?? "Kadek Wijaya"} {current.Terverifikasi || current.is_Terverifikasi ? <span style={{ color: "var(--nt-lime-dark)", fontSize: "1.4rem" }}>Terverifikasi</span> : null}</h1>
                             <p style={{ fontWeight: 850 }}>{current.subtitle ?? "Sang Penjaga Legenda (Guardian of Legends)"}</p>
                         </div>
                         <button type="button" className="nt-btn green">Ikuti</button>
@@ -1271,7 +1329,7 @@ export function ChannelPage() {
                     ))}
                 </div>
                 <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", marginBottom: "1.5rem" }}>
-                    {["Portfolio Animasi", "Manuscript Digital", "Tentang Kreator"].map((tab, index) => <span key={tab} className={`nt-pill ${index === 0 ? "green" : ""}`}>{tab}</span>)}
+                    {["Portofolio Animasi", "Naskah Digital", "Tentang Kreator"].map((tab, index) => <span key={tab} className={`nt-pill ${index === 0 ? "green" : ""}`}>{tab}</span>)}
                 </div>
                 <div className="nt-grid nt-grid-3">
                     {["Misteri Candi Tersembunyi", "Tarian Sang Barong", "Phinisi: Samudera Harapan"].map((title, index) => (
@@ -1307,7 +1365,7 @@ export function ProfilePage() {
                     <div className="nt-avatar" style={{ width: "11rem", height: "11rem", borderRadius: "2rem" }}><img src={user?.profile_photo ?? mockups.studio} alt="" /></div>
                     <div>
                         <h1 className="nt-title" style={{ fontSize: "3.5rem", color: "#111" }}>{user?.name ?? "Kadek Wijaya"}</h1>
-                        <p style={{ color: "var(--nt-brown)", fontSize: "1.35rem", fontWeight: 850 }}>Aku penyuka animasi nusatales</p>
+                        <p style={{ color: "var(--nt-brown)", fontSize: "1.35rem", fontWeight: 850 }}>Petualang Nusa yang siap menjelajahi cerita budaya Indonesia.</p>
                         <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
                             <span className="nt-pill">Pelanggan Pro</span>
                             <span className="nt-pill green">12 Hari Beruntun</span>
@@ -1315,7 +1373,7 @@ export function ProfilePage() {
                         </div>
                     </div>
                 </section>
-                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 25rem", gap: "1.5rem", marginTop: "2rem" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(18rem, 25rem)", gap: "1.5rem", marginTop: "2rem" }}>
                     <section className="nt-card pad">
                         <div style={{ display: "flex", justifyContent: "space-between" }}>
                             <div><h2 className="nt-heading">Progres NusaLanglang</h2><p className="nt-subtle">Tingkat Pengetahuan Budaya</p></div>
@@ -1399,7 +1457,7 @@ export function WatchPage() {
             <main className="nt-container" style={{ padding: "1rem 0 3rem" }}>
                 <div className="nt-status" style={{ marginBottom: "1rem" }}>Wah, kamu sedang menonton! Selesaikan video untuk +50 XP Budaya.</div>
                 {message ? <div className="nt-status" style={{ marginBottom: "1rem" }}>{message}</div> : null}
-                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 22rem", gap: "1.5rem" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(18rem, 22rem)", gap: "1.5rem" }}>
                     <div style={{ display: "grid", gap: "1.5rem" }}>
                         <div style={{ position: "relative" }}>
                             <VideoPlayer item={{ ...currentVideo, image: currentImage }} />
@@ -1533,7 +1591,7 @@ function NavbarProxy(props) {
                     ].map(([label, path]) => <Link key={label} className={props.active === label ? "active" : ""} to={path}>{label}</Link>)}
                 </div>
                 <div className="nt-actions">
-                    <Link className="nt-pill" to="/premium"><Icon name="coin" /> 1,250 Koin</Link>
+                    <Link className="nt-pill" to="/premium"><Icon name="koin" /> 1,250 Koin</Link>
                     <Link className="nt-avatar" to="/profile"><img src={mascotImage} alt="" /></Link>
                 </div>
             </nav>
@@ -1556,7 +1614,7 @@ export function LanglangPage() {
                     <h2 style={{ color: "var(--nt-muted)", fontSize: "1.7rem" }}>Tahap: {data.stage}</h2>
                 </div>
                 <CulturalProgressPath levels={data.levels} />
-                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 24rem", gap: "2rem", marginTop: "2rem" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(18rem, 24rem)", gap: "2rem", marginTop: "2rem" }}>
                     <div style={{ display: "grid", gap: "2rem" }}>
                         <section>
                             <h2 className="nt-heading"><Icon name="map" /> Misi Berjalan</h2>
@@ -1606,7 +1664,7 @@ export function LanglangPage() {
                         </section>
                         <section className="nt-card pad" style={{ background: "var(--nt-brown)", color: "#fff" }}>
                             <h2 style={{ marginTop: 0 }}>Peti Harta Budaya</h2>
-                            <p>Kumpulkan 200 coin lagi untuk membuka peti harta legendaris.</p>
+                            <p>Kumpulkan 200 koin lagi untuk membuka peti harta legendaris.</p>
                             <div style={{ height: ".8rem", background: "rgba(255,255,255,.2)", borderRadius: "999px", overflow: "hidden" }}><div style={{ width: "78%", background: "var(--nt-lime)", height: "100%" }} /></div>
                         </section>
                     </aside>
@@ -1621,7 +1679,7 @@ export function StorePage() {
 
     return (
         <PageShell>
-            <main className="nt-container" style={{ display: "grid", gridTemplateColumns: "16rem minmax(0,1fr)", gap: "2rem", padding: "2rem 0 3rem" }}>
+            <main className="nt-container" style={{ display: "grid", gridTemplateColumns: "minmax(13rem, 16rem) minmax(0,1fr)", gap: "2rem", padding: "2rem 0 3rem" }}>
                 <aside style={{ display: "grid", gap: "1.5rem", alignContent: "start" }}>
                     <section className="nt-card pad nt-soft">
                         <h2 style={{ color: "var(--nt-brown)" }}>Kategori</h2>
@@ -1641,7 +1699,7 @@ export function StorePage() {
                     <StatusLine status={assetData.status} />
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <div>
-                            <h1 className="nt-heading">PasarNusa</h1>
+                            <h1 className="nt-heading">NusaToko</h1>
                             <p style={{ fontSize: "1.25rem", fontWeight: 850 }}>Lengkapi petualanganmu dengan aset pilihan</p>
                         </div>
                         <div style={{ display: "flex", gap: ".6rem" }}>
@@ -1681,7 +1739,7 @@ export function SayembaraPage() {
             <main className="nt-container" style={{ padding: "1rem 0 4rem" }}>
                 <StatusLine status={challengeList.status === "fallback" || challengeDetail.status === "fallback" ? "fallback" : "ready"} />
                 {joinMessage ? <div className="nt-status" style={{ marginBottom: "1rem" }}>{joinMessage}</div> : null}
-                <section className="nt-card pad" style={{ minHeight: "28rem", background: "var(--nt-brown)", color: "#fff0e5", display: "grid", gridTemplateColumns: "minmax(0,1fr) 28rem", gap: "2rem", alignItems: "center" }}>
+                <section className="nt-card pad" style={{ minHeight: "28rem", background: "var(--nt-brown)", color: "#fff0e5", display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(18rem,28rem)", gap: "2rem", alignItems: "center" }}>
                     <div>
                         <span className="nt-pill green">SAYEMBARA AKTIF</span>
                         <h1 className="nt-title" style={{ color: "#ffe1d5", marginTop: "1.5rem" }}>{data.title}</h1>
@@ -1696,10 +1754,10 @@ export function SayembaraPage() {
                     </div>
                 </section>
                 <SectionHeader title="Hadiah & Apresiasi" subtitle="Penghargaan tertinggi bagi para kreator terbaik NusaTales." />
-                <div className="nt-grid" style={{ gridTemplateColumns: "1.4fr .7fr .7fr" }}>
+                <div className="nt-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(14rem, 1fr))" }}>
                     {data.rewards.slice(0, 3).map((reward) => <ChallengeCard key={reward.title} reward={reward} />)}
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 24rem", gap: "2rem", marginTop: "2rem" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(18rem, 24rem)", gap: "2rem", marginTop: "2rem" }}>
                     <section>
                         <h2 className="nt-heading">Papan Peringkat Peserta</h2>
                         <p className="nt-subtle">Karya dengan dukungan suara terbanyak dari komunitas minggu ini.</p>
