@@ -86,7 +86,7 @@ function Hero() {
                             RORO JONGGRANG
                         </h1>
                         <p className="text-sm mb-7 max-w-md leading-relaxed" style={{ color: "#C8B89A" }}>
-                            Temukan rahasia di balik terciptanya seribu candi dalam 1 malam melalui kisah cinta dan janji yang terlanggar.
+                            Temukan rahasia di balik terciptanya seribu candi dalam 1 malam melalui kisah cinta dan janji yang terlanggari.
                         </p>
                         <div className="flex items-center gap-3 flex-wrap">
                             <Link to="/register" className="px-7 py-3 rounded-full font-semibold text-sm transition hover:opacity-90" style={{ backgroundColor: "#F5F0E0", color: "#1a0a00" }}>
