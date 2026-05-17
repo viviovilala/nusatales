@@ -6,11 +6,12 @@ import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import { AuthProvider } from "./contexts/AuthContext.jsx";
 import AdminStudio from "./pages/AdminStudio.jsx";
 import DebugApiPage from "./pages/DebugApi.jsx";
+import LandingPage from "./pages/Landingpage.jsx";
+
 import {
     ChannelPage,
     ExplorePage,
     FavoritPage,
-    HomePage,
     LanglangPage,
     LoginPage,
     MapPage,
@@ -37,7 +38,8 @@ function App() {
         <AuthProvider>
             <BrowserRouter>
                 <Routes>
-                    <Route path="/" element={<HomePage />} />
+                    <Route path="/" element={<LandingPage />} />
+
                     <Route path="/shorts" element={<ShortsPage />} />
                     <Route path="/jelajah" element={<ExplorePage />} />
                     <Route path="/explore" element={<ExplorePage />} />
@@ -56,6 +58,7 @@ function App() {
                     <Route path="/animations/:slug" element={<WatchPage />} />
                     <Route path="/series/:slug" element={<SeriesPage />} />
                     <Route path="/channel/:slug" element={<ChannelPage />} />
+
                     <Route
                         path="/profile"
                         element={
@@ -64,7 +67,9 @@ function App() {
                             </ProtectedRoute>
                         }
                     />
+
                     <Route path="/search" element={<SearchPage />} />
+
                     <Route
                         path="/dashboard"
                         element={
@@ -73,6 +78,7 @@ function App() {
                             </ProtectedRoute>
                         }
                     />
+
                     <Route
                         path="/studio"
                         element={
@@ -81,6 +87,7 @@ function App() {
                             </ProtectedRoute>
                         }
                     />
+
                     <Route
                         path="/creator/studio"
                         element={
@@ -89,10 +96,9 @@ function App() {
                             </ProtectedRoute>
                         }
                     />
-                    <Route
-                        path="/studio/upload"
-                        element={<StudioUploadPage />}
-                    />
+
+                    <Route path="/studio/upload" element={<StudioUploadPage />} />
+
                     <Route
                         path="/studio/karya"
                         element={
@@ -101,6 +107,7 @@ function App() {
                             </ProtectedRoute>
                         }
                     />
+
                     <Route path="/account" element={<ProtectedRoute allowedRoles={studioRoles}><ProfilePage /></ProtectedRoute>} />
                     <Route path="/studio/profile" element={<ProtectedRoute allowedRoles={studioRoles}><SimpleStudioPage title="Profil Studio" active="Profil" /></ProtectedRoute>} />
                     <Route path="/studio/analytics" element={<ProtectedRoute allowedRoles={studioRoles}><StudioDashboardPage /></ProtectedRoute>} />
@@ -110,7 +117,9 @@ function App() {
                     <Route path="/studio/monetization" element={<ProtectedRoute allowedRoles={studioRoles}><StudioDashboardPage /></ProtectedRoute>} />
                     <Route path="/studio/revenue" element={<ProtectedRoute allowedRoles={studioRoles}><SimpleStudioPage title="Pendapatan Kreator" active="Analisis" /></ProtectedRoute>} />
                     <Route path="/studio/assets" element={<ProtectedRoute allowedRoles={studioRoles}><SimpleStudioPage title="Aset Studio" active="Karya" /></ProtectedRoute>} />
+
                     {import.meta.env.DEV ? <Route path="/debug-api" element={<DebugApiPage />} /> : null}
+
                     <Route path="/admin" element={<ProtectedRoute allowedRoles={["admin"]}><AdminStudio /></ProtectedRoute>} />
                     <Route path="*" element={<NotFoundPage />} />
                 </Routes>
