@@ -59,11 +59,11 @@ class AuthService
         if (! empty($data['password'])) {
             if (empty($data['current_password']) || ! Hash::check($data['current_password'], $user->password)) {
                 throw ValidationException::withMessages([
-                    'current_password' => ['The current password is incorrect.'],
+                    'current_password' => ['Password saat ini tidak sesuai.'],
                 ]);
             }
 
-            $user->password = $data['password'];
+            $user->password = Hash::make($data['password']);
         }
 
         if (array_key_exists('nama', $data)) {

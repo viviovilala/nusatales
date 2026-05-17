@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class CreatorUserSeeder extends Seeder
 {
@@ -16,7 +17,7 @@ class CreatorUserSeeder extends Seeder
             ['email' => 'creator@nusatales.test'],
             [
                 'nama' => 'NusaTales Creator',
-                'password' => 'Password123!',
+                'password' => Hash::make('Password123!'),
                 'foto_profil' => null,
                 'tanggal_daftar' => now(),
                 'role' => 'user',

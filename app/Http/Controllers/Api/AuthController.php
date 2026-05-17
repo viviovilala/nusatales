@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Requests\Auth\UpdateProfileRequest;
-use App\Http\Resources\UserResource;
 use App\Services\AuthService;
 use Illuminate\Http\Request;
 
@@ -20,9 +19,13 @@ class AuthController extends Controller
     {
         $result = $this->authService->register($request->validated());
 
-        return $this->successResponse('Registrasi berhasil.', [
-            'user' => new UserResource($result['user']),
-            'token' => $result['token'],
+        return response()->json([
+            'success' => true,
+            'message' => 'Registrasi berhasil.',
+            'data' => [
+                'user' => $result['user'],
+                'token' => $result['token'],
+            ],
         ], 201);
     }
 
@@ -30,20 +33,27 @@ class AuthController extends Controller
     {
         $result = $this->authService->login($request->validated());
 
-        return $this->successResponse('Login berhasil.', [
-            'user' => new UserResource($result['user']),
-            'token' => $result['token'],
+        return response()->json([
+            'success' => true,
+            'message' => 'Login berhasil.',
+            'data' => [
+                'user' => $result['user'],
+                'token' => $result['token'],
+            ],
         ]);
     }
 
     public function me(Request $request)
     {
-        return $this->successResponse(
-            'Data pengguna berhasil dimuat.',
-            [
-                'user' => new UserResource($request->user()->load('channel')),
-            ]
-        );
+        $user = $request->user();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Data pengguna berhasil dimuat.',
+            'data' => [
+                'user' => $user->load('channel'),
+            ],
+        ]);
     }
 
     public function logout(Request $request)
@@ -57,6 +67,6 @@ class AuthController extends Controller
     {
         $user = $this->authService->updateProfile($request->user(), $request->validated());
 
-        return $this->successResponse('Profil berhasil diperbarui.', new UserResource($user));
+        return $this->successResponse('Profil berhasil diperbarui.', $user);
     }
 }

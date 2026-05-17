@@ -18,6 +18,16 @@ import {
     unwrapApiData,
 } from "../../data/nusatalesData";
 
+function getFirstFieldError(errors, key) {
+    const error = errors?.[key];
+
+    if (Array.isArray(error)) {
+        return error[0] ?? "";
+    }
+
+    return typeof error === "string" ? error : "";
+}
+
 export function Icon({ name, size = 20 }) {
     const icons = {
         search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></>,
@@ -487,10 +497,10 @@ export function CommentSection({ videoId, allowComments = true, seed = fallbackC
 
     function getCommentFieldError(error, fallbackMessage) {
         const errors = getApiValidationErrors(error);
+        const fieldMessage = getFirstFieldError(errors, "body")
+            || getFirstFieldError(errors, "content");
 
-        return errors.body?.[0]
-            ?? errors.content?.[0]
-            ?? getApiErrorMessage(error, fallbackMessage);
+        return fieldMessage || getApiErrorMessage(error, fallbackMessage);
     }
 
     async function reloadComments(showError = true) {

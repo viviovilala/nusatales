@@ -27,6 +27,8 @@ class User extends Authenticatable implements FilamentUser
 
     protected $table = 'users';
 
+    protected $appends = ['name'];
+
     /**
      * Get the attributes that should be cast.
      *
@@ -43,6 +45,11 @@ class User extends Authenticatable implements FilamentUser
     public function getRouteKeyName(): string
     {
         return 'user_id';
+    }
+
+    public function getNameAttribute(): ?string
+    {
+        return $this->attributes['nama'] ?? null;
     }
 
     public function isAdmin(): bool

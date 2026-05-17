@@ -25,6 +25,7 @@ export async function login(payload = {}) {
         email: payload.email,
         password: payload.password,
     });
+
     const { token, user } = normalizeAuth(response);
 
     if (!token) {

@@ -11,14 +11,10 @@ import {
     me as fetchMe,
     register as registerRequest,
     updateProfile as updateProfileRequest,
-} from "../services/authApi";
+} from "../services/authService";
 import { activateStudio as activateStudioRequest } from "../services/studioApi";
 
 const AuthContext = createContext(null);
-
-function isUnauthorized(error) {
-    return error?.response?.status === 401;
-}
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
@@ -29,11 +25,6 @@ export function AuthProvider({ children }) {
         let ignore = false;
 
         async function bootstrapAuth() {
-            if (!getStoredToken()) {
-                setLoading(false);
-                return;
-            }
-
             const storedToken = getStoredToken();
 
             if (!storedToken) {
@@ -48,14 +39,12 @@ export function AuthProvider({ children }) {
                     setUser(authenticatedUser);
                     setToken(storedToken);
                 }
-            } catch (error) {
-                if (isUnauthorized(error)) {
-                    clearStoredToken();
-                }
+            } catch (_error) {
+                clearStoredToken();
 
                 if (!ignore) {
                     setUser(null);
-                    setToken(isUnauthorized(error) ? null : getStoredToken());
+                    setToken(null);
                 }
             } finally {
                 if (!ignore) {
@@ -92,7 +81,7 @@ export function AuthProvider({ children }) {
 
     const channel = user?.channel ?? null;
     const hasChannel = Boolean(channel);
-    const isAuthenticated = Boolean(token && user);
+    const isAuthenticated = Boolean(user);
 
     async function refreshUser() {
         if (!getStoredToken()) {
@@ -110,12 +99,10 @@ export function AuthProvider({ children }) {
 
             return authenticatedUser;
         } catch (error) {
-            if (isUnauthorized(error)) {
-                clearStoredToken();
-            }
+            clearStoredToken();
 
             setUser(null);
-            setToken(isUnauthorized(error) ? null : getStoredToken());
+            setToken(null);
 
             throw error;
         }
@@ -128,7 +115,7 @@ export function AuthProvider({ children }) {
         isLoading: loading,
         channel,
         hasChannel,
-        canUpload: isAuthenticated && hasChannel,
+        canUpload: Boolean(user && channel),
         isAdmin: user?.role === "admin",
         isAuthenticated,
         async login(credentials, passwordArg) {

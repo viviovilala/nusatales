@@ -182,6 +182,16 @@ function StatusLine({ status }) {
     return null;
 }
 
+function getFirstFieldError(errors, key) {
+    const error = errors?.[key];
+
+    if (Array.isArray(error)) {
+        return error[0] ?? "";
+    }
+
+    return typeof error === "string" ? error : "";
+}
+
 function SectionHeader({ title, subtitle, link }) {
     return (
         <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "end", marginBottom: "1rem" }}>
@@ -544,12 +554,14 @@ export function FavoritPage() {
 function AuthCard({ mode }) {
     const navigate = useNavigate();
     const location = useLocation();
-    const { login, register } = useAuth();
+    const { login, register, refreshUser, setUser } = useAuth();
     const [form, setForm] = useState({ name: "", email: "", password: "", password_confirmation: "" });
     const [message, setMessage] = useState(location.state?.message ?? "");
     const [error, setError] = useState("");
     const [fieldErrors, setFieldErrors] = useState({});
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
     const isRegister = mode === "register";
     const intendedPath = location.state?.from || "/";
 
@@ -559,35 +571,49 @@ function AuthCard({ mode }) {
 
     async function submit(event) {
         event.preventDefault();
+
+        if (loading) {
+            return;
+        }
+
         setLoading(true);
         setError("");
         setFieldErrors({});
         setMessage("");
 
         try {
-            if (isRegister) {
-                await register({
-                    name: form.name,
-                    email: form.email,
+            const result = isRegister
+                ? await register({
+                    name: form.name.trim(),
+                    email: form.email.trim(),
                     password: form.password,
                     password_confirmation: form.password_confirmation,
-                });
-            } else {
-                await login({
-                    email: form.email,
+                })
+                : await login({
+                    email: form.email.trim(),
                     password: form.password,
                 });
+
+            if (result?.user) {
+                setUser?.(result.user, result.token);
             }
 
-            setMessage(isRegister ? "Akun NusaTales berhasil dibuat." : "Berhasil masuk ke NusaTales.");
-            window.setTimeout(() => navigate(isRegister ? "/" : intendedPath), 350);
+            if (refreshUser) {
+                await refreshUser();
+            }
+
+            if (isRegister) {
+                navigate("/", { replace: true });
+            } else {
+                navigate(intendedPath, { replace: true });
+            }
         } catch (requestError) {
             if (import.meta.env.DEV) {
                 console.error("API error:", requestError?.response?.status, requestError?.response?.data || requestError);
             }
 
             const errors = getApiValidationErrors(requestError);
-            const passwordError = Array.isArray(errors.password) ? errors.password[0] : errors.password;
+            const passwordError = getFirstFieldError(errors, "password");
             const shouldMoveConfirmationError = isRegister
                 && passwordError
                 && /confirmation|konfirmasi|match/i.test(passwordError)
@@ -597,18 +623,26 @@ function AuthCard({ mode }) {
                 : errors;
 
             setFieldErrors(nextErrors);
-            setError(getApiErrorMessage(requestError, "Validasi gagal. Periksa kembali isian formulir."));
+            setError(getApiErrorMessage(requestError));
             setForm((current) => ({ ...current, password: "", password_confirmation: "" }));
         } finally {
             setLoading(false);
         }
     }
 
-    const passwordFieldError = Array.isArray(fieldErrors.password) ? fieldErrors.password[0] : fieldErrors.password;
-    const confirmationFieldError = Array.isArray(fieldErrors.password_confirmation) ? fieldErrors.password_confirmation[0] : fieldErrors.password_confirmation;
+    const nameFieldError = getFirstFieldError(fieldErrors, "name");
+    const emailFieldError = getFirstFieldError(fieldErrors, "email");
+    const passwordFieldError = getFirstFieldError(fieldErrors, "password");
+    const confirmationFieldError = getFirstFieldError(fieldErrors, "password_confirmation");
     const passwordConfirmationError = confirmationFieldError
         || (isRegister && passwordFieldError && /confirmation|konfirmasi|match/i.test(passwordFieldError) ? passwordFieldError : "");
     const visiblePasswordError = passwordConfirmationError === passwordFieldError ? "" : passwordFieldError;
+    const submitText = loading
+        ? (isRegister ? "Mendaftarkan..." : "Memasuki...")
+        : (isRegister ? "Daftar" : "Masuk");
+    const asideCopy = isRegister
+        ? "Mulai sebagai Petualang Nusa. Saat siap berkarya, aktifkan Studio NusaKarya dari akunmu."
+        : "Lanjutkan petualangan budaya dan kelola ruang NusaTales milikmu.";
 
     return (
         <PageShell active="">
@@ -621,28 +655,67 @@ function AuthCard({ mode }) {
                         {isRegister ? (
                             <label>
                                 <input className="nt-form-field" value={form.name} onChange={(event) => update("name", event.target.value)} placeholder="Nama lengkap anda..." required />
-                                {fieldErrors.name ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.name[0]}</small> : null}
+                                {nameFieldError ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{nameFieldError}</small> : null}
                             </label>
                         ) : null}
                         <label>
                             <input className="nt-form-field" value={form.email} onChange={(event) => update("email", event.target.value)} type="email" placeholder="Masukkan email anda..." required />
-                            {fieldErrors.email ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.email[0]}</small> : null}
+                            {emailFieldError ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{emailFieldError}</small> : null}
                         </label>
-                        <div style={{ position: "relative" }}>
-                            <input className="nt-form-field" value={form.password} onChange={(event) => update("password", event.target.value)} type="password" minLength={isRegister ? 8 : undefined} placeholder="Masukkan password anda..." required />
-                            <span style={{ position: "absolute", right: "1.3rem", top: "50%", transform: "translateY(-50%)", color: "var(--nt-muted)" }}>hide</span>
+                        <div>
+                            <div style={{ position: "relative" }}>
+                                <input
+                                    className="nt-form-field"
+                                    value={form.password}
+                                    onChange={(event) => update("password", event.target.value)}
+                                    type={showPassword ? "text" : "password"}
+                                    minLength={isRegister ? 8 : undefined}
+                                    placeholder="Masukkan password anda..."
+                                    required
+                                    style={{ paddingRight: "7.5rem" }}
+                                />
+                                <button
+                                    type="button"
+                                    aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                                    aria-pressed={showPassword}
+                                    onClick={() => setShowPassword((value) => !value)}
+                                    style={{ position: "absolute", right: ".65rem", top: "50%", transform: "translateY(-50%)", border: 0, background: "transparent", color: "var(--nt-brown)", fontWeight: 900, cursor: "pointer" }}
+                                >
+                                    {showPassword ? "Sembunyikan" : "Tampilkan"}
+                                </button>
+                            </div>
                             {visiblePasswordError ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{visiblePasswordError}</small> : null}
                         </div>
                         {isRegister ? (
-                            <label>
-                                <input className="nt-form-field" value={form.password_confirmation} onChange={(event) => update("password_confirmation", event.target.value)} type="password" minLength={8} placeholder="Ulangi password anda..." required />
+                            <label style={{ display: "grid", gap: ".35rem" }}>
+                                <div style={{ position: "relative" }}>
+                                    <input
+                                        className="nt-form-field"
+                                        value={form.password_confirmation}
+                                        onChange={(event) => update("password_confirmation", event.target.value)}
+                                        type={showPasswordConfirmation ? "text" : "password"}
+                                        minLength={8}
+                                        placeholder="Ulangi password anda..."
+                                        required
+                                        style={{ paddingRight: "7.5rem" }}
+                                    />
+                                    <button
+                                        type="button"
+                                        aria-label={showPasswordConfirmation ? "Sembunyikan konfirmasi password" : "Tampilkan konfirmasi password"}
+                                        aria-pressed={showPasswordConfirmation}
+                                        onClick={() => setShowPasswordConfirmation((value) => !value)}
+                                        style={{ position: "absolute", right: ".65rem", top: "50%", transform: "translateY(-50%)", border: 0, background: "transparent", color: "var(--nt-brown)", fontWeight: 900, cursor: "pointer" }}
+                                    >
+                                        {showPasswordConfirmation ? "Sembunyikan" : "Tampilkan"}
+                                    </button>
+                                </div>
                                 {passwordConfirmationError ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{passwordConfirmationError}</small> : null}
                             </label>
                         ) : (
                             <Link to="/login" style={{ justifySelf: "end", color: "#ff6975", textDecoration: "none", fontWeight: 850 }}>Lupa Password ?</Link>
                         )}
                         <button type="submit" className="nt-btn green" disabled={loading} style={{ width: "100%", boxShadow: "0 0.75rem 1.4rem rgba(90,127,7,.2)" }}>
-                            {loading ? "Memproses..." : isRegister ? "Daftar" : "Masuk"}
+                            {submitText}
                         </button>
                     </form>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: "1rem", margin: "1.4rem 0" }}>
@@ -652,7 +725,7 @@ function AuthCard({ mode }) {
                     </div>
                     <div className="nt-grid nt-grid-3">
                         {["Facebook", "Google", "Apple"].map((provider) => (
-                            <button key={provider} type="button" className="nt-btn ghost" onClick={() => setMessage("Fitur login sosial segera hadir")}>
+                            <button key={provider} type="button" className="nt-btn ghost" onClick={() => setMessage("Fitur login sosial segera hadir.")}>
                                 {provider}
                             </button>
                         ))}
@@ -666,6 +739,7 @@ function AuthCard({ mode }) {
                     <div className="nt-card pad" style={{ display: "inline-block", borderColor: "var(--nt-lime)", borderRadius: "50%", color: "var(--nt-lime-dark)", fontWeight: 950, marginBottom: "1rem" }}>
                         CERITA SERU<br />SIAP<br />DIMULAI !!!
                     </div>
+                    <p style={{ color: "var(--nt-brown)", fontWeight: 850, lineHeight: 1.6 }}>{asideCopy}</p>
                     <img src={mascotImage} alt="" style={{ width: "15rem", margin: "0 auto" }} />
                 </aside>
             </main>
@@ -980,8 +1054,8 @@ export function StudioUploadPage() {
             <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 24rem", gap: "1.5rem", marginTop: "1.5rem" }}>
                 <div style={{ display: "grid", gap: "1.5rem" }}>
                     <UploadDropzone onFile={handleFile} progress={progress} />
-                    {fieldErrors.video ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.video[0]}</small> : null}
-                    {fieldErrors.video_file ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.video_file[0]}</small> : null}
+                    {getFirstFieldError(fieldErrors, "video") ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{getFirstFieldError(fieldErrors, "video")}</small> : null}
+                    {getFirstFieldError(fieldErrors, "video_file") ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{getFirstFieldError(fieldErrors, "video_file")}</small> : null}
                     <section className="nt-card pad">
                         <h2 style={{ marginTop: 0, color: "var(--nt-brown)" }}>Jenis Karya</h2>
                         <div className="nt-grid nt-grid-2" style={{ marginBottom: "1rem" }}>
@@ -1002,13 +1076,13 @@ export function StudioUploadPage() {
                             ))}
                         </div>
                         <input className="nt-form-field" value={form.title} onChange={(event) => update("title", event.target.value)} placeholder="Judul Karya" />
-                        {fieldErrors.title ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.title[0]}</small> : null}
-                        {fieldErrors.judul ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.judul[0]}</small> : null}
+                        {getFirstFieldError(fieldErrors, "title") ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{getFirstFieldError(fieldErrors, "title")}</small> : null}
+                        {getFirstFieldError(fieldErrors, "judul") ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{getFirstFieldError(fieldErrors, "judul")}</small> : null}
                         <textarea className="nt-form-field" value={form.description} onChange={(event) => update("description", event.target.value)} placeholder="Deskripsi Cerita" style={{ marginTop: "1rem" }} />
-                        {fieldErrors.description ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.description[0]}</small> : null}
-                        {fieldErrors.deskripsi ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.deskripsi[0]}</small> : null}
+                        {getFirstFieldError(fieldErrors, "description") ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{getFirstFieldError(fieldErrors, "description")}</small> : null}
+                        {getFirstFieldError(fieldErrors, "deskripsi") ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{getFirstFieldError(fieldErrors, "deskripsi")}</small> : null}
                         <input className="nt-form-field" value={form.tags} onChange={(event) => update("tags", event.target.value)} placeholder="Tagar Budaya" style={{ marginTop: "1rem" }} />
-                        {fieldErrors.tags ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.tags[0]}</small> : null}
+                        {getFirstFieldError(fieldErrors, "tags") ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{getFirstFieldError(fieldErrors, "tags")}</small> : null}
                     </section>
                     <section className="nt-card pad">
                         <h2 style={{ marginTop: 0, color: "var(--nt-brown)" }}>Detail Budaya</h2>
@@ -1020,16 +1094,16 @@ export function StudioUploadPage() {
                             <input className="nt-form-field" value={form.seriesId} onChange={(event) => update("seriesId", event.target.value)} placeholder="Series ID" />
                             <input className="nt-form-field" type="number" min="1" value={form.episodeNumber} onChange={(event) => update("episodeNumber", event.target.value)} placeholder="Nomor episode" />
                         </div>
-                        {fieldErrors.category_id ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.category_id[0]}</small> : null}
-                        {fieldErrors.genre_ids ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.genre_ids[0]}</small> : null}
-                        {fieldErrors.region_id ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.region_id[0]}</small> : null}
+                        {getFirstFieldError(fieldErrors, "category_id") ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{getFirstFieldError(fieldErrors, "category_id")}</small> : null}
+                        {getFirstFieldError(fieldErrors, "genre_ids") ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{getFirstFieldError(fieldErrors, "genre_ids")}</small> : null}
+                        {getFirstFieldError(fieldErrors, "region_id") ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{getFirstFieldError(fieldErrors, "region_id")}</small> : null}
                     </section>
                     <section className="nt-card pad">
                         <h2 style={{ marginTop: 0, color: "var(--nt-brown)" }}>Pilih Thumbnail</h2>
                         <ThumbnailSelector />
                         <input className="nt-form-field" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => update("thumbnailFile", event.target.files?.[0] ?? null)} style={{ marginTop: "1rem" }} />
-                        {fieldErrors.thumbnail ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.thumbnail[0]}</small> : null}
-                        {fieldErrors.thumbnail_file ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.thumbnail_file[0]}</small> : null}
+                        {getFirstFieldError(fieldErrors, "thumbnail") ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{getFirstFieldError(fieldErrors, "thumbnail")}</small> : null}
+                        {getFirstFieldError(fieldErrors, "thumbnail_file") ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{getFirstFieldError(fieldErrors, "thumbnail_file")}</small> : null}
                     </section>
                 </div>
                 <aside style={{ display: "grid", gap: "1.5rem" }}>
@@ -1053,9 +1127,9 @@ export function StudioUploadPage() {
                             <input type="checkbox" checked={form.scheduled} onChange={(event) => update("scheduled", event.target.checked)} />
                         </label>
                         {form.scheduled ? <input className="nt-form-field" type="datetime-local" value={form.date} onChange={(event) => update("date", event.target.value)} /> : null}
-                        {fieldErrors.scheduled_at ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.scheduled_at[0]}</small> : null}
+                        {getFirstFieldError(fieldErrors, "scheduled_at") ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{getFirstFieldError(fieldErrors, "scheduled_at")}</small> : null}
                         {premium ? <input className="nt-form-field" type="number" min="1" value={form.coinPrice} onChange={(event) => update("coinPrice", event.target.value)} placeholder="Harga NusaKoin" style={{ marginTop: "1rem" }} /> : null}
-                        {fieldErrors.coin_price ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{fieldErrors.coin_price[0]}</small> : null}
+                        {getFirstFieldError(fieldErrors, "coin_price") ? <small style={{ color: "#9a3b22", fontWeight: 850 }}>{getFirstFieldError(fieldErrors, "coin_price")}</small> : null}
                         <select className="nt-form-field" value={form.visibility} onChange={(event) => update("visibility", event.target.value)} style={{ marginTop: "1rem" }}>
                             <option value="public">Public</option>
                             <option value="unlisted">Unlisted</option>
