@@ -43,7 +43,7 @@ export default function Register() {
     return (
         <div className="min-h-screen px-6 py-10" style={{ backgroundColor: "#F5F0E0" }}>
             <div className="max-w-5xl mx-auto grid lg:grid-cols-[0.95fr_1.05fr] gap-8 items-center">
-                <section className="rounded-[32px] p-8 text-white" style={{ background: "linear-gradient(135deg, #5C3A1E 0%, #A56E28 100%)" }}>
+                <section className="rounded-4xl p-8 text-white" style={{ background: "linear-gradient(135deg, #5C3A1E 0%, #A56E28 100%)" }}>
                     <p className="text-sm uppercase tracking-[0.3em] text-amber-100 mb-3">NusaKarya</p>
                     <h1 className="text-5xl font-bold leading-tight mb-4" style={{ fontFamily: "Georgia, serif" }}>
                         Start building your cultural animation studio.
@@ -56,7 +56,7 @@ export default function Register() {
 
                 <form
                     onSubmit={handleSubmit}
-                    className="rounded-[32px] p-8 border shadow-sm"
+                    className="rounded-4xl p-8 border shadow-sm"
                     style={{ backgroundColor: "#FFFFFF", borderColor: "#E8DFC7" }}
                 >
                     <div className="flex items-center justify-between gap-4 mb-8">

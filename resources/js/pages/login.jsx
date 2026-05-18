@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { login } from "../services/authService";
 import { useAuth } from "../contexts/AuthContext";
 import AppNavbar from "../navbar/AppNavbar.jsx";
+import Footer from "./components/Footer.jsx";
 
 export default function Login() {
     const [showPassword, setShowPassword] = useState(false);
@@ -42,7 +43,8 @@ export default function Login() {
             <AppNavbar current="login" />
 
             {/* Main content */}
-            <div className="flex-1 flex items-start justify-center gap-8 px-4 pt-10 pb-16 relative">
+            <div className="flex-1 flex items-start justify-center gap-8 px-6 pt-10 pb-16">
+
                 {/* Login Card */}
                 <form
                     onSubmit={handleSubmit}
@@ -154,9 +156,8 @@ export default function Login() {
                     </p>
                 </form>
 
-                {/* Mascot Sitompel */}
+                {/* Mascot */}
                 <div className="hidden lg:flex flex-col items-center relative mt-10">
-                    {/* Speech bubble */}
                     <div className="relative mb-4">
                         <div className="px-6 py-4 rounded-2xl border-2 text-center" style={{ backgroundColor: "#F0FFF0", borderColor: "#8DC63F" }}>
                             <p className="font-bold text-sm leading-snug" style={{ color: "#5A8A00", fontFamily: "Georgia, serif" }}>
@@ -169,38 +170,11 @@ export default function Login() {
                             borderTop: "12px solid #8DC63F"
                         }}></div>
                     </div>
-                    <img src="/poto/nunjuk.webp" className="w-48 h-auto" />
+                    <img src="/poto/nunjuk.webp" className="w-48 h-auto" alt="Sitompel" />
                 </div>
             </div>
 
-            {/* Footer */}
-            <footer className="py-10 px-4" style={{ backgroundColor: "#5C3A1E" }}>
-                <h2 className="text-center text-3xl font-bold mb-6" style={{ color: "#8DC63F", fontFamily: "Georgia, serif" }}>NusaTales</h2>
-                <div className="flex items-center justify-center gap-8 mb-4 flex-wrap">
-                    {["Tentang Kami", "Kredit Budaya", "Privasi", "Syarat & Ketentuan"].map((item, i) => (
-                        <a key={item} href="#" className="text-sm transition hover:opacity-80" style={{ color: "#F5F0E0" }}>
-                            {item}
-                            {i === 1 && <span className="block w-8 h-0.5 mx-auto mt-1" style={{ backgroundColor: "#8DC63F" }}></span>}
-                        </a>
-                    ))}
-                </div>
-                <div className="w-16 h-px mx-auto mb-4" style={{ backgroundColor: "#8DC63F" }}></div>
-                <p className="text-center text-xs" style={{ color: "#C8B89A" }}>© 2026 NusaTales: Sang Penjaga Cerita Nusantara.</p>
-                <p className="text-center text-xs mt-1" style={{ color: "#C8B89A" }}>Dibuat dengan cinta untuk warisan budaya.</p>
-
-                {/* Scroll to top */}
-                <div className="flex justify-center mt-6">
-                    <button
-                        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                        className="w-10 h-10 rounded-full flex items-center justify-center transition hover:opacity-80"
-                        style={{ backgroundColor: "#7A5230" }}
-                    >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F5F0E0" strokeWidth="2.5">
-                            <path d="M18 15l-6-6-6 6"/>
-                        </svg>
-                    </button>
-                </div>
-            </footer>
+            <Footer />
         </div>
     );
 }
