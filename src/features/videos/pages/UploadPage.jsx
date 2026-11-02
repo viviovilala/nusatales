@@ -280,7 +280,7 @@ export default function UploadPage({ embedded = false, onStatusChange }) {
             } else {
                 setUploadPhase(err.phase || "UPLOAD_FAILED");
                 if (err.draftId) setPersistedDraftId(err.draftId);
-                setErrorMessage(`${normalizeSupabaseError(err, "Gagal mengunggah video. Silakan coba lagi.")}${err.cleanupErrors?.length ? " Sebagian draf atau berkas belum dibersihkan. Hapus tayangan draf yang gagal di Studio sebelum mencoba nomor episode yang sama." : ""}`);
+                setErrorMessage(`${normalizeSupabaseError(err, "Gagal mengunggah video. Silakan coba lagi.")}${err.cleanupErrors?.length ? " Sebagian draf atau berkas mungkin belum dibersihkan. Periksa penyimpanan dan hubungi administrator jika masalah berulang." : ""}`);
             }
         } finally {
             if (activeOperationRef.current === operation) activeOperationRef.current = null;

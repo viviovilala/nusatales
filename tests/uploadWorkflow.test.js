@@ -112,6 +112,37 @@ describe("Upload operation cancellation", () => {
         expect(deps.cleanup).not.toHaveBeenCalled();
     });
 
+    it.each(["reel", "animation"])("removes %s draft and files after a non-cancel video transfer failure", async (contentType) => {
+        const deps = fixture();
+        deps.upload.mockResolvedValueOnce({}).mockRejectedValueOnce(new Error("Transfer interrupted"));
+        const work = runVideoUpload({ ...input, contentType, animationId: contentType === "animation" ? "parent" : undefined }, createUploadOperation(), vi.fn(), deps);
+        await expect(work).rejects.toMatchObject({ message: "Transfer interrupted", cleanupErrors: [] });
+        expect(deps.repository.softDeleteVideo).toHaveBeenCalledExactlyOnceWith("draft");
+        expect(deps.cleanup).toHaveBeenCalledWith("videos", expect.stringMatching(/^owner\/draft\/media-.*\.mp4$/));
+        expect(deps.cleanup).toHaveBeenCalledWith("thumbnails", expect.stringMatching(/^owner\/draft\/thumb-.*\.jpg$/));
+        expect(deps.repository.publishVideo).not.toHaveBeenCalled();
+    });
+
+    it("cleans up a Reel after a failed metadata update, before publication", async () => {
+        const deps = fixture();
+        deps.repository.updateVideo.mockResolvedValue({ error: { message: "Metadata rejected" } });
+        await expect(runVideoUpload(input, createUploadOperation(), vi.fn(), deps))
+            .rejects.toMatchObject({ message: "Metadata rejected", cleanupErrors: [] });
+        expect(deps.repository.softDeleteVideo).toHaveBeenCalledWith("draft");
+        expect(deps.cleanup).toHaveBeenCalledTimes(2);
+        expect(deps.repository.publishVideo).not.toHaveBeenCalled();
+    });
+
+    it("reports cleanup failures for non-cancel transfer errors", async () => {
+        const deps = fixture();
+        deps.upload.mockRejectedValueOnce(new Error("Storage unavailable"));
+        deps.repository.softDeleteVideo.mockResolvedValue({ error: { code: "42501" } });
+        deps.cleanup.mockRejectedValueOnce(new Error("Storage cleanup unavailable"));
+        await expect(runVideoUpload(input, createUploadOperation(), vi.fn(), deps))
+            .rejects.toMatchObject({ message: "Storage unavailable", cleanupErrors: ["draf", "videos"] });
+        expect(deps.repository.publishVideo).not.toHaveBeenCalled();
+    });
+
     it("reports cleanup failure instead of claiming all cancelled resources were removed", async () => {
         const deps = fixture();
         const operation = createUploadOperation();

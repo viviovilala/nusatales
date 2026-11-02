@@ -1,24 +1,17 @@
 import * as tus from "tus-js-client";
 import { supabase, isSupabaseConfigured } from "../../lib/supabaseClient";
-
-// Strict conservative storage limits (decimal aligned with Supabase Free Tier)
-export const MAX_VIDEO_BYTES = 50_000_000; // 50 MB
-export const MAX_THUMBNAIL_BYTES = 5_000_000; // 5 MB
-export const MAX_AVATAR_BYTES = 2_000_000; // 2 MB
+export { MAX_VIDEO_BYTES, MAX_THUMBNAIL_BYTES, MAX_AVATAR_BYTES } from "../../lib/mediaLimits";
 
 /**
  * Extracts duration, dimensions, and auto-generates a first-frame thumbnail from a video file.
  */
 export async function extractVideoMetadata(videoFile) {
     return new Promise((resolve, reject) => {
-        if (typeof window === "undefined" || !window.URL) {
-            return resolve({
-                durationSeconds: 15,
-                thumbnailBlob: null,
-                width: 1920,
-                height: 1080,
-                aspectRatio: 16 / 9,
-            });
+        // Never synthesize a plausible duration or dimensions. Server/test
+        // callers must mock metadata extraction explicitly.
+        if (typeof window === "undefined" || typeof document === "undefined" ||
+            typeof URL.createObjectURL !== "function") {
+            return reject(new Error("Metadata video hanya dapat diperiksa di browser."));
         }
 
         const videoUrl = URL.createObjectURL(videoFile);
@@ -35,8 +28,22 @@ export async function extractVideoMetadata(videoFile) {
         }, 15000);
 
         video.onloadedmetadata = () => {
-            const rawDuration = video.duration || 0;
-            video.currentTime = Math.min(0.5, rawDuration / 2);
+            const rawDuration = video.duration;
+            if (!Number.isFinite(rawDuration) || rawDuration < 1 ||
+                !Number.isFinite(video.videoWidth) || video.videoWidth <= 0 ||
+                !Number.isFinite(video.videoHeight) || video.videoHeight <= 0) {
+                clearTimeout(timer);
+                URL.revokeObjectURL(videoUrl);
+                reject(new Error("Durasi atau dimensi video tidak valid."));
+                return;
+            }
+            try {
+                video.currentTime = Math.min(0.5, rawDuration / 2);
+            } catch {
+                clearTimeout(timer);
+                URL.revokeObjectURL(videoUrl);
+                reject(new Error("Gagal membaca frame video."));
+            }
         };
 
         video.onseeked = () => {

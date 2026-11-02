@@ -100,11 +100,14 @@ export async function runVideoUpload(input, operation, onPhase, dependencies = {
         return { draftId, published: Boolean(input.publish) };
     } catch (error) {
         if (!signal.aborted) {
-            // A failed transfer must not permanently occupy a unique episode
-            // slot. Once publication was sent, keep the draft for RPC retry.
-            if (input.contentType !== "animation" || error.phase === "PUBLISH_FAILED") throw error;
+            // Both Reels and animation episodes must release their own draft
+            // and Storage objects when transfer/metadata persistence fails.
+            // A publish RPC might already have committed, so a publish failure
+            // keeps its uploaded draft for an explicit retry instead.
+            if (error?.phase === "PUBLISH_FAILED") throw error;
             const cleanupErrors = await cleanupOwnedResources();
-            throw Object.assign(error, { cleanupErrors });
+            const failure = error && typeof error === "object" ? error : new Error(String(error));
+            throw Object.assign(failure, { cleanupErrors });
         }
         // Draft insertion/image upload may finish after cancellation. Wait for
         // that await first, then remove precisely this operation's resources.

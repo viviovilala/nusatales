@@ -1,4 +1,5 @@
 import { getStorageImageUrl } from "../../lib/storageImages";
+import { MAX_AVATAR_BYTES } from "../../lib/mediaLimits";
 import { supabase, isSupabaseConfigured } from "../../lib/supabaseClient";
 
 export const USERNAME_REGEX = /^[a-z0-9_]{3,24}$/;
@@ -129,11 +130,11 @@ export const profileRepository = {
             };
         }
 
-        // Validate max 5MB
-        if (file.size > 5 * 1024 * 1024) {
+        // Match the 2 MB limit shown in profile settings (decimal bytes).
+        if (file.size > MAX_AVATAR_BYTES) {
             return {
                 data: null,
-                error: { message: "Ukuran foto maksimal 5 MB." },
+                error: { message: "Ukuran foto maksimal 2 MB." },
             };
         }
 

@@ -1,4 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+import { supabase } from "../src/lib/supabaseClient";
+import { MAX_AVATAR_BYTES } from "../src/lib/mediaLimits";
 import { USERNAME_REGEX, profileRepository } from "../src/features/profile/profileRepository";
 
 describe("Profile Validation & Whitelist Security", () => {
@@ -56,6 +58,35 @@ describe("Profile Validation & Whitelist Security", () => {
             const res2 = await profileRepository.updateProfile(userId, longPayload);
             expect(res2.error).toBeDefined();
             expect(res2.error.message).toContain("Nama tampilan harus antara 1 sampai 60 karakter");
+        });
+    });
+
+    describe("avatar upload limits", () => {
+        it("rejects 2 MB + 1 byte without sending a Storage request", async () => {
+            const fromSpy = vi.spyOn(supabase.storage, "from");
+            try {
+                const result = await profileRepository.uploadAvatar("owner", {
+                    name: "photo.png", type: "image/png", size: MAX_AVATAR_BYTES + 1,
+                });
+                expect(result.error?.message).toContain("maksimal 2 MB");
+                expect(fromSpy).not.toHaveBeenCalled();
+            } finally {
+                fromSpy.mockRestore();
+            }
+        });
+
+        it("accepts exactly 2 MB when the Storage service succeeds", async () => {
+            const upload = vi.fn().mockResolvedValue({ data: { path: "owner/avatar-test.png" }, error: null });
+            const fromSpy = vi.spyOn(supabase.storage, "from").mockReturnValue({ upload });
+            try {
+                const result = await profileRepository.uploadAvatar("owner", {
+                    name: "photo.png", type: "image/png", size: MAX_AVATAR_BYTES,
+                });
+                expect(result.error).toBeNull();
+                expect(upload).toHaveBeenCalledTimes(1);
+            } finally {
+                fromSpy.mockRestore();
+            }
         });
     });
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { videoRepository } from "../src/features/videos/videoRepository";
-import { MAX_VIDEO_BYTES, MAX_THUMBNAIL_BYTES, MAX_AVATAR_BYTES, uploadWithTus } from "../src/features/videos/uploadService";
+import { MAX_VIDEO_BYTES, MAX_THUMBNAIL_BYTES, MAX_AVATAR_BYTES, uploadWithTus, extractVideoMetadata } from "../src/features/videos/uploadService";
 import { supabase } from "../src/lib/supabaseClient";
 
 describe("Video Repository & Dual-Format Security", () => {
@@ -9,6 +9,12 @@ describe("Video Repository & Dual-Format Security", () => {
             expect(MAX_VIDEO_BYTES).toBe(50_000_000);
             expect(MAX_THUMBNAIL_BYTES).toBe(5_000_000);
             expect(MAX_AVATAR_BYTES).toBe(2_000_000);
+        });
+    });
+    describe("metadata extraction", () => {
+        it("rejects instead of inventing 15-second video metadata outside the browser", async () => {
+            await expect(extractVideoMetadata(new Blob(["not a video"], { type: "video/mp4" })))
+                .rejects.toThrow("Metadata video hanya dapat diperiksa di browser.");
         });
     });
     describe("createDraft", () => {
