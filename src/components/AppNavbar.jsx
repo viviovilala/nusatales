@@ -1,207 +1,98 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import { Search, Menu, Plus, ChevronDown, UserRound, Clapperboard, LogOut, Settings } from "lucide-react";
 import { useAuth } from "../features/auth/AuthProvider";
+import StorageImage from "./StorageImage";
+import { Sheet, SheetTrigger, SheetContent, SheetTitle, SheetDescription } from "./ui/sheet";
 
-function NavLinkItem({ to, isActive, children }) {
-    return (
-        <Link
-            to={to}
-            className="text-sm font-bold transition-colors duration-200 relative py-2 px-1"
-            style={{ color: isActive ? "#8DC63F" : "#6B5A3E" }}
-        >
-            {children}
-            {isActive && (
-                <span
-                    className="absolute bottom-0 left-1 right-1 h-0.5 rounded-full transition-transform duration-200"
-                    style={{ backgroundColor: "#8DC63F" }}
-                />
-            )}
-        </Link>
-    );
-}
+const navigation = [
+    { to: "/", label: "Beranda" },
+    { to: "/reels", label: "Shorts" },
+    { to: "/animations", label: "Jelajah" },
+];
 
 export default function AppNavbar() {
     const { isAuthenticated, profile, user, signOut } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
-    const [visible, setVisible] = useState(true);
-    const [menuOpen, setMenuOpen] = useState(false);
-    const lastScrollY = useRef(0);
-    const menuRef = useRef(null);
+    const [mobileOpen, setMobileOpen] = useState(false);
+    const [search, setSearch] = useState("");
+    const displayName = profile?.display_name || user?.user_metadata?.display_name || user?.email?.split("@")[0] || "Penjelajah";
 
     useEffect(() => {
-        const handleScroll = () => {
-            const nextScrollY = window.scrollY;
-            const scrollDelta = Math.abs(nextScrollY - lastScrollY.current);
-
-            if (scrollDelta < 8) return;
-
-            setVisible(nextScrollY < lastScrollY.current || nextScrollY < 12);
-            lastScrollY.current = nextScrollY;
-        };
-
-        lastScrollY.current = window.scrollY;
-        window.addEventListener("scroll", handleScroll, { passive: true });
-        return () => window.removeEventListener("scroll", handleScroll);
-    }, []);
-
-    useEffect(() => {
-        setVisible(true);
-        setMenuOpen(false);
-        lastScrollY.current = window.scrollY;
-    }, [location.pathname]);
-
-    // Close menu on outside click
-    useEffect(() => {
-        function handleClickOutside(event) {
-            if (menuRef.current && !menuRef.current.contains(event.target)) {
-                setMenuOpen(false);
-            }
+        setMobileOpen(false);
+        if (location.hash) {
+            const frame = requestAnimationFrame(() => document.getElementById(location.hash.slice(1))?.scrollIntoView());
+            return () => cancelAnimationFrame(frame);
         }
-        if (menuOpen) {
-            document.addEventListener("mousedown", handleClickOutside);
-        }
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [menuOpen]);
+        window.scrollTo({ top: 0, behavior: "instant" });
+    }, [location.pathname, location.hash]);
 
-    const handleSignOut = async () => {
-        await signOut();
-        navigate("/");
-    };
+    function handleSearch(event) {
+        event.preventDefault();
+        setMobileOpen(false);
+        navigate(`/animations${search.trim() ? `?q=${encodeURIComponent(search.trim())}` : ""}`);
+    }
+    const searchForm = (mobile = false) => <form onSubmit={handleSearch} role="search" className={`nusa-search ${mobile ? "nusa-search-mobile" : "nusa-search-desktop"}`}>
+        <label htmlFor={mobile ? "mobile-story-search" : "story-search"} className="sr-only">Cari cerita animasi</label>
+        <input id={mobile ? "mobile-story-search" : "story-search"} type="search" value={search}
+            onChange={(event) => setSearch(event.target.value)} placeholder="Cari cerita..." maxLength={120} />
+        <button type="submit" aria-label="Cari cerita"><Search size={16} aria-hidden="true" /></button>
+    </form>;
 
-    const isCurrent = (path) => {
-        if (path === "/" && location.pathname === "/") return true;
-        if (path !== "/" && location.pathname.startsWith(path)) return true;
-        return false;
-    };
-
-    const displayName = profile?.display_name || user?.user_metadata?.display_name || user?.email?.split("@")[0] || "Kreator";
-
-    return (
-        <header
-            className="px-4 sm:px-6 pt-3 pb-3 sticky top-2 z-50 transition-all duration-300 ease-in-out"
-            style={{
-                transform: visible ? "translateY(0)" : "translateY(-120%)",
-                opacity: visible ? 1 : 0,
-            }}
-        >
-            <nav className="max-w-7xl mx-auto bg-white/95 backdrop-blur-md rounded-full px-5 py-2.5 flex items-center justify-between shadow-lg border border-amber-100/70">
-                {/* Logo */}
-                <Link
-                    to="/"
-                    className="flex items-center gap-2 transition-transform duration-200 hover:scale-105"
-                >
-                    <img
-                        src="/poto/logo.png"
-                        className="h-9 w-auto object-contain"
-                        alt="NusaTales Logo"
-                    />
-                </Link>
-
-                {/* Primary navigation */}
-                <div className="hidden md:flex items-center gap-6">
-                    <NavLinkItem to="/" isActive={isCurrent("/")}>
-                        Beranda
-                    </NavLinkItem>
-                    <NavLinkItem to="/animations" isActive={isCurrent("/animations")}>
-                        Animasi
-                    </NavLinkItem>
-                    <NavLinkItem to="/reels" isActive={isCurrent("/reels")}>
-                        Reels
-                    </NavLinkItem>
-                    {isAuthenticated && (
-                        <>
-                            <NavLinkItem to="/studio" isActive={isCurrent("/studio")}>
-                                Studio
-                            </NavLinkItem>
-                        </>
-                    )}
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-3">
-                    {isAuthenticated ? (
-                        <>
-                            <Link
-                                to="/studio/upload"
-                                className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold text-white shadow-sm transition hover:opacity-95"
-                                style={{ backgroundColor: "#8DC63F" }}
-                            >
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                    <path d="M12 5v14M5 12h14" />
-                                </svg>
-                                Unggah
-                            </Link>
-
-                            {/* User Menu Dropdown */}
-                            <div className="relative" ref={menuRef}>
-                                <button
-                                    type="button"
-                                    onClick={() => setMenuOpen(!menuOpen)}
-                                    className="flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-full border border-amber-200/80 hover:bg-amber-50/50 transition cursor-pointer text-xs font-bold text-amber-950"
-                                >
-                                    <span className="max-w-[120px] truncate">{displayName}</span>
-                                    <div className="w-7 h-7 rounded-full bg-amber-200 text-amber-800 font-bold flex items-center justify-center text-xs">
-                                        {displayName.charAt(0).toUpperCase()}
-                                    </div>
-                                </button>
-
-                                {menuOpen && (
-                                    <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-xl border border-amber-100 py-2 z-50 text-sm">
-                                        <div className="px-4 py-2 border-b border-neutral-100">
-                                            <p className="font-bold text-neutral-800 truncate">{displayName}</p>
-                                            <p className="text-xs text-neutral-500 truncate">{user?.email}</p>
-                                        </div>
-                                        <Link
-                                            to="/studio"
-                                            className="block px-4 py-2 text-neutral-700 hover:bg-amber-50 transition"
-                                        >
-                                            Studio Saya
-                                        </Link>
-                                        <Link
-                                            to="/studio/upload"
-                                            className="block px-4 py-2 text-neutral-700 hover:bg-amber-50 transition"
-                                        >
-                                            Unggah Animasi
-                                        </Link>
-                                        <Link
-                                            to="/settings/profile"
-                                            className="block px-4 py-2 text-neutral-700 hover:bg-amber-50 transition"
-                                        >
-                                            Pengaturan Profil
-                                        </Link>
-                                        <div className="border-t border-neutral-100 my-1" />
-                                        <button
-                                            type="button"
-                                            onClick={handleSignOut}
-                                            className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 transition cursor-pointer font-medium"
-                                        >
-                                            Keluar
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        </>
-                    ) : (
-                        <div className="flex items-center gap-2">
-                            <Link
-                                to="/login"
-                                className="px-4 py-1.5 rounded-full text-xs font-bold transition hover:bg-amber-100/50"
-                                style={{ color: "#3B2A0E" }}
-                            >
-                                Masuk
-                            </Link>
-                            <Link
-                                to="/register"
-                                className="px-4 py-1.5 rounded-full text-xs font-bold text-white shadow-sm transition hover:opacity-90"
-                                style={{ backgroundColor: "#8DC63F" }}
-                            >
-                                Daftar
-                            </Link>
+    return <header className="nusa-header">
+        <a href="#main-content" className="nusa-skip-link" onClick={(event) => {
+            const main = document.querySelector("main");
+            if (main) { event.preventDefault(); main.tabIndex = -1; main.focus(); }
+        }}>Lewati ke konten</a>
+        <nav className="nusa-navbar" aria-label="Navigasi utama">
+            <Link to="/" className="nusa-brand" aria-label="NusaTales — beranda">
+                <img className="nusa-original-logo" src="/poto/logo.png" width="128" height="36" alt="NusaTales" />
+            </Link>
+            <div className="nusa-desktop-links">
+                {navigation.map(({ to, label }) => <NavLink key={to} to={to} end={to === "/"}
+                    className={({ isActive }) => `nusa-nav-link ${isActive ? "is-active" : ""}`}>{label}</NavLink>)}
+                {isAuthenticated && <NavLink to="/studio" className={({ isActive }) => `nusa-nav-link ${isActive ? "is-active" : ""}`}>Studio</NavLink>}
+            </div>
+            <div className="nusa-nav-actions">
+                {searchForm()}
+                {isAuthenticated ? <>
+                    <Link to="/studio/upload" className="nusa-button nusa-upload-link"><Plus size={15} aria-hidden="true" />Unggah</Link>
+                    <DropdownMenu.Root>
+                        <DropdownMenu.Trigger className="nusa-account-trigger" aria-label={`Menu akun ${displayName}`}>
+                            <span className="nusa-avatar">{profile?.avatar_path
+                                ? <StorageImage path={profile.avatar_path} alt="" /> : displayName.charAt(0).toUpperCase()}</span>
+                            <ChevronDown size={14} aria-hidden="true" />
+                        </DropdownMenu.Trigger>
+                        <DropdownMenu.Portal>
+                            <DropdownMenu.Content className="nusa-dropdown" align="end" sideOffset={12}>
+                                <DropdownMenu.Label className="nusa-dropdown-label">Halo, {displayName}</DropdownMenu.Label>
+                                {profile?.username && <DropdownMenu.Item asChild><Link to={`/u/${profile.username}`}><UserRound size={16} />Profil saya</Link></DropdownMenu.Item>}
+                                <DropdownMenu.Item asChild><Link to="/studio"><Clapperboard size={16} />Studio saya</Link></DropdownMenu.Item>
+                                <DropdownMenu.Item asChild><Link to="/settings/profile"><Settings size={16} />Pengaturan profil</Link></DropdownMenu.Item>
+                                <DropdownMenu.Separator className="nusa-dropdown-separator" />
+                                <DropdownMenu.Item onSelect={async () => { await signOut(); navigate("/"); }}><LogOut size={16} />Keluar</DropdownMenu.Item>
+                            </DropdownMenu.Content>
+                        </DropdownMenu.Portal>
+                    </DropdownMenu.Root>
+                </> : <Link to="/login" className="nusa-button nusa-button-brown nusa-login-link">Masuk<span className="nusa-login-extra"> / Daftar</span></Link>}
+                <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+                    <SheetTrigger asChild><button className="nusa-icon-button nusa-mobile-trigger" aria-label="Buka menu navigasi"><Menu size={22} /></button></SheetTrigger>
+                    <SheetContent>
+                        <SheetTitle className="nusa-brand">NusaTales</SheetTitle>
+                        <SheetDescription className="nusa-sheet-description">Cerita Nusantara, selalu dekat.</SheetDescription>
+                        {searchForm(true)}
+                        <div className="nusa-mobile-links">
+                            {navigation.map(({ to, label }) => <NavLink key={to} to={to} end={to === "/"} onClick={() => setMobileOpen(false)}>{label}</NavLink>)}
+                            {isAuthenticated && <Link to="/studio" onClick={() => setMobileOpen(false)}>Studio saya</Link>}
                         </div>
-                    )}
-                </div>
-            </nav>
-        </header>
-    );
+                        <Link to={isAuthenticated ? "/studio/upload" : "/register"} onClick={() => setMobileOpen(false)} className="nusa-button">
+                            {isAuthenticated ? "Bagikan karyamu" : "Mulai petualangan"}<Plus size={16} />
+                        </Link>
+                    </SheetContent>
+                </Sheet>
+            </div>
+        </nav>
+    </header>;
 }

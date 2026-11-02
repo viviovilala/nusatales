@@ -8,10 +8,10 @@ import {
     MAX_VIDEO_BYTES,
     MAX_THUMBNAIL_BYTES,
     extractVideoMetadata,
-    uploadMediaWithProgress,
-    cleanupStorageObject,
 } from "../uploadService";
 import { normalizeSupabaseError } from "../../../lib/errors";
+
+import { createUploadOperation, runVideoUpload } from "../uploadWorkflow";
 
 const REEL_MAX_DURATION_SECONDS = 180; // 3 minutes
 
@@ -42,7 +42,9 @@ export default function UploadPage() {
     const videoInputRef = useRef(null);
     const thumbInputRef = useRef(null);
     const [isDragging, setIsDragging] = useState(false);
-    const activeUploadTaskRef = useRef(null);
+    const activeOperationRef = useRef(null);
+    const mountedRef = useRef(false);
+    const navigationTimerRef = useRef(null);
 
     // Clean up preview blob URLs
     useEffect(() => {
@@ -53,12 +55,13 @@ export default function UploadPage() {
         };
     }, [thumbnailPreview]);
 
-    // Abort active upload task if user navigates away before upload finishes
+    // Keep callbacks from an old upload/navigation from touching this page.
     useEffect(() => {
+        mountedRef.current = true;
         return () => {
-            if (activeUploadTaskRef.current) {
-                activeUploadTaskRef.current.abort();
-            }
+            mountedRef.current = false;
+            activeOperationRef.current?.cancel();
+            clearTimeout(navigationTimerRef.current);
         };
     }, []);
 
@@ -166,40 +169,39 @@ export default function UploadPage() {
     }
 
     function handleCancelUpload() {
-        if (activeUploadTaskRef.current) {
-            activeUploadTaskRef.current.abort();
-            activeUploadTaskRef.current = null;
+        if (activeOperationRef.current?.cancel()) {
+            setUploadPhase("CANCELLING");
+            setUploadStep("Membatalkan unggahan dan membersihkan draf...");
         }
-        setUploadPhase("CANCELLED");
-        setUploadPercent(0);
-        setUploadStep("");
-        setErrorMessage("Pengunggahan video dibatalkan oleh pengguna.");
     }
 
     async function handleRetryPublish() {
-        if (!persistedDraftId) return;
-
+        if (!persistedDraftId || activeOperationRef.current) return;
+        const operation = createUploadOperation();
+        operation.beginPublish();
+        activeOperationRef.current = operation;
+        const isCurrent = () => mountedRef.current && activeOperationRef.current === operation;
         setUploadPhase("PUBLISHING");
         setErrorMessage("");
-        setUploadStep("Mencoba mempublikasikan karya kembali...");
-
+        setUploadStep("Mengonfirmasi publikasi karya...");
         try {
-            const { data, error } = await videoRepository.publishVideo(persistedDraftId);
-            if (error) {
-                throw error;
-            }
+            const { error } = await videoRepository.publishVideo(persistedDraftId);
+            if (error) throw error;
+            if (!isCurrent()) return;
             setUploadPhase("PUBLISHED");
-            setUploadStep("Karya berhasil dipublikasikan! Mengalihkan ke Studio...");
-            setTimeout(() => {
-                navigate("/studio");
-            }, 800);
+            setUploadStep("Karya berhasil dipublikasikan!");
+            navigationTimerRef.current = setTimeout(() => navigate("/studio"), 800);
         } catch (err) {
+            if (!isCurrent()) return;
             setUploadPhase("PUBLISH_FAILED");
             setErrorMessage(normalizeSupabaseError(err, "Gagal mempublikasikan karya. Silakan coba lagi."));
+        } finally {
+            if (activeOperationRef.current === operation) activeOperationRef.current = null;
         }
     }
 
     async function handleSubmit(shouldPublishImmediately = false) {
+        if (activeOperationRef.current) return;
         setErrorMessage("");
 
         if (!user?.id) {
@@ -232,130 +234,46 @@ export default function UploadPage() {
             return;
         }
 
-        setUploadPhase("CREATING_DRAFT");
-        setUploadPercent(5);
-        setUploadStep("Menyiapkan draf karya di database...");
-
-        let createdDraftId = null;
-        let videoStoragePath = null;
-        let thumbStoragePath = null;
-
+        const operation = createUploadOperation();
+        activeOperationRef.current = operation;
+        setPersistedDraftId(null);
+        const isCurrent = () => mountedRef.current && activeOperationRef.current === operation;
         try {
-            // 1. Create draft in database
-            const { data: draft, error: draftErr } = await videoRepository.createDraft({
-                creatorId: user.id,
-                title: title.trim(),
-                description: description.trim() || null,
-                contentType,
+            const result = await runVideoUpload({
+                userId: user.id, title: title.trim(), description: description.trim() || null,
+                file: videoFile, thumbnail: thumbnailBlob, duration: videoDuration,
+                contentType, publish: shouldPublishImmediately,
+            }, operation, (phase, step, percent) => {
+                if (!isCurrent()) return;
+                setUploadPhase(phase);
+                setUploadStep(step);
+                if (percent !== undefined) setUploadPercent(percent);
             });
-
-            if (draftErr || !draft) {
-                throw new Error(normalizeSupabaseError(draftErr, "Gagal membuat draf karya di database."));
-            }
-
-            createdDraftId = draft.id;
-            setPersistedDraftId(createdDraftId);
-
-            const fileExt = videoFile.name.split(".").pop() || "mp4";
-            videoStoragePath = `${user.id}/${createdDraftId}/media-${Date.now()}.${fileExt}`;
-
-            // 2. Upload thumbnail if available
-            if (thumbnailBlob) {
-                setUploadStep("Mengunggah sampul / thumbnail karya...");
-                const thumbExt = thumbnailBlob.type === "image/png" ? "png" : "webp";
-                thumbStoragePath = `${user.id}/${createdDraftId}/thumb-${Date.now()}.${thumbExt}`;
-
-                await uploadMediaWithProgress({
-                    bucket: "thumbnails",
-                    filePath: thumbStoragePath,
-                    file: thumbnailBlob,
-                    contentType: thumbnailBlob.type || "image/webp",
-                });
-            }
-
-            // 3. Resumable Upload via pure TUS (no standard upload fallback for video)
-            setUploadPhase("UPLOADING");
-            setUploadStep("Mengunggah berkas video ke penyimpanan cloud (TUS Resumable)...");
-
-            await uploadMediaWithProgress({
-                bucket: "videos",
-                filePath: videoStoragePath,
-                file: videoFile,
-                contentType: videoFile.type || "video/mp4",
-                userId: user.id,
-                draftId: createdDraftId,
-                onUploadInstance: (task) => {
-                    activeUploadTaskRef.current = task;
-                },
-                onProgress: (percent) => {
-                    setUploadPercent(percent);
-                },
-            });
-
-            // 4. Update video row with storage paths & duration
-            setUploadPhase("METADATA_SAVED");
-            setUploadStep("Menyimpan metadata media...");
-
-            const { error: updateErr } = await videoRepository.updateVideo(createdDraftId, {
-                storage_path: videoStoragePath,
-                thumbnail_path: thumbStoragePath,
-                duration_seconds: videoDuration,
-            });
-
-            if (updateErr) {
-                throw new Error(normalizeSupabaseError(updateErr, "Gagal menyimpan metadata video."));
-            }
-
-            // 5. Publish step (strictly isolated from upload success)
-            if (shouldPublishImmediately) {
-                setUploadPhase("PUBLISHING");
-                setUploadStep("Mempublikasikan karya ke katalog publik...");
-
-                const { error: pubErr } = await videoRepository.publishVideo(createdDraftId);
-                if (pubErr) {
-                    console.error("[UploadPage] Publish RPC error:", pubErr);
-                    setUploadPhase("PUBLISH_FAILED");
-                    setErrorMessage(
-                        normalizeSupabaseError(
-                            pubErr,
-                            "Video berhasil diunggah sebagai draf, tetapi gagal dipublikasikan ke publik."
-                        )
-                    );
-                    return; // Stop here, do NOT show SUCCESS
-                }
-
-                setUploadPhase("PUBLISHED");
-                setUploadStep("Karya berhasil dipublikasikan! Mengalihkan ke Studio...");
-                setTimeout(() => {
-                    navigate("/studio");
-                }, 700);
-            } else {
-                setUploadPhase("DRAFT_SAVED");
-                setUploadStep("Draf karya berhasil disimpan! Mengalihkan ke Studio...");
-                setTimeout(() => {
-                    navigate("/studio");
-                }, 700);
-            }
+            if (!isCurrent()) return;
+            setPersistedDraftId(result.draftId);
+            setUploadPhase(result.published ? "PUBLISHED" : "DRAFT_SAVED");
+            setUploadStep(result.published ? "Karya berhasil dipublikasikan!" : "Draf karya berhasil disimpan!");
+            navigationTimerRef.current = setTimeout(() => navigate("/studio"), 700);
         } catch (err) {
-            console.error("[UploadPage] Error during upload:", err);
-
+            if (!isCurrent()) return;
             if (err.isCancelled) {
                 setUploadPhase("CANCELLED");
-                setErrorMessage("Pengunggahan video dibatalkan.");
-                if (videoStoragePath) {
-                    cleanupStorageObject("videos", videoStoragePath);
-                }
-                return;
+                setUploadPercent(0);
+                setUploadStep("");
+                setErrorMessage(err.cleanupErrors?.length
+                    ? "Unggahan dibatalkan. Sebagian berkas belum berhasil dibersihkan; periksa draf di Studio."
+                    : "Pengunggahan video dibatalkan.");
+            } else {
+                setUploadPhase(err.phase || "UPLOAD_FAILED");
+                if (err.draftId) setPersistedDraftId(err.draftId);
+                setErrorMessage(normalizeSupabaseError(err, "Gagal mengunggah video. Silakan coba lagi."));
             }
-
-            setUploadPhase("UPLOAD_FAILED");
-            setErrorMessage(normalizeSupabaseError(err, err.message || "Gagal mengunggah video. Silakan coba lagi."));
         } finally {
-            activeUploadTaskRef.current = null;
+            if (activeOperationRef.current === operation) activeOperationRef.current = null;
         }
     }
 
-    const isUploadingActive = ["ANALYZING", "CREATING_DRAFT", "UPLOADING", "METADATA_SAVED", "PUBLISHING"].includes(
+    const isUploadingActive = ["ANALYZING", "CREATING_DRAFT", "UPLOADING", "METADATA_SAVED", "PUBLISHING", "CANCELLING"].includes(
         uploadPhase
     );
 
@@ -683,10 +601,11 @@ export default function UploadPage() {
                                     <div className="text-right pt-1">
                                         <button
                                             type="button"
+                                            disabled={["ANALYZING", "PUBLISHING", "CANCELLING"].includes(uploadPhase)}
                                             onClick={handleCancelUpload}
-                                            className="text-[11px] text-red-600 font-bold hover:underline cursor-pointer"
+                                            className="text-[11px] text-red-600 font-bold hover:underline cursor-pointer disabled:opacity-50 disabled:cursor-wait"
                                         >
-                                            Batalkan Unggahan
+                                            {uploadPhase === "PUBLISHING" ? "Menunggu hasil publikasi..." : "Batalkan Unggahan"}
                                         </button>
                                     </div>
                                 </div>

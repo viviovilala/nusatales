@@ -1,3 +1,4 @@
+import { getStorageImageUrl } from "../../lib/storageImages";
 import { supabase, isSupabaseConfigured } from "../../lib/supabaseClient";
 
 export const USERNAME_REGEX = /^[a-z0-9_]{3,24}$/;
@@ -154,17 +155,7 @@ export const profileRepository = {
         return { data: { path: data.path }, error: null };
     },
 
-    getAvatarPublicUrl(avatarPath) {
-        if (!avatarPath) return null;
-        if (avatarPath.startsWith("http://") || avatarPath.startsWith("https://")) {
-            return avatarPath;
-        }
-        if (!isSupabaseConfigured) return null;
-
-        const { data } = supabase.storage
-            .from("thumbnails")
-            .getPublicUrl(avatarPath);
-
-        return data?.publicUrl || null;
+    getAvatarSignedUrl(avatarPath, expiresIn = 300) {
+        return getStorageImageUrl(avatarPath, expiresIn);
     },
 };

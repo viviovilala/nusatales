@@ -1,209 +1,162 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { ArrowRight, Play, Pause, ChevronLeft, ChevronRight, Compass, Film, Sparkles, Clock3, RefreshCw } from "lucide-react";
 import AppNavbar from "../components/AppNavbar";
 import Footer from "../components/Footer";
+import SubscriptionPlans from "../components/SubscriptionPlans";
+import StorageImage from "../components/StorageImage";
+import Reveal, { useReveal } from "../components/Reveal";
+import { videoRepository } from "../features/videos/videoRepository";
+import { videoHref } from "../lib/videoLinks";
+import { useAuth } from "../features/auth/AuthProvider";
 
+// Editorial artwork introduces the cultural collection. Playback links below
+// always use actual published records rather than inventing video IDs/counts.
 const heroSlides = [
-    {
-        title: "RORO JONGGRANG",
-        description: "Temukan rahasia di balik terciptanya seribu candi dalam satu malam melalui kisah cinta, janji, dan siasat kerajaan.",
-        image: "/poto/hero-roro-closeup.webp",
-        objectPosition: "68% 48%",
-    },
-    {
-        title: "SERIBU CANDI",
-        description: "Ikuti kobaran kekuatan magis dan tekad yang membangun legenda besar tanah Jawa sebelum fajar tiba.",
-        image: "/poto/hero-roro-action.webp",
-        objectPosition: "54% 52%",
-    },
-    {
-        title: "BANDUNG BONDOWOSO",
-        description: "Saksikan perjalanan sang ksatria sakti dalam takdir kerajaan dan ujian janji yang abadi.",
-        image: "/poto/hero-bandung-bondowoso.webp",
-        objectPosition: "66% 48%",
-    },
+    { title: "RORO JONGGRANG", description: "Temukan rahasia di balik terciptanya seribu candi dalam satu malam. Sebuah kisah cinta, janji, dan siasat kerajaan.", image: "/poto/hero-roro-closeup.webp", position: "65% 43%", search: "Roro Jonggrang" },
+    { title: "KISAH SERIBU CANDI", description: "Ketika janji bertemu kekuatan magis. Jelajahi legenda tanah Jawa yang terus hidup, dari satu generasi ke generasi berikutnya.", image: "/poto/hero-roro-action.webp", position: "60% 45%", search: "Seribu Candi" },
+    { title: "BANDUNG BONDOWOSO", description: "Ikuti jejak sang ksatria dalam kisah tentang tekad, takdir, dan sebuah janji sebelum fajar tiba.", image: "/poto/hero-bandung-bondowoso.webp", position: "65% 42%", search: "Bandung Bondowoso" },
 ];
+const filters = [{ value: "all", label: "Semua karya" }, { value: "animation", label: "Film animasi" }, { value: "reel", label: "Shorts budaya" }];
+const StoryLink = motion.create(Link);
 
-const featuredFolklore = [
-    {
-        title: "Kisah Seribu Candi",
-        region: "Jawa Tengah",
-        desc: "Kisah cinta dan persyaratan membangun seribu candi dalam semalam oleh Bandung Bondowoso.",
-        image: "/poto/hero-roro-action.webp",
-        position: "46% 52%",
-    },
-    {
-        title: "Malin Kundang",
-        region: "Sumatera Barat",
-        desc: "Peringatan abadi tentang bakti kepada orang tua di tepi pantai Pantai Air Manis.",
-        image: "/poto/hero-bandung-bondowoso.webp",
-        position: "54% 52%",
-    },
-    {
-        title: "Candi Borobudur",
-        region: "Jawa Tengah",
-        desc: "Kemegahan relief dan arsitektur peninggalan wangsa Syailendra.",
-        image: "/poto/hero-roro-closeup.webp",
-        position: "50% 48%",
-    },
-];
+function SectionHeading({ eyebrow, title, description, href = "/animations", linkText = "Lihat semua" }) {
+    return <div className="home-section-heading">
+        <div>{eyebrow && <span className="home-eyebrow">{eyebrow}</span>}<h2>{title}</h2>{description && <p>{description}</p>}</div>
+        <Link to={href} className="home-text-link">{linkText}<ArrowRight size={17} aria-hidden="true" /></Link>
+    </div>;
+}
+function StoryCard({ video, featured = false, compact = false, index = 0 }) {
+    const duration = video.duration_seconds;
+    const reveal = useReveal("up", index * 0.06);
+    const reducedMotion = useReducedMotion();
+    return <StoryLink {...reveal} whileHover={reducedMotion ? undefined : { y: -3, transition: { duration: 0.18 } }} to={videoHref(video)} className={`home-story-card ${featured ? "home-story-featured" : ""} ${compact ? "home-story-compact" : ""}`}>
+        <div className="home-story-image">
+            <StorageImage path={video.thumbnail_path} fallbackSrc="/poto/hero-roro-action.webp" alt="" loading="lazy" />
+            <span className="home-format-label">{video.content_type === "animation" ? "Film animasi" : "Shorts"}</span>
+            <span className="home-story-play"><Play size={20} fill="currentColor" aria-hidden="true" /></span>
+            {duration > 0 && <span className="home-duration"><Clock3 size={12} />{Math.floor(duration / 60)}:{String(duration % 60).padStart(2, "0")}</span>}
+        </div>
+        <div className="home-story-info">
+            <span className="home-story-creator">{video.creator?.display_name || "Kreator NusaTales"}</span>
+            <h3>{video.title}</h3>
+            {!compact && <p>{video.description || "Temukan kisah dan sudut pandang budaya lewat karya kreator Nusantara."}</p>}
+            <span className="home-story-watch">Tonton cerita<ArrowRight size={14} aria-hidden="true" /></span>
+        </div>
+    </StoryLink>;
+}
+function LoadingStories() {
+    return <div className="home-bento" role="status" aria-label="Memuat pilihan cerita">
+        {Array.from({ length: 5 }, (_, index) => <div key={index} className={`home-story-skeleton ${index === 0 ? "home-story-featured" : ""}`}><div /><span /><span /></div>)}
+    </div>;
+}
 
 export default function LandingPage() {
+    const { isAuthenticated } = useAuth();
+    const reducedMotion = useReducedMotion();
     const [activeSlide, setActiveSlide] = useState(0);
+    const [autoPlay, setAutoPlay] = useState(true);
+    const [hovered, setHovered] = useState(false);
+    const [focused, setFocused] = useState(false);
+    const [videos, setVideos] = useState([]);
+    const [filter, setFilter] = useState("all");
+    const [loadState, setLoadState] = useState("loading");
+    const [retry, setRetry] = useState(0);
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            setActiveSlide((prev) => (prev + 1) % heroSlides.length);
-        }, 5000);
-        return () => clearInterval(interval);
-    }, []);
+        if (reducedMotion || !autoPlay || hovered || focused) return;
+        const timer = setInterval(() => setActiveSlide((index) => (index + 1) % heroSlides.length), 6500);
+        return () => clearInterval(timer);
+    }, [reducedMotion, autoPlay, hovered, focused]);
+    useEffect(() => {
+        let current = true;
+        setLoadState("loading");
+        videoRepository.getPublishedFeed({ limit: 18, contentType: null }).then(({ data, error }) => {
+            if (!current) return;
+            if (error) { setLoadState("error"); return; }
+            setVideos(data || []);
+            setLoadState("ready");
+        }).catch(() => { if (current) setLoadState("error"); });
+        return () => { current = false; };
+    }, [retry]);
 
-    const currentSlide = heroSlides[activeSlide % heroSlides.length];
+    const slide = heroSlides[activeSlide];
+    const matchingVideo = videos.find((video) => video.title.toLowerCase().includes(slide.search.toLowerCase()));
+    const collection = filter === "all" ? videos : videos.filter((video) => video.content_type === filter);
+    const featured = collection.slice(0, 5);
+    const latest = videos.slice(0, 5);
+    const creatorHref = isAuthenticated ? "/studio/upload" : "/register";
 
-    return (
-        <div className="min-h-screen flex flex-col bg-[#F5F0E0]">
-            <AppNavbar />
-
-            {/* Hero Section */}
-            <div id="hero" className="px-4 sm:px-6 mt-2">
-                <div className="max-w-7xl mx-auto">
-                    <section className="relative min-h-[460px] overflow-hidden rounded-[28px] bg-[#2a1200] shadow-[0_18px_45px_rgba(71,45,20,0.18)] md:min-h-[500px]">
-                        <div className="absolute inset-0">
-                            {heroSlides.map((slide, index) => (
-                                <img
-                                    key={slide.image}
-                                    src={slide.image}
-                                    className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ease-in-out ${
-                                        activeSlide % heroSlides.length === index ? "opacity-100" : "opacity-0"
-                                    }`}
-                                    style={{ objectPosition: slide.objectPosition }}
-                                    alt={slide.title}
-                                />
-                            ))}
-                            <div className="absolute inset-0 bg-gradient-to-r from-[#231309]/95 via-[#381F0D]/75 to-transparent pointer-events-none" />
-                            <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#150D08]/80 to-transparent pointer-events-none" />
-                        </div>
-
-                        <div className="relative z-10 flex min-h-[460px] max-w-[700px] flex-col justify-center px-6 py-9 sm:px-9 md:min-h-[500px] md:px-11">
-                            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#f7e9a0] bg-[#f7f0d9]/90 shadow-md overflow-hidden">
-                                <img
-                                    src="/poto/splash-senyum.webp"
-                                    className="h-10 w-10 object-contain drop-shadow-sm"
-                                    alt="Maskot NusaTales"
-                                />
-                            </div>
-                            <h1
-                                className="mb-4 max-w-[650px] text-4xl font-black uppercase leading-[0.95] tracking-wide text-[#fff8e8] sm:text-5xl md:text-6xl"
-                                style={{ fontFamily: "Georgia, serif" }}
-                            >
-                                {currentSlide.title}
-                            </h1>
-                            <p className="mb-7 max-w-[600px] text-sm font-medium leading-relaxed text-[#fff9ed]/90">
-                                {currentSlide.description}
-                            </p>
-                            <div className="flex flex-wrap items-center gap-3">
-                                <Link
-                                    to="/reels"
-                                    className="flex items-center gap-2 rounded-full bg-[#b8ef64] px-7 py-3 text-sm font-bold text-[#2f4b14] shadow-md transition hover:bg-[#a8e856]"
-                                >
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M8 5v14l11-7z" />
-                                    </svg>
-                                    Tonton di Reels
-                                </Link>
-                                <Link
-                                    to="/register"
-                                    className="rounded-full border border-white/40 bg-white/20 px-8 py-3 text-sm font-bold text-white backdrop-blur-md transition hover:bg-white/30"
-                                >
-                                    Gabung Kreator
-                                </Link>
-                            </div>
-                        </div>
-
-                        {/* Slide indicators */}
-                        <div className="absolute bottom-7 right-7 z-10 flex items-center gap-2">
-                            {heroSlides.map((slide, i) => (
-                                <button
-                                    key={slide.title}
-                                    onClick={() => setActiveSlide(i)}
-                                    className="h-2 rounded-full transition-all cursor-pointer"
-                                    style={{
-                                        width: activeSlide === i ? "24px" : "8px",
-                                        backgroundColor: activeSlide === i ? "#b8ef64" : "rgba(255,255,255,0.4)",
-                                    }}
-                                    aria-label={`Pilih slide ${i + 1}`}
-                                    type="button"
-                                />
-                            ))}
-                        </div>
-                    </section>
-                </div>
-            </div>
-
-            {/* Showcase Section */}
-            <main className="flex-1 max-w-7xl mx-auto px-6 py-14 w-full">
-                <div className="flex flex-col md:flex-row items-center justify-between gap-8 mb-12">
-                    <div>
-                        <span className="text-xs font-black uppercase tracking-widest text-[#7FA64A]">
-                            Warisan Budaya
-                        </span>
-                        <h2
-                            className="text-3xl sm:text-4xl font-black text-[#6B3F25] mt-1"
-                            style={{ fontFamily: "Georgia, serif" }}
-                        >
-                            Jelajahi Cerita Rakyat Indonesia
-                        </h2>
-                        <p className="text-sm font-medium text-neutral-700 max-w-xl mt-2">
-                            Temukan cerita legenda, mitologi, hingga sejarah dari berbagai penjuru Nusantara lewat video animasi pendek yang memikat.
-                        </p>
+    return <div className="home-page batik-surface">
+        <AppNavbar />
+        <main id="main-content" tabIndex={-1} className="home-main">
+            {/* Hero carousel matching the reference's image-led composition. */}
+            <Reveal as="section" className="home-hero" aria-roledescription="carousel" aria-label="Kisah Nusantara pilihan"
+                onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
+                onFocus={() => setFocused(true)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false); }}>
+                <AnimatePresence initial={false}>
+                    <motion.img key={slide.image} src={slide.image} alt="" className="home-hero-art"
+                        style={{ objectPosition: slide.position }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        transition={{ duration: reducedMotion ? 0 : 0.7 }} fetchPriority="high" />
+                </AnimatePresence>
+                <div className="home-hero-shade" />
+                <Reveal key={slide.title} direction="left" delay={0.08} className="home-hero-content" aria-live={autoPlay && !reducedMotion ? "off" : "polite"}>
+                    <span className="home-hero-kicker"><Sparkles size={14} aria-hidden="true" />LEGENDA NUSANTARA</span>
+                    <h1>{slide.title}</h1>
+                    <p>{slide.description}</p>
+                    <div className="home-hero-actions">
+                        <Link to={matchingVideo ? videoHref(matchingVideo) : `/animations?q=${encodeURIComponent(slide.search)}`} className="nusa-button"><Play size={16} fill="currentColor" aria-hidden="true" />{matchingVideo ? "Tonton sekarang" : "Jelajahi kisah"}</Link>
+                        <Link to={creatorHref} className="nusa-button nusa-button-glass">{isAuthenticated ? "Bagikan karya" : "Mulai petualangan"}<ArrowRight size={16} /></Link>
                     </div>
-
-                    <Link
-                        to="/reels"
-                        className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold shadow-md transition hover:opacity-95"
-                        style={{ backgroundColor: "#B8EF64", color: "#47611B" }}
-                    >
-                        Buka Feed Reels
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <path d="M5 12h14M12 5l7 7-7 7" />
-                        </svg>
-                    </Link>
+                </Reveal>
+                <div className="home-carousel-controls">
+                    <button className="home-carousel-arrow" aria-label="Kisah sebelumnya" onClick={() => setActiveSlide((activeSlide + heroSlides.length - 1) % heroSlides.length)}><ChevronLeft size={18} /></button>
+                    <div className="home-carousel-dots">{heroSlides.map((item, index) => <button key={item.title} aria-label={`Lihat ${item.title}`} aria-pressed={activeSlide === index} onClick={() => setActiveSlide(index)} />)}</div>
+                    <button className="home-carousel-arrow" aria-label="Kisah berikutnya" onClick={() => setActiveSlide((activeSlide + 1) % heroSlides.length)}><ChevronRight size={18} /></button>
+                    {!reducedMotion && <button className="home-carousel-arrow" aria-label={autoPlay ? "Jeda pergantian kisah" : "Putar pergantian kisah"} onClick={() => setAutoPlay(!autoPlay)}>{autoPlay ? <Pause size={14} /> : <Play size={14} />}</button>}
                 </div>
+                <span className="home-hero-number" aria-hidden="true">0{activeSlide + 1}<span> / 03</span></span>
+            </Reveal>
 
-                {/* Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {featuredFolklore.map((item) => (
-                        <div
-                            key={item.title}
-                            className="bg-white rounded-3xl overflow-hidden shadow-sm border border-amber-200/70 hover:shadow-md transition"
-                        >
-                            <div className="h-44 relative bg-amber-200 overflow-hidden">
-                                <img
-                                    src={item.image}
-                                    alt={item.title}
-                                    className="w-full h-full object-cover"
-                                    style={{ objectPosition: item.position }}
-                                />
-                                <span className="absolute top-3 left-3 px-3 py-1 bg-black/60 backdrop-blur-sm text-white text-[11px] font-bold rounded-full">
-                                    {item.region}
-                                </span>
-                            </div>
-                            <div className="p-6">
-                                <h3 className="text-xl font-bold text-[#3B2A0E] mb-2">{item.title}</h3>
-                                <p className="text-sm text-neutral-600 mb-4">{item.desc}</p>
-                                <Link
-                                    to="/reels"
-                                    className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 hover:text-amber-950"
-                                >
-                                    Tonton di Reels →
-                                </Link>
-                            </div>
-                        </div>
-                    ))}
+            {/* Introduction and mascot */}
+            <Reveal as="section" id="tentang-kami" className="home-intro">
+                <div><span className="home-eyebrow">SELAMAT DATANG, PENJELAJAH</span>
+                    <h2>Yuk, jelajahi cerita<br />Nusantara!</h2>
+                    <p>Dari legenda yang akrab di telinga sampai kisah yang belum pernah kamu dengar. Temukan budaya Indonesia lewat animasi karya kreator lokal.</p>
+                    <a href="#pilihan-cerita" className="nusa-button"><Compass size={16} />Mulai menjelajah</a>
                 </div>
-            </main>
+                <Reveal direction="right" delay={0.12} className="home-intro-mascot"><span aria-hidden="true" /><img src="/poto/nunjuk.webp" width="160" height="300" alt="Maskot NusaTales mengajak menjelajah" /></Reveal>
+            </Reveal>
 
-            <Footer />
-        </div>
-    );
+            {/* Published stories use real records, without invented popularity metrics. */}
+            <Reveal as="section" id="pilihan-cerita" className="home-section">
+                <SectionHeading eyebrow="ADA CERITA DI SETIAP SUDUT" title="Pilihan cerita Nusantara" description="Temukan karya terbaru dari para penjaga cerita." />
+                <div className="home-filter-row" role="group" aria-label="Filter jenis karya">{filters.map((item) => <button key={item.value} onClick={() => setFilter(item.value)} aria-pressed={filter === item.value}>{item.label}</button>)}</div>
+                {loadState === "loading" ? <LoadingStories /> : loadState === "error" ? <div className="home-empty" role="alert"><Compass size={30} /><h3>Cerita belum berhasil dimuat</h3><p>Coba muat kembali untuk melanjutkan penjelajahan.</p><button className="nusa-button" onClick={() => setRetry(retry + 1)}><RefreshCw size={16} />Coba lagi</button></div>
+                    : featured.length ? <div className="home-bento">{featured.map((video, index) => <StoryCard key={video.id} video={video} index={index} featured={index === 0} />)}</div>
+                        : <div className="home-empty"><Film size={30} /><h3>Kisah baru sedang menanti</h3><p>{filter === "all" ? "Belum ada karya yang dipublikasikan. Jadilah bagian dari cerita pertama di sini." : "Belum ada karya dalam format ini. Coba jelajahi format lainnya."}</p><Link to={filter === "all" ? creatorHref : "/animations"} className="nusa-button">{filter === "all" ? "Bagikan ceritamu" : "Buka katalog"}<ArrowRight size={16} /></Link></div>}
+            </Reveal>
+
+            {/* A compact latest row follows the episode strip in the reference. */}
+            {loadState === "ready" && latest.length > 0 && <Reveal as="section" className="home-section">
+                <SectionHeading title="Baru hadir, siap ditonton" description="Lanjutkan petualangan dengan karya yang baru dipublikasikan." />
+                <div className="home-latest">{latest.map((video, index) => <StoryCard key={video.id} video={video} index={index} compact />)}</div>
+            </Reveal>}
+
+            {/* The map is an editorial illustration; the CTA opens the working catalogue. */}
+            <Reveal as="section" className="home-map-banner">
+                <div><span className="home-eyebrow">DARI SABANG SAMPAI MERAUKE</span><h2>Satu Nusantara.<br />Ribuan cerita.</h2><p>Setiap daerah menyimpan kisahnya sendiri. Kenali warisan yang menghubungkan kita, satu cerita pada satu waktu.</p><Link to="/animations" className="nusa-button"><Compass size={16} />Jelajahi koleksi budaya</Link></div>
+                <Reveal direction="right" delay={0.1} className="home-map-art"><div className="home-map-landscape"><img src="/poto/peta-legenda.webp" alt="Ilustrasi peta kepulauan Indonesia" loading="lazy" width="1840" height="2800" /></div><img className="home-map-mascot" src="/poto/nunjuk.webp" alt="" loading="lazy" /></Reveal>
+            </Reveal>
+
+            <SubscriptionPlans />
+
+            <Reveal as="section" className="home-creator-banner">
+                <div><span className="home-eyebrow">CERITA KITA, WARISAN BERSAMA</span><h2>Cerita berikutnya,<br />bisa jadi karyamu.</h2><p>Jadilah bagian dari para penjaga cerita. Bawa kisah dari daerahmu, hidupkan lewat imajinasimu.</p><Link to={creatorHref} className="nusa-button">{isAuthenticated ? "Unggah karya pertamamu" : "Gabung jadi kreator"}<ArrowRight size={16} /></Link></div>
+                <Reveal direction="right" delay={0.12} className="home-creator-mascot"><span aria-hidden="true" /><img src="/poto/splash-senyum.webp" width="220" height="320" alt="Maskot NusaTales menyambut kreator" loading="lazy" /></Reveal>
+            </Reveal>
+        </main>
+        <Footer />
+    </div>;
 }

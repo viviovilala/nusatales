@@ -1,3 +1,4 @@
+import StorageImage, { useStorageImageUrl } from "../../../components/StorageImage";
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import AppNavbar from "../../../components/AppNavbar";
@@ -56,6 +57,8 @@ export default function PublicProfilePage() {
         };
     }, [username]);
 
+    const avatarUrl = useStorageImageUrl(creator?.avatar_path);
+
     if (isLoading) {
         return (
             <div className="min-h-screen flex flex-col bg-[#F5F0E0]">
@@ -100,7 +103,6 @@ export default function PublicProfilePage() {
         );
     }
 
-    const avatarUrl = profileRepository.getAvatarPublicUrl(creator.avatar_path);
     const initial = (creator.display_name || creator.username || "K").charAt(0).toUpperCase();
 
     return (
@@ -181,7 +183,6 @@ export default function PublicProfilePage() {
                     ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                             {videos.map((vid) => {
-                                const thumbUrl = videoRepository.getThumbnailPublicUrl(vid.thumbnail_path) || "/poto/hero-roro-action.webp";
                                 return (
                                     <Link
                                         key={vid.id}
@@ -189,8 +190,9 @@ export default function PublicProfilePage() {
                                         className="group relative bg-white rounded-2xl overflow-hidden border border-amber-200/70 shadow-sm hover:shadow-md transition"
                                     >
                                         <div className="aspect-[9/14] bg-neutral-900 relative overflow-hidden">
-                                            <img
-                                                src={thumbUrl}
+                                            <StorageImage
+                                                path={vid.thumbnail_path}
+                                                fallbackSrc="/poto/hero-roro-action.webp"
                                                 alt={vid.title}
                                                 className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                                             />

@@ -1,3 +1,4 @@
+import { useStorageImageUrl } from "../../../components/StorageImage";
 import React, { useState, useEffect, useRef } from "react";
 import AppNavbar from "../../../components/AppNavbar";
 import Footer from "../../../components/Footer";
@@ -165,7 +166,8 @@ export default function ProfileSettingsPage() {
         }
     }
 
-    const currentAvatarUrl = avatarPreview || profileRepository.getAvatarPublicUrl(avatarPath);
+    const signedAvatarUrl = useStorageImageUrl(avatarPath);
+    const currentAvatarUrl = avatarPreview || signedAvatarUrl;
     const initialLetter = (displayName || user?.email || "U").charAt(0).toUpperCase();
 
     return (

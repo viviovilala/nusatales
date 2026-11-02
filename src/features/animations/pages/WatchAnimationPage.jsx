@@ -1,3 +1,4 @@
+import { useStorageImageUrl } from "../../../components/StorageImage";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import AppNavbar from "../../../components/AppNavbar";
@@ -29,6 +30,8 @@ export default function WatchAnimationPage() {
 
     const [video, setVideo] = useState(null);
     const [mediaUrl, setMediaUrl] = useState(null);
+    const thumbnailUrl = useStorageImageUrl(video?.thumbnail_path);
+    const creatorAvatar = useStorageImageUrl(video?.creator?.avatar_path);
     const [isLoading, setIsLoading] = useState(true);
     const [errorMessage, setErrorMessage] = useState("");
 
@@ -343,7 +346,6 @@ export default function WatchAnimationPage() {
 
     const creatorName = video.creator?.display_name || "Kreator NusaTales";
     const creatorUsername = video.creator?.username;
-    const creatorAvatar = videoRepository.getThumbnailPublicUrl(video.creator?.avatar_path);
 
     return (
         <div className="min-h-screen flex flex-col bg-[#140E06] text-white">
@@ -367,7 +369,7 @@ export default function WatchAnimationPage() {
                         <video
                             ref={videoRef}
                             src={mediaUrl}
-                            poster={videoRepository.getThumbnailPublicUrl(video.thumbnail_path) || undefined}
+                            poster={thumbnailUrl || undefined}
                             playsInline
                             onTimeUpdate={handleTimeUpdate}
                             onClick={togglePlay}

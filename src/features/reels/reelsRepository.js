@@ -1,6 +1,5 @@
 import { supabase, isSupabaseConfigured } from "../../lib/supabaseClient";
 import { videoRepository } from "../videos/videoRepository";
-import { profileRepository } from "../profile/profileRepository";
 
 // In-memory cache for signed URLs to prevent refetching during rapid scrolling
 const signedUrlCache = new Map();
@@ -70,7 +69,7 @@ export const reelsRepository = {
                     title: v.title,
                     description: v.description,
                     storagePath: v.storage_path,
-                    thumbnailUrl: videoRepository.getThumbnailPublicUrl(v.thumbnail_path),
+                    thumbnailPath: v.thumbnail_path,
                     durationSeconds: v.duration_seconds,
                     contentType: "reel",
                     publishedAt: v.published_at,
@@ -78,7 +77,7 @@ export const reelsRepository = {
                         id: v.creator?.id,
                         username: v.creator?.username,
                         displayName: v.creator?.display_name || "Kreator NusaTales",
-                        avatarUrl: profileRepository.getAvatarPublicUrl(v.creator?.avatar_path),
+                        avatarPath: v.creator?.avatar_path,
                     },
                 }));
                 return { data: normalizedFallback, error: null };
@@ -91,7 +90,7 @@ export const reelsRepository = {
             title: v.title,
             description: v.description,
             storagePath: v.storage_path,
-            thumbnailUrl: videoRepository.getThumbnailPublicUrl(v.thumbnail_path),
+            thumbnailPath: v.thumbnail_path,
             durationSeconds: v.duration_seconds,
             contentType: v.content_type || "reel",
             publishedAt: v.published_at,
@@ -99,7 +98,7 @@ export const reelsRepository = {
                 id: v.creator?.id,
                 username: v.creator?.username,
                 displayName: v.creator?.display_name || "Kreator NusaTales",
-                avatarUrl: profileRepository.getAvatarPublicUrl(v.creator?.avatar_path),
+                avatarPath: v.creator?.avatar_path,
             },
         }));
 
@@ -140,7 +139,7 @@ export const reelsRepository = {
             title: data.title,
             description: data.description,
             storagePath: data.storage_path,
-            thumbnailUrl: videoRepository.getThumbnailPublicUrl(data.thumbnail_path),
+            thumbnailPath: data.thumbnail_path,
             durationSeconds: data.duration_seconds,
             contentType: data.content_type || "reel",
             publishedAt: data.published_at,
@@ -148,7 +147,7 @@ export const reelsRepository = {
                 id: data.creator?.id,
                 username: data.creator?.username,
                 displayName: data.creator?.display_name || "Kreator NusaTales",
-                avatarUrl: profileRepository.getAvatarPublicUrl(data.creator?.avatar_path),
+                avatarPath: data.creator?.avatar_path,
             },
         };
 

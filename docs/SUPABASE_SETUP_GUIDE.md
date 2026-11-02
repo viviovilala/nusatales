@@ -69,6 +69,10 @@ Jalankan script migrasi ini secara berurutan di **Supabase Dashboard $\rightarro
 | **8** | `20261102000008_correct_storage_size_limits.sql` | Penyesuaian batas bucket `videos` ke konservatif 50 MB sesuai batas paket Supabase Free Tier. |
 | **9** | `20261102000009_multi_layered_video_security_and_locking.sql` | Row-level locking (`FOR UPDATE`) pada `publish_video` untuk mencegah race condition, immutable `content_type`, dan trusted RPC `soft_delete_video`. |
 | **10** | `20261102000010_private_video_thumbnails.sql` | Pengetatan bucket `thumbnails` menjadi privat dengan RLS selektif (owner untuk draf, publik untuk avatar dan thumbnail video yang telah dipublikasikan). |
+| **11** | `20261102000011_thumbnail_ownership_and_video_grants.sql` | Validasi kepemilikan path pada INSERT/UPDATE, Storage RLS, grants per kolom, dan penguncian durasi video published. Terapkan bersama client signed-image. |
+
+> Follow-up V3: lihat [security dan remake beranda](audits/SECURITY_AND_HOME_REMAKE.md)
+> untuk preflight legacy paths, hasil tes lokal, dan batas validasi remote.
 
 ---
 

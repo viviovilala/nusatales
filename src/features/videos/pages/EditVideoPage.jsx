@@ -1,3 +1,4 @@
+import { useStorageImageUrl } from "../../../components/StorageImage";
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import AppNavbar from "../../../components/AppNavbar";
@@ -119,7 +120,7 @@ export default function EditVideoPage() {
         }
     }
 
-    const thumbUrl = videoRepository.getThumbnailPublicUrl(thumbnailPath) || "/poto/hero-roro-action.webp";
+    const thumbUrl = useStorageImageUrl(thumbnailPath) || "/poto/hero-roro-action.webp";
     const isAnim = contentType === "animation";
     const publicUrl = isAnim ? `/watch/${id}` : `/reels/${id}`;
 

@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Link } from "react-router-dom";
+import StorageImage from "../../../components/StorageImage";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import AppNavbar from "../../../components/AppNavbar";
 import Footer from "../../../components/Footer";
 import { videoRepository } from "../../videos/videoRepository";
@@ -19,14 +20,18 @@ function formatDuration(seconds) {
 }
 
 export default function AnimationCatalogPage() {
+    const [searchParams, setSearchParams] = useSearchParams();
+    const routeSearch = searchParams.get("q") || "";
+    const fetchRevision = useRef(0);
     const [animations, setAnimations] = useState([]);
     const [totalCount, setTotalCount] = useState(0);
-    const [searchQuery, setSearchQuery] = useState("");
-    const [appliedSearch, setAppliedSearch] = useState("");
+    const [searchQuery, setSearchQuery] = useState(routeSearch);
+    const [appliedSearch, setAppliedSearch] = useState(routeSearch);
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
 
     const fetchAnimations = useCallback(async (query = "", offset = 0, isAppend = false) => {
+        const revision = isAppend ? fetchRevision.current : ++fetchRevision.current;
         if (isAppend) {
             setIsLoadingMore(true);
         } else {
@@ -40,6 +45,7 @@ export default function AnimationCatalogPage() {
                 search: query,
             });
 
+            if (revision !== fetchRevision.current) return;
             if (error) throw error;
 
             if (isAppend) {
@@ -55,21 +61,31 @@ export default function AnimationCatalogPage() {
         } catch (err) {
             console.error("[AnimationCatalogPage] Error fetching catalog:", err);
         } finally {
-            setIsLoading(false);
-            setIsLoadingMore(false);
+            if (revision === fetchRevision.current) {
+                setIsLoading(false);
+                setIsLoadingMore(false);
+            }
         }
     }, []);
 
     useEffect(() => {
         fetchAnimations(appliedSearch, 0, false);
+        return () => { fetchRevision.current++; };
     }, [appliedSearch, fetchAnimations]);
+
+    useEffect(() => {
+        setSearchQuery(routeSearch);
+        setAppliedSearch(routeSearch);
+    }, [routeSearch]);
 
     const handleSearchSubmit = (e) => {
         e.preventDefault();
+        setSearchParams(searchQuery.trim() ? { q: searchQuery.trim() } : {});
         setAppliedSearch(searchQuery.trim());
     };
 
     const handleClearSearch = () => {
+        setSearchParams({});
         setSearchQuery("");
         setAppliedSearch("");
     };
@@ -145,7 +161,7 @@ export default function AnimationCatalogPage() {
 
                         <div className="hidden md:block w-72 shrink-0">
                             <img
-                                src="/poto/splash-baca.webp"
+                                src="/poto/nunjuk.webp"
                                 alt="Animasi Budaya"
                                 className="w-full h-auto object-contain drop-shadow-2xl"
                             />
@@ -211,7 +227,6 @@ export default function AnimationCatalogPage() {
                     <>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                             {animations.map((video) => {
-                                const thumb = video.thumbnailUrl || "/poto/hero-roro-action.webp";
                                 const formattedDate = new Date(video.publishedAt).toLocaleDateString("id-ID", {
                                     day: "numeric",
                                     month: "short",
@@ -226,8 +241,9 @@ export default function AnimationCatalogPage() {
                                     >
                                         {/* 16:9 Thumbnail Box */}
                                         <div className="relative aspect-video w-full bg-neutral-900 overflow-hidden">
-                                            <img
-                                                src={thumb}
+                                            <StorageImage
+                                                path={video.thumbnailPath}
+                                                fallbackSrc="/poto/hero-roro-action.webp"
                                                 alt={video.title}
                                                 className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
                                             />
@@ -259,9 +275,9 @@ export default function AnimationCatalogPage() {
                                             <div className="flex items-center justify-between pt-3 border-t border-neutral-100 text-xs">
                                                 <div className="flex items-center gap-2 min-w-0">
                                                     <div className="w-6 h-6 rounded-full overflow-hidden bg-amber-200 text-amber-950 font-bold text-[10px] flex items-center justify-center shrink-0">
-                                                        {video.creator?.avatarUrl ? (
-                                                            <img
-                                                                src={video.creator.avatarUrl}
+                                                        {video.creator?.avatarPath ? (
+                                                            <StorageImage
+                                                                path={video.creator.avatarPath}
                                                                 alt={video.creator.displayName}
                                                                 className="w-full h-full object-cover"
                                                             />

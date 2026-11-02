@@ -1,3 +1,4 @@
+import { getStorageImageUrl } from "../../lib/storageImages";
 import { supabase, isSupabaseConfigured } from "../../lib/supabaseClient";
 
 export const videoRepository = {
@@ -80,7 +81,7 @@ export const videoRepository = {
             title: v.title,
             description: v.description,
             storagePath: v.storage_path,
-            thumbnailUrl: videoRepository.getThumbnailPublicUrl(v.thumbnail_path),
+            thumbnailPath: v.thumbnail_path,
             durationSeconds: v.duration_seconds,
             contentType: v.content_type || "animation",
             publishedAt: v.published_at,
@@ -88,7 +89,7 @@ export const videoRepository = {
                 id: v.creator?.id,
                 username: v.creator?.username,
                 displayName: v.creator?.display_name || "Kreator NusaTales",
-                avatarUrl: videoRepository.getThumbnailPublicUrl(v.creator?.avatar_path),
+                avatarPath: v.creator?.avatar_path,
             },
         }));
 
@@ -220,7 +221,6 @@ export const videoRepository = {
                 title: title.trim(),
                 description: description?.trim() || null,
                 content_type: validContentType,
-                status: "draft",
             })
             .select()
             .single();
@@ -241,7 +241,6 @@ export const videoRepository = {
                 payload[key] = updates[key];
             }
         }
-        payload.updated_at = new Date().toISOString();
 
         const { data, error } = await supabase
             .from("videos")
@@ -298,30 +297,7 @@ export const videoRepository = {
             .catch(() => null);
     },
 
-    getThumbnailPublicUrl(thumbnailPath) {
-        if (!thumbnailPath) return null;
-        if (thumbnailPath.startsWith("http://") || thumbnailPath.startsWith("https://")) {
-            return thumbnailPath;
-        }
-        if (!isSupabaseConfigured) return null;
-
-        const { data } = supabase.storage
-            .from("thumbnails")
-            .getPublicUrl(thumbnailPath);
-
-        return data?.publicUrl || null;
-    },
-
-    getThumbnailSignedUrl(thumbnailPath, expiresIn = 3600) {
-        if (!isSupabaseConfigured || !thumbnailPath) return Promise.resolve(null);
-        if (thumbnailPath.startsWith("http://") || thumbnailPath.startsWith("https://")) {
-            return Promise.resolve(thumbnailPath);
-        }
-
-        return supabase.storage
-            .from("thumbnails")
-            .createSignedUrl(thumbnailPath, expiresIn)
-            .then(({ data }) => data?.signedUrl || null)
-            .catch(() => null);
+    getThumbnailSignedUrl(thumbnailPath, expiresIn = 300) {
+        return getStorageImageUrl(thumbnailPath, expiresIn);
     },
 };

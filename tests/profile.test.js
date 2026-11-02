@@ -59,15 +59,15 @@ describe("Profile Validation & Whitelist Security", () => {
         });
     });
 
-    describe("getAvatarPublicUrl", () => {
-        it("returns null for null or empty paths", () => {
-            expect(profileRepository.getAvatarPublicUrl(null)).toBeNull();
-            expect(profileRepository.getAvatarPublicUrl("")).toBeNull();
+    describe("getAvatarSignedUrl", () => {
+        it("returns null for null or empty paths", async () => {
+            expect(await profileRepository.getAvatarSignedUrl(null)).toBeNull();
+            expect(await profileRepository.getAvatarSignedUrl("")).toBeNull();
         });
 
-        it("returns the path directly if it is an external http URL", () => {
+        it("returns the path directly if it is an external http URL", async () => {
             const url = "https://images.example.com/avatar.jpg";
-            expect(profileRepository.getAvatarPublicUrl(url)).toBe(url);
+            expect(await profileRepository.getAvatarSignedUrl(url)).toBe(url);
         });
     });
 });

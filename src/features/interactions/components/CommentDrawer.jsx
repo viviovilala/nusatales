@@ -1,3 +1,4 @@
+import StorageImage from "../../../components/StorageImage";
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/AuthProvider";
@@ -166,9 +167,9 @@ export default function CommentDrawer({ videoId, isOpen, onClose }) {
                             return (
                                 <div key={comment.id} className="flex items-start gap-3 group">
                                     <div className="w-8 h-8 rounded-full overflow-hidden bg-amber-200 text-amber-950 font-bold text-xs flex items-center justify-center shrink-0">
-                                        {comment.user?.avatarUrl ? (
-                                            <img
-                                                src={comment.user.avatarUrl}
+                                        {comment.user?.avatarPath ? (
+                                            <StorageImage
+                                                path={comment.user.avatarPath}
                                                 alt={comment.user.displayName}
                                                 className="w-full h-full object-cover"
                                             />

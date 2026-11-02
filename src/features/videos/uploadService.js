@@ -114,6 +114,7 @@ export function uploadWithTus({
     let isSettled = false;
     let isAborted = false;
     let outerReject = null;
+    let abortPromise = Promise.resolve();
 
     const promise = new Promise(async (resolve, reject) => {
         outerReject = reject;
@@ -221,12 +222,13 @@ export function uploadWithTus({
     return {
         promise,
         abort: () => {
-            if (isSettled) return;
+            if (isAborted) return abortPromise;
+            if (isSettled) return Promise.resolve();
             isSettled = true;
             isAborted = true;
             if (uploadInstance) {
                 try {
-                    uploadInstance.abort();
+                    abortPromise = uploadInstance.abort(true).catch(() => undefined);
                 } catch (e) {
                     // Suppress synchronous abort errors from tus
                 }
@@ -237,6 +239,7 @@ export function uploadWithTus({
             if (outerReject) {
                 outerReject(cancelErr);
             }
+            return abortPromise;
         },
     };
 }
@@ -255,10 +258,18 @@ export async function uploadMediaWithProgress({
     draftId,
     onProgress,
     onUploadInstance,
+    signal,
 }) {
     if (!isSupabaseConfigured) {
         throw new Error("Supabase belum dikonfigurasi.");
     }
+
+    const checkCancelled = () => {
+        if (signal?.aborted) throw Object.assign(new Error("Pengunggahan dibatalkan."), {
+            name: "AbortError", isCancelled: true,
+        });
+    };
+    checkCancelled();
 
     const determinedType = contentType || file.type || (bucket === "thumbnails" ? "image/webp" : "video/mp4");
 
@@ -279,7 +290,17 @@ export async function uploadMediaWithProgress({
             onUploadInstance(tusTask);
         }
 
-        return await tusTask.promise;
+        const abort = () => { tusTask.abort(); };
+        signal?.addEventListener("abort", abort, { once: true });
+        if (signal?.aborted) abort();
+        try {
+            const result = await tusTask.promise;
+            checkCancelled();
+            return result;
+        } finally {
+            signal?.removeEventListener("abort", abort);
+            if (signal?.aborted) await tusTask.abort();
+        }
     }
 
     // THUMBNAILS / IMAGES: Standard Supabase client upload
@@ -296,6 +317,7 @@ export async function uploadMediaWithProgress({
         throw error;
     }
 
+    checkCancelled();
     if (onProgress) onProgress(100, { percent: 100 });
 
     return { path: data.path };

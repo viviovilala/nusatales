@@ -1,5 +1,4 @@
 import { supabase, isSupabaseConfigured } from "../../lib/supabaseClient";
-import { profileRepository } from "../profile/profileRepository";
 
 export const interactionRepository = {
     async getLikeStats(videoId, currentUserId = null) {
@@ -96,7 +95,7 @@ export const interactionRepository = {
                 id: c.user?.id,
                 username: c.user?.username,
                 displayName: c.user?.display_name || "Penonton",
-                avatarUrl: profileRepository.getAvatarPublicUrl(c.user?.avatar_path),
+                avatarPath: c.user?.avatar_path,
             },
         }));
 
@@ -145,7 +144,7 @@ export const interactionRepository = {
                 id: data.user?.id,
                 username: data.user?.username,
                 displayName: data.user?.display_name || "Penonton",
-                avatarUrl: profileRepository.getAvatarPublicUrl(data.user?.avatar_path),
+                avatarPath: data.user?.avatar_path,
             },
         };
 

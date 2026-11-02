@@ -1,3 +1,5 @@
+> Follow-up: [Security and home remake](SECURITY_AND_HOME_REMAKE.md) supersedes thumbnail, cancellation, and live-test completion claims in this report. Remote verification remains pending.
+
 # LAPORAN AUDIT & STABILISASI AKHIR NUSATALES MVP (V3)
 ## Final Stabilization, Security Verification, Upload Reliability & Production Readiness Audit
 

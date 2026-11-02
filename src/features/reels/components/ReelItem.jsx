@@ -1,3 +1,4 @@
+import StorageImage, { useStorageImageUrl } from "../../../components/StorageImage";
 import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { reelsRepository } from "../reelsRepository";
@@ -8,6 +9,7 @@ import CommentDrawer from "../../interactions/components/CommentDrawer";
 export default function ReelItem({ video, isActive, isMuted, onToggleMute }) {
     const { user, isAuthenticated } = useAuth();
     const videoRef = useRef(null);
+    const thumbnailUrl = useStorageImageUrl(video.thumbnailPath);
 
     const [mediaUrl, setMediaUrl] = useState(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -201,7 +203,7 @@ export default function ReelItem({ video, isActive, isMuted, onToggleMute }) {
                 <video
                     ref={videoRef}
                     src={mediaUrl}
-                    poster={video.thumbnailUrl || undefined}
+                    poster={thumbnailUrl || undefined}
                     playsInline
                     loop
                     muted={isMuted}
@@ -216,9 +218,9 @@ export default function ReelItem({ video, isActive, isMuted, onToggleMute }) {
                     onClick={handleVideoClick}
                     className="relative w-full h-full flex items-center justify-center cursor-pointer bg-neutral-900"
                 >
-                    {video.thumbnailUrl && (
+                    {thumbnailUrl && (
                         <img
-                            src={video.thumbnailUrl}
+                            src={thumbnailUrl}
                             alt={video.title}
                             className="w-full h-full object-contain opacity-70"
                         />
@@ -371,9 +373,9 @@ export default function ReelItem({ video, isActive, isMuted, onToggleMute }) {
                     className="inline-flex items-center gap-2.5 mb-2 group"
                 >
                     <div className="w-9 h-9 rounded-full overflow-hidden bg-amber-200 border-2 border-white/60 flex items-center justify-center text-amber-950 font-bold text-xs shrink-0">
-                        {video.creator?.avatarUrl ? (
-                            <img
-                                src={video.creator.avatarUrl}
+                        {video.creator?.avatarPath ? (
+                            <StorageImage
+                                path={video.creator.avatarPath}
                                 alt={video.creator.displayName}
                                 className="w-full h-full object-cover"
                             />

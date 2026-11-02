@@ -1,3 +1,4 @@
+import StorageImage from "../../../components/StorageImage";
 import React, { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import AppNavbar from "../../../components/AppNavbar";
@@ -222,7 +223,6 @@ export default function StudioPage() {
                 ) : (
                     <div className="grid gap-4">
                         {filteredVideos.map((video) => {
-                            const thumbUrl = videoRepository.getThumbnailPublicUrl(video.thumbnail_path) || "/poto/hero-roro-action.webp";
                             const isPub = video.status === "published";
                             const isAnim = video.content_type === "animation";
                             const formattedDate = new Date(video.created_at).toLocaleDateString("id-ID", {
@@ -243,8 +243,9 @@ export default function StudioPage() {
                                         <div className={`relative rounded-2xl overflow-hidden bg-neutral-900 shrink-0 ${
                                             isAnim ? "w-32 h-20 sm:w-36 sm:h-24 aspect-video" : "w-20 h-28 sm:w-24 sm:h-32 aspect-[9/14]"
                                         }`}>
-                                            <img
-                                                src={thumbUrl}
+                                            <StorageImage
+                                                path={video.thumbnail_path}
+                                                fallbackSrc="/poto/hero-roro-action.webp"
                                                 alt={video.title}
                                                 className="w-full h-full object-cover"
                                             />
