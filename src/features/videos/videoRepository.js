@@ -258,27 +258,8 @@ export const videoRepository = {
             return { data: null, error: { message: "Supabase belum dikonfigurasi." } };
         }
 
-        // 1. Try trusted RPC first
-        const rpcRes = await supabase.rpc("soft_delete_video", { p_video_id: videoId });
-        if (!rpcRes.error) {
-            return rpcRes;
-        }
-        if (rpcRes.error.code !== "PGRST202" && !rpcRes.error.message?.includes("not found")) {
-            return rpcRes;
-        }
-
-        // 2. Fallback to direct update if RPC is pending migration execution
-        const { data, error } = await supabase
-            .from("videos")
-            .update({
-                deleted_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-            })
-            .eq("id", videoId)
-            .select()
-            .single();
-
-        return { data, error };
+        // Trusted RPC execution - strictly NO direct DB update fallback
+        return await supabase.rpc("soft_delete_video", { p_video_id: videoId });
     },
 
     async publishVideo(videoId) {
@@ -329,5 +310,18 @@ export const videoRepository = {
             .getPublicUrl(thumbnailPath);
 
         return data?.publicUrl || null;
+    },
+
+    getThumbnailSignedUrl(thumbnailPath, expiresIn = 3600) {
+        if (!isSupabaseConfigured || !thumbnailPath) return Promise.resolve(null);
+        if (thumbnailPath.startsWith("http://") || thumbnailPath.startsWith("https://")) {
+            return Promise.resolve(thumbnailPath);
+        }
+
+        return supabase.storage
+            .from("thumbnails")
+            .createSignedUrl(thumbnailPath, expiresIn)
+            .then(({ data }) => data?.signedUrl || null)
+            .catch(() => null);
     },
 };

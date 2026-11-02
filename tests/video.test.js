@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { videoRepository } from "../src/features/videos/videoRepository";
-import { MAX_VIDEO_BYTES, MAX_THUMBNAIL_BYTES, MAX_AVATAR_BYTES } from "../src/features/videos/uploadService";
+import { MAX_VIDEO_BYTES, MAX_THUMBNAIL_BYTES, MAX_AVATAR_BYTES, uploadWithTus } from "../src/features/videos/uploadService";
 import { supabase } from "../src/lib/supabaseClient";
 
 describe("Video Repository & Dual-Format Security", () => {
@@ -103,17 +103,42 @@ describe("Video Repository & Dual-Format Security", () => {
     });
 
     describe("softDeleteVideo trusted RPC", () => {
-        it("attempts soft_delete_video RPC first", async () => {
+        it("executes soft_delete_video RPC and strictly does NOT fall back to direct update when RPC fails", async () => {
             const rpcSpy = vi.spyOn(supabase, "rpc").mockResolvedValue({
-                data: { success: true, id: "vid-123", deleted: true },
-                error: null,
+                data: null,
+                error: { code: "PGRST202", message: "function soft_delete_video not found" },
             });
+            const updateSpy = vi.spyOn(supabase, "from");
 
             const res = await videoRepository.softDeleteVideo("vid-123");
             expect(rpcSpy).toHaveBeenCalledWith("soft_delete_video", { p_video_id: "vid-123" });
-            expect(res.data.deleted).toBe(true);
+            // Strict RPC boundary check: direct table update MUST NOT be called!
+            expect(updateSpy).not.toHaveBeenCalled();
+            expect(res.error).toBeDefined();
 
             rpcSpy.mockRestore();
+            updateSpy.mockRestore();
+        });
+    });
+
+    describe("TUS Resumable Upload Abort Safety", () => {
+        it("immediately settles and rejects with AbortError when abort() is invoked", async () => {
+            const fakeFile = new Blob(["dummy video bytes"], { type: "video/mp4" });
+            const task = uploadWithTus({
+                bucket: "videos",
+                filePath: "user-123/draft-456/media.mp4",
+                file: fakeFile,
+                userId: "user-123",
+                draftId: "draft-456",
+            });
+
+            // Trigger abort immediately
+            task.abort();
+
+            await expect(task.promise).rejects.toMatchObject({
+                name: "AbortError",
+                isCancelled: true,
+            });
         });
     });
 
@@ -152,6 +177,22 @@ describe("Video Repository & Dual-Format Security", () => {
 
             rpcSpy.mockRestore();
             updateSpy.mockRestore();
+        });
+
+        it("creates signed thumbnail URL with custom TTL", async () => {
+            const createSignedUrlSpy = vi.fn().mockResolvedValue({
+                data: { signedUrl: "https://example.com/storage/v1/object/sign/thumbnails/thumb.webp?token=xyz" },
+                error: null,
+            });
+            const storageSpy = vi.spyOn(supabase.storage, "from").mockReturnValue({
+                createSignedUrl: createSignedUrlSpy,
+            });
+
+            const url = await videoRepository.getThumbnailSignedUrl("user-1/vid-1/thumb.webp", 1800);
+            expect(createSignedUrlSpy).toHaveBeenCalledWith("user-1/vid-1/thumb.webp", 1800);
+            expect(url).toContain("sign/thumbnails/thumb.webp");
+
+            storageSpy.mockRestore();
         });
     });
 });

@@ -54,14 +54,15 @@ export default function ReelsPage() {
                 offset: 0,
             });
 
+            const rawQueryCount = (feedData || []).length;
             const existingIds = new Set(initialVideos.map((v) => v.id));
             const freshFeed = (feedData || []).filter((v) => !existingIds.has(v.id));
             const merged = [...initialVideos, ...freshFeed];
 
             setVideos(merged);
             setActiveIndex(0);
-            currentOffsetRef.current = freshFeed.length;
-            setHasMore((feedData || []).length === PAGE_SIZE);
+            currentOffsetRef.current = rawQueryCount;
+            setHasMore(rawQueryCount === PAGE_SIZE);
         } catch (err) {
             console.error("[ReelsPage] Feed error:", err);
         } finally {

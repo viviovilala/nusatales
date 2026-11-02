@@ -44,17 +44,23 @@ export default function UploadPage() {
     const [isDragging, setIsDragging] = useState(false);
     const activeUploadTaskRef = useRef(null);
 
-    // Clean up previews and abort active tasks on unmount
+    // Clean up preview blob URLs
     useEffect(() => {
         return () => {
             if (thumbnailPreview && thumbnailPreview.startsWith("blob:")) {
                 URL.revokeObjectURL(thumbnailPreview);
             }
+        };
+    }, [thumbnailPreview]);
+
+    // Abort active upload task if user navigates away before upload finishes
+    useEffect(() => {
+        return () => {
             if (activeUploadTaskRef.current) {
                 activeUploadTaskRef.current.abort();
             }
         };
-    }, [thumbnailPreview]);
+    }, []);
 
     async function handleVideoSelected(file) {
         if (!file) return;
@@ -276,6 +282,8 @@ export default function UploadPage() {
                 filePath: videoStoragePath,
                 file: videoFile,
                 contentType: videoFile.type || "video/mp4",
+                userId: user.id,
+                draftId: createdDraftId,
                 onUploadInstance: (task) => {
                     activeUploadTaskRef.current = task;
                 },
@@ -315,13 +323,19 @@ export default function UploadPage() {
                     );
                     return; // Stop here, do NOT show SUCCESS
                 }
-            }
 
-            setUploadPhase("PUBLISHED");
-            setUploadStep("Karya berhasil disimpan dan siap ditonton! Mengalihkan ke Studio...");
-            setTimeout(() => {
-                navigate("/studio");
-            }, 700);
+                setUploadPhase("PUBLISHED");
+                setUploadStep("Karya berhasil dipublikasikan! Mengalihkan ke Studio...");
+                setTimeout(() => {
+                    navigate("/studio");
+                }, 700);
+            } else {
+                setUploadPhase("DRAFT_SAVED");
+                setUploadStep("Draf karya berhasil disimpan! Mengalihkan ke Studio...");
+                setTimeout(() => {
+                    navigate("/studio");
+                }, 700);
+            }
         } catch (err) {
             console.error("[UploadPage] Error during upload:", err);
 

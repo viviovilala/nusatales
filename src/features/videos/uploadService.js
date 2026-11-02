@@ -99,6 +99,8 @@ export function uploadWithTus({
     bucket,
     filePath,
     file,
+    userId,
+    draftId,
     onProgress,
 }) {
     if (!isSupabaseConfigured) {
@@ -109,14 +111,37 @@ export function uploadWithTus({
     const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
     let uploadInstance = null;
+    let isSettled = false;
     let isAborted = false;
+    let outerReject = null;
 
     const promise = new Promise(async (resolve, reject) => {
+        outerReject = reject;
         try {
+            if (isAborted) {
+                isSettled = true;
+                const cancelErr = new Error("Pengunggahan dibatalkan oleh pengguna.");
+                cancelErr.name = "AbortError";
+                cancelErr.isCancelled = true;
+                return reject(cancelErr);
+            }
+
             const { data: sessionData } = await supabase.auth.getSession();
             const token = sessionData?.session?.access_token || anonKey;
 
+            if (isAborted) {
+                isSettled = true;
+                const cancelErr = new Error("Pengunggahan dibatalkan oleh pengguna.");
+                cancelErr.name = "AbortError";
+                cancelErr.isCancelled = true;
+                return reject(cancelErr);
+            }
+
             const endpoint = `${supabaseUrl}/storage/v1/upload/resumable`;
+
+            // Derive user and draft keys for scoped resume fingerprint
+            const resolvedUser = userId || (filePath.includes("/") ? filePath.split("/")[0] : "anon");
+            const resolvedDraft = draftId || (filePath.includes("/") ? filePath.split("/")[1] : "nodraft");
 
             uploadInstance = new tus.Upload(file, {
                 endpoint,
@@ -128,6 +153,10 @@ export function uploadWithTus({
                 },
                 uploadDataDuringCreation: true,
                 removeFingerprintOnSuccess: true,
+                fingerprint: (f) =>
+                    Promise.resolve(
+                        `tus-${resolvedUser}-${resolvedDraft}-${filePath}-${f.size}-${f.lastModified || ""}`
+                    ),
                 metadata: {
                     bucketName: bucket,
                     objectName: filePath,
@@ -136,8 +165,11 @@ export function uploadWithTus({
                 },
                 chunkSize: 6 * 1024 * 1024, // 6MB chunks
                 onError: (error) => {
+                    if (isSettled) return;
+                    isSettled = true;
                     if (isAborted) {
                         const cancelErr = new Error("Pengunggahan dibatalkan oleh pengguna.");
+                        cancelErr.name = "AbortError";
                         cancelErr.isCancelled = true;
                         return reject(cancelErr);
                     }
@@ -145,7 +177,7 @@ export function uploadWithTus({
                     reject(error);
                 },
                 onProgress: (bytesUploaded, bytesTotal) => {
-                    if (isAborted) return;
+                    if (isSettled || isAborted) return;
                     const percent = Math.min(100, Math.round((bytesUploaded / bytesTotal) * 100));
                     if (onProgress) {
                         onProgress({
@@ -156,30 +188,32 @@ export function uploadWithTus({
                     }
                 },
                 onSuccess: () => {
-                    if (isAborted) {
-                        const cancelErr = new Error("Pengunggahan dibatalkan.");
-                        cancelErr.isCancelled = true;
-                        return reject(cancelErr);
-                    }
+                    if (isSettled) return;
+                    isSettled = true;
                     resolve({ path: filePath });
                 },
             });
 
             // Attempt to resume previous unfinished upload if fingerprint matches
             if (uploadInstance.findPreviousUploads) {
-                uploadInstance.findPreviousUploads().then((previousUploads) => {
-                    if (isAborted) return;
-                    if (previousUploads && previousUploads.length > 0) {
-                        uploadInstance.resumeFromPreviousUpload(previousUploads[0]);
-                    }
-                    uploadInstance.start();
-                }).catch(() => {
-                    if (!isAborted) uploadInstance.start();
-                });
+                uploadInstance
+                    .findPreviousUploads()
+                    .then((previousUploads) => {
+                        if (isSettled || isAborted) return;
+                        if (previousUploads && previousUploads.length > 0) {
+                            uploadInstance.resumeFromPreviousUpload(previousUploads[0]);
+                        }
+                        uploadInstance.start();
+                    })
+                    .catch(() => {
+                        if (!isSettled && !isAborted) uploadInstance.start();
+                    });
             } else {
                 uploadInstance.start();
             }
         } catch (err) {
+            if (isSettled) return;
+            isSettled = true;
             reject(err);
         }
     });
@@ -187,9 +221,21 @@ export function uploadWithTus({
     return {
         promise,
         abort: () => {
+            if (isSettled) return;
+            isSettled = true;
             isAborted = true;
             if (uploadInstance) {
-                uploadInstance.abort();
+                try {
+                    uploadInstance.abort();
+                } catch (e) {
+                    // Suppress synchronous abort errors from tus
+                }
+            }
+            const cancelErr = new Error("Pengunggahan dibatalkan oleh pengguna.");
+            cancelErr.name = "AbortError";
+            cancelErr.isCancelled = true;
+            if (outerReject) {
+                outerReject(cancelErr);
             }
         },
     };
@@ -205,6 +251,8 @@ export async function uploadMediaWithProgress({
     filePath,
     file,
     contentType,
+    userId,
+    draftId,
     onProgress,
     onUploadInstance,
 }) {
@@ -220,6 +268,8 @@ export async function uploadMediaWithProgress({
             bucket,
             filePath,
             file,
+            userId,
+            draftId,
             onProgress: (prog) => {
                 if (onProgress) onProgress(prog.percent, prog);
             },
