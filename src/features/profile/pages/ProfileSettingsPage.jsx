@@ -5,6 +5,7 @@ import { useStorageImageUrl } from "../../../components/StorageImage";
 import React, { useState, useEffect, useRef, useId } from "react";
 import { useAuth } from "../../auth/AuthProvider";
 import { profileRepository, USERNAME_REGEX } from "../profileRepository";
+import { MAX_AVATAR_BYTES } from "../../../lib/mediaLimits";
 import { normalizeSupabaseError } from "../../../lib/errors";
 
 export default function ProfileSettingsPage({ embedded = false }) {
@@ -86,6 +87,18 @@ export default function ProfileSettingsPage({ embedded = false }) {
     async function handleAvatarChange(e) {
         const file = e.target.files?.[0];
         if (!file || !user?.id) return;
+        if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) ||
+            file.size > MAX_AVATAR_BYTES) {
+            setAvatarPreview(null);
+            setStatusMessage({
+                type: "error",
+                text: file.size > MAX_AVATAR_BYTES
+                    ? "Ukuran foto maksimal 2 MB."
+                    : "Format foto harus JPG, PNG, atau WebP.",
+            });
+            e.target.value = "";
+            return;
+        }
 
         // Local preview
         const reader = new FileReader();
