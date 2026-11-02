@@ -57,7 +57,7 @@ export async function extractVideoMetadata(videoFile) {
                 );
             } catch (err) {
                 URL.revokeObjectURL(videoUrl);
-                // Return metadata even if canvas capture is blocked
+                // Return metadata even if canvas capture fails
                 resolve({
                     durationSeconds: Math.max(1, Math.round(video.duration || 0)),
                     thumbnailBlob: null,
@@ -76,7 +76,8 @@ export async function extractVideoMetadata(videoFile) {
 }
 
 /**
- * Uploads a file to Supabase Storage with progress tracking.
+ * Uploads a file to Supabase Storage using the official Supabase SDK client.
+ * Guarantees correct apikey headers, authentication JWT, and MIME types.
  */
 export async function uploadMediaWithProgress({
     bucket,
@@ -89,63 +90,24 @@ export async function uploadMediaWithProgress({
         throw new Error("Supabase belum dikonfigurasi.");
     }
 
-    if (onProgress) onProgress(15);
+    if (onProgress) onProgress(20);
 
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData?.session?.access_token;
-    const projectUrl = import.meta.env.VITE_SUPABASE_URL;
+    const determinedType = contentType || file.type || (bucket === "thumbnails" ? "image/webp" : "video/mp4");
 
-    // Use XMLHttpRequest for real progress events if auth token and projectUrl are available
-    if (token && projectUrl && typeof XMLHttpRequest !== "undefined") {
-        return new Promise((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            const url = `${projectUrl}/storage/v1/object/${bucket}/${filePath}`;
+    if (onProgress) onProgress(45);
 
-            xhr.open("POST", url, true);
-            xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-            if (contentType || file.type) {
-                xhr.setRequestHeader("Content-Type", contentType || file.type);
-            }
-            xhr.setRequestHeader("x-upsert", "false");
-
-            xhr.upload.onprogress = (event) => {
-                if (event.lengthComputable && onProgress) {
-                    const percent = Math.round((event.loaded / event.total) * 90);
-                    onProgress(Math.max(15, percent));
-                }
-            };
-
-            xhr.onload = () => {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    if (onProgress) onProgress(100);
-                    resolve({ path: filePath });
-                } else {
-                    try {
-                        const err = JSON.parse(xhr.responseText);
-                        reject(new Error(err.message || "Gagal mengunggah berkas ke penyimpanan."));
-                    } catch {
-                        reject(new Error(`Gagal mengunggah berkas (${xhr.status}).`));
-                    }
-                }
-            };
-
-            xhr.onerror = () => {
-                reject(new Error("Terjadi kesalahan jaringan saat mengunggah berkas."));
-            };
-
-            xhr.send(file);
-        });
-    }
-
-    // Fallback using Supabase client
     const { data, error } = await supabase.storage
         .from(bucket)
         .upload(filePath, file, {
-            contentType: contentType || file.type,
+            contentType: determinedType,
             upsert: false,
         });
 
-    if (error) throw error;
+    if (error) {
+        throw error;
+    }
+
     if (onProgress) onProgress(100);
+
     return { path: data.path };
 }

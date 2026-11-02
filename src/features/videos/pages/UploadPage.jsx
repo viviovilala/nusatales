@@ -123,6 +123,11 @@ export default function UploadPage() {
     async function handleSubmit(shouldPublishImmediately = false) {
         setErrorMessage("");
 
+        if (!user?.id) {
+            setErrorMessage("Sesi Anda tidak ditemukan. Silakan masuk / login kembali.");
+            return;
+        }
+
         if (!title.trim()) {
             setErrorMessage("Judul video tidak boleh kosong.");
             return;
@@ -204,7 +209,8 @@ export default function UploadPage() {
                 navigate("/studio");
             }, 600);
         } catch (err) {
-            setErrorMessage(err.message || "Gagal mengunggah video. Silakan coba lagi.");
+            console.error("[UploadPage] Error during upload:", err);
+            setErrorMessage(normalizeSupabaseError(err, err.message || "Gagal mengunggah video. Silakan coba lagi."));
         } finally {
             setIsUploading(false);
         }
