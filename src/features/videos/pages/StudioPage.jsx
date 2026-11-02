@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import AppNavbar from "../../../components/AppNavbar";
 import Footer from "../../../components/Footer";
 import { useAuth } from "../../auth/AuthProvider";
+import OnboardingBanner from "../../profile/components/OnboardingBanner";
 
 export default function StudioPage() {
     const { user, profile } = useAuth();
@@ -13,6 +14,8 @@ export default function StudioPage() {
             <AppNavbar />
 
             <main className="flex-1 max-w-6xl w-full mx-auto px-6 py-8">
+                <OnboardingBanner />
+
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                     <div>
                         <span className="text-xs font-bold uppercase tracking-wider text-amber-800">

@@ -1,5 +1,7 @@
 import { supabase, isSupabaseConfigured } from "../../lib/supabaseClient";
 
+export const USERNAME_REGEX = /^[a-z0-9_]{3,24}$/;
+
 export const profileRepository = {
     async getProfile(userId) {
         if (!isSupabaseConfigured || !userId) return { data: null, error: null };
@@ -13,6 +15,43 @@ export const profileRepository = {
         return { data, error };
     },
 
+    async getProfileByUsername(username) {
+        if (!isSupabaseConfigured || !username) return { data: null, error: null };
+
+        const cleanUsername = username.trim().toLowerCase();
+        const { data, error } = await supabase
+            .from("profiles")
+            .select("id, username, display_name, bio, avatar_path, created_at, updated_at")
+            .ilike("username", cleanUsername)
+            .maybeSingle();
+
+        return { data, error };
+    },
+
+    async isUsernameAvailable(username, currentUserId) {
+        if (!isSupabaseConfigured || !username) return false;
+
+        const cleanUsername = username.trim().toLowerCase();
+        if (!USERNAME_REGEX.test(cleanUsername)) return false;
+
+        let query = supabase
+            .from("profiles")
+            .select("id")
+            .ilike("username", cleanUsername);
+
+        if (currentUserId) {
+            query = query.neq("id", currentUserId);
+        }
+
+        const { data, error } = await query;
+        if (error) {
+            console.error("[isUsernameAvailable] Query error:", error);
+            return false;
+        }
+
+        return !data || data.length === 0;
+    },
+
     async updateProfile(userId, updates) {
         if (!isSupabaseConfigured || !userId) {
             return { data: null, error: { message: "Supabase belum dikonfigurasi." } };
@@ -23,6 +62,10 @@ export const profileRepository = {
             updated_at: new Date().toISOString(),
         };
 
+        if (payload.username) {
+            payload.username = payload.username.trim().toLowerCase();
+        }
+
         const { data, error } = await supabase
             .from("profiles")
             .update(payload)
@@ -31,5 +74,59 @@ export const profileRepository = {
             .single();
 
         return { data, error };
+    },
+
+    async uploadAvatar(userId, file) {
+        if (!isSupabaseConfigured || !userId || !file) {
+            return { data: null, error: { message: "Kredensial atau berkas tidak valid." } };
+        }
+
+        // Validate MIME type
+        const validTypes = ["image/jpeg", "image/png", "image/webp"];
+        if (!validTypes.includes(file.type)) {
+            return {
+                data: null,
+                error: { message: "Format foto harus JPG, PNG, atau WebP." },
+            };
+        }
+
+        // Validate max 5MB
+        if (file.size > 5 * 1024 * 1024) {
+            return {
+                data: null,
+                error: { message: "Ukuran foto maksimal 5 MB." },
+            };
+        }
+
+        const ext = file.name.split(".").pop().toLowerCase();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${ext}`;
+        const filePath = `${userId}/avatar-${fileName}`;
+
+        const { data, error } = await supabase.storage
+            .from("thumbnails")
+            .upload(filePath, file, {
+                cacheControl: "3600",
+                upsert: true,
+            });
+
+        if (error) {
+            return { data: null, error };
+        }
+
+        return { data: { path: data.path }, error: null };
+    },
+
+    getAvatarPublicUrl(avatarPath) {
+        if (!avatarPath) return null;
+        if (avatarPath.startsWith("http://") || avatarPath.startsWith("https://")) {
+            return avatarPath;
+        }
+        if (!isSupabaseConfigured) return null;
+
+        const { data } = supabase.storage
+            .from("thumbnails")
+            .getPublicUrl(avatarPath);
+
+        return data?.publicUrl || null;
     },
 };
