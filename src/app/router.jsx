@@ -13,6 +13,7 @@ import AuthCallbackPage from "../features/auth/pages/AuthCallbackPage";
 import ReelsPage from "../features/reels/pages/ReelsPage";
 import StudioPage from "../features/videos/pages/StudioPage";
 import UploadPage from "../features/videos/pages/UploadPage";
+import EditVideoPage from "../features/videos/pages/EditVideoPage";
 import ProfileSettingsPage from "../features/profile/pages/ProfileSettingsPage";
 import PublicProfilePage from "../features/profile/pages/PublicProfilePage";
 
@@ -53,7 +54,7 @@ export function AppRouter() {
                 path="/studio/videos/:id/edit"
                 element={
                     <RequireAuth>
-                        <UploadPage />
+                        <EditVideoPage />
                     </RequireAuth>
                 }
             />

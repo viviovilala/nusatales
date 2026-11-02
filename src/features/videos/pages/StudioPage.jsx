@@ -1,13 +1,89 @@
-import React from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import AppNavbar from "../../../components/AppNavbar";
 import Footer from "../../../components/Footer";
 import { useAuth } from "../../auth/AuthProvider";
+import { videoRepository } from "../videoRepository";
 import OnboardingBanner from "../../profile/components/OnboardingBanner";
+import { normalizeSupabaseError } from "../../../lib/errors";
 
 export default function StudioPage() {
     const { user, profile } = useAuth();
     const displayName = profile?.display_name || user?.user_metadata?.display_name || "Kreator";
+
+    const [videos, setVideos] = useState([]);
+    const [filter, setFilter] = useState("all"); // 'all' | 'published' | 'draft'
+    const [isLoading, setIsLoading] = useState(true);
+    const [actionError, setActionError] = useState("");
+
+    // Modal state for delete confirmation
+    const [deleteModal, setDeleteModal] = useState({ open: false, video: null });
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const loadStudioVideos = useCallback(async () => {
+        if (!user?.id) return;
+        setIsLoading(true);
+        setActionError("");
+
+        try {
+            const { data, error } = await videoRepository.getMyStudioVideos(user.id);
+            if (error) {
+                setActionError(normalizeSupabaseError(error, "Gagal memuat video studio."));
+                return;
+            }
+            setVideos(data || []);
+        } catch (err) {
+            setActionError(normalizeSupabaseError(err));
+        } finally {
+            setIsLoading(false);
+        }
+    }, [user?.id]);
+
+    useEffect(() => {
+        loadStudioVideos();
+    }, [loadStudioVideos]);
+
+    async function handleTogglePublish(video) {
+        setActionError("");
+        try {
+            if (video.status === "draft") {
+                const { error } = await videoRepository.publishVideo(video.id);
+                if (error) throw error;
+            } else {
+                const { error } = await videoRepository.unpublishVideo(video.id);
+                if (error) throw error;
+            }
+            await loadStudioVideos();
+        } catch (err) {
+            setActionError(normalizeSupabaseError(err, "Gagal mengubah status publikasi video."));
+        }
+    }
+
+    async function handleConfirmDelete() {
+        if (!deleteModal.video) return;
+        setIsDeleting(true);
+        setActionError("");
+
+        try {
+            const { error } = await videoRepository.softDeleteVideo(deleteModal.video.id);
+            if (error) throw error;
+            setDeleteModal({ open: false, video: null });
+            await loadStudioVideos();
+        } catch (err) {
+            setActionError(normalizeSupabaseError(err, "Gagal menghapus video."));
+        } finally {
+            setIsDeleting(false);
+        }
+    }
+
+    const filteredVideos = videos.filter((v) => {
+        if (filter === "published") return v.status === "published";
+        if (filter === "draft") return v.status === "draft";
+        return true;
+    });
+
+    const publishedCount = videos.filter((v) => v.status === "published").length;
+    const draftCount = videos.filter((v) => v.status === "draft").length;
 
     return (
         <div className="min-h-screen flex flex-col bg-[#F5F0E0]">
@@ -22,19 +98,19 @@ export default function StudioPage() {
                             Studio Kreator
                         </span>
                         <h1
-                            className="text-3xl font-black text-[#3B2A0E]"
+                            className="text-3xl font-black text-[#3B2A0E] mt-0.5"
                             style={{ fontFamily: "Georgia, serif" }}
                         >
                             Halo, {displayName}
                         </h1>
                         <p className="text-sm text-neutral-600">
-                            Kelola draf video animasi cerita rakyat dan publikasikan ke penonton.
+                            Kelola portofolio animasi budaya, status publikasi, dan karya cerita Anda.
                         </p>
                     </div>
 
                     <Link
                         to="/studio/upload"
-                        className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold text-white shadow-sm transition hover:opacity-90 self-start md:self-auto"
+                        className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold text-white shadow transition hover:opacity-95 self-start md:self-auto cursor-pointer"
                         style={{ backgroundColor: "#8DC63F" }}
                     >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -44,28 +120,225 @@ export default function StudioPage() {
                     </Link>
                 </div>
 
-                {/* Video list placeholder / container */}
-                <div className="bg-white rounded-3xl p-8 border border-amber-200/70 shadow-sm text-center">
-                    <div className="w-16 h-16 bg-amber-100 text-amber-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18" />
-                            <line x1="7" y1="2" x2="7" y2="22" />
-                            <line x1="17" y1="2" x2="17" y2="22" />
-                            <line x1="2" y1="12" x2="22" y2="12" />
-                        </svg>
+                {actionError && (
+                    <div className="mb-6 rounded-2xl px-5 py-4 text-sm bg-red-50 text-red-800 border border-red-200 font-medium">
+                        {actionError}
                     </div>
-                    <h3 className="text-lg font-bold text-neutral-900 mb-1">Belum Ada Video di Studio</h3>
-                    <p className="text-sm text-neutral-500 max-w-md mx-auto mb-6">
-                        Unggah karya animasi cerita daerah pertama Anda. Video akan tersimpan sebagai draf sampai Anda siap mempublikasikannya.
-                    </p>
-                    <Link
-                        to="/studio/upload"
-                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold text-amber-950 bg-amber-100 hover:bg-amber-200 transition"
+                )}
+
+                {/* Filter Tabs */}
+                <div className="flex items-center gap-2 mb-6 border-b border-amber-200/80 pb-3">
+                    <button
+                        type="button"
+                        onClick={() => setFilter("all")}
+                        className={`px-4 py-1.5 rounded-full text-xs font-bold transition cursor-pointer ${
+                            filter === "all"
+                                ? "bg-amber-900 text-white"
+                                : "text-neutral-600 hover:bg-amber-100/60"
+                        }`}
                     >
-                        Buka Formulir Unggah
-                    </Link>
+                        Semua ({videos.length})
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setFilter("published")}
+                        className={`px-4 py-1.5 rounded-full text-xs font-bold transition cursor-pointer ${
+                            filter === "published"
+                                ? "bg-emerald-600 text-white"
+                                : "text-neutral-600 hover:bg-amber-100/60"
+                        }`}
+                    >
+                        Dipublikasikan ({publishedCount})
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setFilter("draft")}
+                        className={`px-4 py-1.5 rounded-full text-xs font-bold transition cursor-pointer ${
+                            filter === "draft"
+                                ? "bg-amber-600 text-white"
+                                : "text-neutral-600 hover:bg-amber-100/60"
+                        }`}
+                    >
+                        Draf ({draftCount})
+                    </button>
                 </div>
+
+                {/* Videos List Container */}
+                {isLoading ? (
+                    <div className="bg-white rounded-3xl p-16 text-center border border-amber-200/70 shadow-sm flex flex-col items-center justify-center">
+                        <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mb-4" />
+                        <p className="text-sm font-medium text-neutral-600">Memuat video studio Anda...</p>
+                    </div>
+                ) : filteredVideos.length === 0 ? (
+                    <div className="bg-white rounded-3xl p-12 text-center border border-amber-200/70 shadow-sm">
+                        <div className="w-16 h-16 bg-amber-100 text-amber-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18" />
+                                <line x1="7" y1="2" x2="7" y2="22" />
+                                <line x1="17" y1="2" x2="17" y2="22" />
+                                <line x1="2" y1="12" x2="22" y2="12" />
+                            </svg>
+                        </div>
+                        <h3 className="text-lg font-bold text-neutral-900 mb-1">
+                            {filter === "all"
+                                ? "Belum Ada Video di Studio"
+                                : filter === "published"
+                                ? "Belum Ada Video yang Dipublikasikan"
+                                : "Tidak Ada Video Draf"}
+                        </h3>
+                        <p className="text-sm text-neutral-500 max-w-md mx-auto mb-6">
+                            Unggah karya animasi cerita daerah Anda. Anda dapat menyimpannya sebagai draf terlebih dahulu sebelum merilisnya ke Reels.
+                        </p>
+                        <Link
+                            to="/studio/upload"
+                            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-bold text-white shadow hover:opacity-95"
+                            style={{ backgroundColor: "#8DC63F" }}
+                        >
+                            Unggah Video Sekarang
+                        </Link>
+                    </div>
+                ) : (
+                    <div className="grid gap-4">
+                        {filteredVideos.map((video) => {
+                            const thumbUrl = videoRepository.getThumbnailPublicUrl(video.thumbnail_path) || "/poto/hero-roro-action.webp";
+                            const isPub = video.status === "published";
+                            const formattedDate = new Date(video.created_at).toLocaleDateString("id-ID", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                            });
+
+                            return (
+                                <div
+                                    key={video.id}
+                                    className="bg-white rounded-3xl p-5 border border-amber-200/70 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 hover:shadow-md transition"
+                                >
+                                    {/* Thumbnail + Details */}
+                                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                                        <div className="relative w-20 h-28 sm:w-24 sm:h-32 rounded-2xl overflow-hidden bg-neutral-900 shrink-0">
+                                            <img
+                                                src={thumbUrl}
+                                                alt={video.title}
+                                                className="w-full h-full object-cover"
+                                            />
+                                            {video.duration_seconds && (
+                                                <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/70 text-white font-mono text-[9px] font-bold">
+                                                    {video.duration_seconds}s
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span
+                                                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${
+                                                        isPub
+                                                            ? "bg-emerald-100 text-emerald-800"
+                                                            : "bg-amber-100 text-amber-800"
+                                                    }`}
+                                                >
+                                                    {isPub ? "Dipublikasikan" : "Draf"}
+                                                </span>
+                                                <span className="text-xs text-neutral-400">
+                                                    • {formattedDate}
+                                                </span>
+                                            </div>
+
+                                            <h3 className="font-bold text-base text-[#3B2A0E] truncate mb-1">
+                                                {video.title}
+                                            </h3>
+
+                                            <p className="text-xs text-neutral-500 line-clamp-2 max-w-xl">
+                                                {video.description || "Belum ada deskripsi."}
+                                            </p>
+
+                                            {isPub && (
+                                                <Link
+                                                    to={`/reels/${video.id}`}
+                                                    className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 hover:underline mt-2"
+                                                >
+                                                    Buka di Reels →
+                                                </Link>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Actions */}
+                                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end border-t sm:border-t-0 pt-3 sm:pt-0 border-neutral-100">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleTogglePublish(video)}
+                                            className={`px-4 py-2 rounded-full text-xs font-bold transition shadow-sm cursor-pointer ${
+                                                isPub
+                                                    ? "bg-amber-100 text-amber-900 hover:bg-amber-200"
+                                                    : "bg-[#8DC63F] text-white hover:opacity-90"
+                                            }`}
+                                        >
+                                            {isPub ? "Tarik ke Draf" : "Publikasikan"}
+                                        </button>
+
+                                        <Link
+                                            to={`/studio/videos/${video.id}/edit`}
+                                            className="px-4 py-2 rounded-full text-xs font-bold text-neutral-800 bg-[#F5F0E0] hover:bg-[#EAE2CE] transition"
+                                        >
+                                            Edit
+                                        </Link>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => setDeleteModal({ open: true, video })}
+                                            className="p-2 text-red-500 hover:bg-red-50 rounded-full transition cursor-pointer"
+                                            title="Hapus Video"
+                                            aria-label="Hapus Video"
+                                        >
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </main>
+
+            {/* Delete Confirmation Modal */}
+            {deleteModal.open && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-amber-100">
+                        <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            </svg>
+                        </div>
+                        <h3 className="font-bold text-lg text-center text-neutral-900 mb-2">
+                            Hapus Video Ini?
+                        </h3>
+                        <p className="text-xs text-neutral-600 text-center mb-6">
+                            Video <span className="font-bold text-neutral-800">"{deleteModal.video?.title}"</span> akan dihapus dari studio dan feed Reels Anda.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                disabled={isDeleting}
+                                onClick={() => setDeleteModal({ open: false, video: null })}
+                                className="flex-1 py-2.5 rounded-full text-xs font-bold text-neutral-700 bg-neutral-100 hover:bg-neutral-200 transition cursor-pointer"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="button"
+                                disabled={isDeleting}
+                                onClick={handleConfirmDelete}
+                                className="flex-1 py-2.5 rounded-full text-xs font-bold text-white bg-red-600 hover:bg-red-700 shadow transition cursor-pointer"
+                            >
+                                {isDeleting ? "Menghapus..." : "Ya, Hapus"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <Footer />
         </div>

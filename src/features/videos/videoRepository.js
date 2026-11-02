@@ -143,6 +143,56 @@ export const videoRepository = {
         return { data, error };
     },
 
+    async publishVideo(videoId) {
+        if (!isSupabaseConfigured) {
+            return { data: null, error: { message: "Supabase belum dikonfigurasi." } };
+        }
+
+        const { data, error } = await supabase.rpc("publish_video", {
+            p_video_id: videoId,
+        });
+
+        if (error && (error.code === "PGRST202" || error.message?.includes("function") || error.message?.includes("not found"))) {
+            return await supabase
+                .from("videos")
+                .update({
+                    status: "published",
+                    published_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                })
+                .eq("id", videoId)
+                .select()
+                .single();
+        }
+
+        return { data, error };
+    },
+
+    async unpublishVideo(videoId) {
+        if (!isSupabaseConfigured) {
+            return { data: null, error: { message: "Supabase belum dikonfigurasi." } };
+        }
+
+        const { data, error } = await supabase.rpc("unpublish_video", {
+            p_video_id: videoId,
+        });
+
+        if (error && (error.code === "PGRST202" || error.message?.includes("function") || error.message?.includes("not found"))) {
+            return await supabase
+                .from("videos")
+                .update({
+                    status: "draft",
+                    published_at: null,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq("id", videoId)
+                .select()
+                .single();
+        }
+
+        return { data, error };
+    },
+
     getMediaSignedUrl(storagePath, expiresIn = 3600) {
         if (!isSupabaseConfigured || !storagePath) return Promise.resolve(null);
 
