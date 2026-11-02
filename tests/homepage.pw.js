@@ -73,8 +73,8 @@ test("desktop home uses published data, format filters, private covers and corre
     await page.locator("#story-search").fill("Timun Mas");
     await page.getByRole("button", { name: "Cari cerita", exact: true }).click();
     await expect(page).toHaveURL(/\/animations\?q=Timun%20Mas/);
-    await expect(page.getByPlaceholder("Cari judul cerita (misal: Sangkuriang, Roro Jonggrang)...")).toHaveValue("Timun Mas");
-    await expect(page.getByRole("heading", { name: 'Hasil Pencarian: "Timun Mas"' })).toBeVisible();
+    await expect(page.getByRole("searchbox", { name: "Cari judul film", exact: true })).toHaveValue("Timun Mas");
+    await expect(page.getByRole("heading", { name: 'Hasil pencarian: “Timun Mas”' })).toBeVisible();
     expect(publicRequests).toEqual([]);
     expect(errors).toEqual([]);
 });

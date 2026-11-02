@@ -1,5 +1,7 @@
+import { AppLink as Link } from "../app/ModalContext";
 import React, { useEffect, useState } from "react";
-import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Search, Menu, Plus, ChevronDown, UserRound, Clapperboard, LogOut, Settings } from "lucide-react";
 import { useAuth } from "../features/auth/AuthProvider";

@@ -39,7 +39,8 @@ export const videoRepository = {
         return { data: data || [], error };
     },
 
-    async getAnimationCatalog({ limit = 12, offset = 0, search = "" } = {}) {
+    /** @param {{limit?: number, offset?: number, search?: string, duration?: "all" | "short" | "medium" | "long", sort?: "newest" | "oldest" | "title", signal?: AbortSignal}} options */
+    async getAnimationCatalog({ limit = 12, offset = 0, search = "", duration = "all", sort = "newest", signal } = {}) {
         if (!isSupabaseConfigured) return { data: [], count: 0, error: null };
 
         let query = supabase
@@ -70,9 +71,16 @@ export const videoRepository = {
             query = query.ilike("title", `%${cleanSearch}%`);
         }
 
-        const { data, count, error } = await query
-            .order("published_at", { ascending: false })
-            .range(offset, offset + limit - 1);
+        if (duration === "short") query = query.lte("duration_seconds", 300);
+        else if (duration === "medium") query = query.gt("duration_seconds", 300).lte("duration_seconds", 900);
+        else if (duration === "long") query = query.gt("duration_seconds", 900);
+
+        query = sort === "title" ? query.order("title", { ascending: true })
+            : query.order("published_at", { ascending: sort === "oldest" });
+        // A stable tie-breaker prevents repeated/missing cards on adjacent pages.
+        query = query.order("id", { ascending: sort === "oldest" || sort === "title" }).range(offset, offset + limit - 1);
+        if (signal) query = query.abortSignal(signal);
+        const { data, count, error } = await query;
 
         if (error) return { data: [], count: 0, error };
 

@@ -1,5 +1,6 @@
+import { AppLink as Link } from "../app/ModalContext";
 import React from "react";
-import { Link } from "react-router-dom";
+
 import { ArrowUp } from "lucide-react";
 
 export default function Footer() {

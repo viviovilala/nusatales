@@ -1,0 +1,220 @@
+.animation-watch-page { display: flow-root; min-height: 100dvh; color: #e9e1d5; }
+.animation-watch-main { width: min(1216px, calc(100% - 48px)); margin: 28px auto 60px; outline: none; }
+.watch-breadcrumb { display: flex; align-items: center; gap: 13px; color: #8c8172; font-size: 10px; margin-bottom: 22px; }
+.watch-breadcrumb a { display: inline-flex; align-items: center; gap: 7px; color: #c6b69e; }
+.watch-breadcrumb a:hover { color: #d4edb1; }
+.watch-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; grid-template-rows: auto auto auto auto; align-items: start; gap: 22px 28px; }
+.watch-viewing-note, .animation-player, .watch-summary, .animation-discussion { grid-column: 1; min-width: 0; }
+.watch-viewing-note { display: flex; align-items: center; gap: 9px; border: 1px solid #b9d38526; background: #b9d3850b; border-radius: 99px; padding: 11px 16px; color: #afbd91; font-size: 10px; }
+.watch-viewing-note > svg { flex-shrink: 0; }
+.watch-viewing-note > a { display: flex; align-items: center; gap: 5px; margin-left: auto; color: #cbdfaa; }
+.watch-panel { border: 1px solid #b89a6730; background: #201e1a; border-radius: 22px; }
+.animation-watch-page h1, .animation-watch-page h2 { font-family: var(--font-display); font-weight: 700; }
+.animation-player { position: relative; width: 100%; aspect-ratio: 16 / 9; isolation: isolate; overflow: hidden; border-radius: 27px; border: 2px solid #88613c; background: #050504; box-shadow: 0 9px 32px #0004; }
+.animation-player:focus-visible { outline: 2px solid #a9c577; outline-offset: 4px; }
+.animation-player > video { display: block; width: 100%; height: 100%; object-fit: contain; cursor: pointer; }
+.animation-player:fullscreen { border: 0; border-radius: 0; aspect-ratio: auto; height: 100%; width: 100%; }
+.watch-player-controls { position: absolute; z-index: 4; inset: auto 0 0; padding: 38px 16px 10px; background: linear-gradient(transparent, #000b 45%, #000d); }
+.watch-player-seek { width: 100%; height: 10px; accent-color: #b9db79; cursor: pointer; display: block; margin: 0 0 8px; }
+.watch-player-control-row { display: flex; justify-content: space-between; align-items: center; gap: 14px; }
+.watch-player-control-row > div { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.watch-player-control-row button { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 6px; color: #fffaf0; cursor: pointer; flex-shrink: 0; }
+.watch-player-control-row button:hover { background: #ffffff18; }
+.watch-player-control-row button:disabled { opacity: .4; cursor: not-allowed; }
+.watch-player-clock { font-size: 10px; font-variant-numeric: tabular-nums; color: #eee6d8; white-space: nowrap; }
+.watch-volume { width: 62px; height: 6px; accent-color: #b9db79; cursor: pointer; }
+.watch-center-play { position: absolute; z-index: 2; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 70px; height: 70px; display: grid; place-items: center; border-radius: 50%; color: #fdf6e6; background: #21180e9c; border: 1px solid #f8eac95c; cursor: pointer; backdrop-filter: blur(4px); }
+.watch-center-play > svg { margin-left: 3px; }
+.watch-player-state { position: absolute; z-index: 5; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px; padding: 24px; background: #14120ff2; text-align: center; color: #c3b598; }
+.watch-player-state p { font-size: 12px; line-height: 1.8; max-width: 300px; }
+.watch-player-state button { display: inline-flex; align-items: center; gap: 9px; border: 1px solid #b7a27e55; padding: 10px 15px; border-radius: 8px; color: #d1e8b0; font-size: 11px; cursor: pointer; }
+.watch-player-buffer { position: absolute; z-index: 3; inset: 0; display: grid; place-items: center; pointer-events: none; color: #d2e8b1; }
+.watch-player-notice { position: absolute; z-index: 5; top: 15px; left: 15px; max-width: calc(100% - 30px); padding: 8px 12px; background: #14120fe3; border: 1px solid #c0b18d30; color: #dbcbb1; border-radius: 7px; font-size: 10px; }
+.watch-player-menu { min-width: 200px; }
+.watch-player-menu [role=menuitemradio] { display: flex; justify-content: space-between; align-items: center; padding: 9px 13px; border-radius: 8px; color: #745333; font-size: 12px; outline: none; cursor: pointer; }
+.watch-player-menu [role=menuitemradio][data-highlighted] { background: #edf5db; }
+.watch-summary { padding: 25px 26px; }
+.watch-summary-heading { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 12px; }
+.watch-kicker { font-size: 8px; font-weight: 600; letter-spacing: 1.2px; color: #a4ba7e; }
+.watch-summary time { color: #8c8070; font-size: 9px; }
+.watch-summary h1 { font-size: clamp(22px, 2.1vw, 29px); line-height: 1.35; letter-spacing: -.7px; overflow-wrap: anywhere; color: #efe3ce; }
+.watch-actions-wrap { margin: 18px 0 23px; }
+.watch-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.watch-actions > button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid #ab8c5e30; border-radius: 99px; padding: 8px 12px; background: #c7aa7710; color: #c9b797; font-size: 10px; cursor: pointer; }
+.watch-actions > button[aria-pressed=true] { background: #a8724e2b; border-color: #bb956655; color: #d7a572; }
+.watch-actions > button:disabled { opacity: .4; cursor: not-allowed; }
+.watch-actions > button:hover:not(:disabled) { background: #bda07222; }
+.watch-inline-error { display: flex; align-items: center; gap: 9px; color: #d3987c; font-size: 11px; line-height: 1.8; margin: 11px 0; }
+.watch-inline-error button { display: inline-grid; place-items: center; padding: 5px; color: #d9b997; cursor: pointer; }
+.watch-action-notice { font-size: 10px; color: #a5b887; margin-top: 12px; }
+.watch-share-link { margin-top: 10px; font-size: 11px; padding: 10px; border: 1px solid #9e8c6d55; border-radius: 7px; color: #e5d1af; width: 100%; background: #171611; }
+.watch-creator-row { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding-bottom: 21px; border-bottom: 1px solid #b6986422; }
+.watch-creator { display: flex; align-items: center; gap: 11px; min-width: 0; cursor: pointer; text-align: left; }
+.watch-creator .reel-avatar { width: 39px; height: 39px; font-size: 15px; border-width: 1px; }
+.watch-creator > span:last-child { min-width: 0; }
+.watch-creator strong { display: block; color: #dbceb8; font-size: 12px; overflow-wrap: anywhere; }
+.watch-creator small { display: block; color: #91816a; font-size: 9px; margin-top: 5px; }
+.watch-profile-button { display: flex; align-items: center; gap: 5px; background: #bad78514; color: #aebe93; padding: 8px 11px; border: 1px solid #b9d38520; border-radius: 99px; white-space: nowrap; font-size: 9px; cursor: pointer; }
+.watch-synopsis { margin-top: 20px; }
+.watch-synopsis h2 { font-size: 11px; color: #b8a17f; margin-bottom: 10px; }
+.watch-synopsis p { font-size: 12px; line-height: 1.95; color: #b7aa95; white-space: pre-wrap; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.watch-synopsis p.is-expanded { display: block; }
+.watch-synopsis > button { display: flex; gap: 5px; align-items: center; color: #a6b888; font-size: 10px; margin-top: 12px; cursor: pointer; }
+.watch-sidebar { grid-column: 2; grid-row: 1 / span 4; position: sticky; top: 110px; display: flex; flex-direction: column; gap: 27px; min-width: 0; }
+.watch-episodes { padding: 22px 18px 18px; }
+.watch-episodes > header { margin-bottom: 18px; }
+.watch-episodes h2 { display: flex; gap: 8px; align-items: center; color: #d7c3a3; font-size: 14px; scroll-margin-top: 115px; }
+.watch-current-title { display: flex; gap: 10px; align-items: center; background: #b4cf7e0d; padding: 12px; border: 1px solid #a7bf7150; border-radius: 12px; }
+.watch-cover { display: grid; place-items: center; flex-shrink: 0; width: 90px; height: 60px; border-radius: 9px; overflow: hidden; background: #3c3528; color: #8a795c; }
+.watch-cover img { width: 100%; height: 100%; object-fit: cover; }
+.watch-current-title .watch-cover { width: 70px; height: 53px; }
+.watch-current-title > div { min-width: 0; }
+.watch-current-title small { display: block; font-size: 6px; letter-spacing: .7px; color: #a3b77b; margin-bottom: 6px; }
+.watch-current-title strong { display: block; font-size: 11px; color: #d9ccb6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.watch-current-title > div > span { display: flex; align-items: center; gap: 5px; font-size: 8px; color: #9b8d76; margin-top: 6px; }
+.watch-episodes-empty { padding: 25px 13px; display: flex; align-items: center; text-align: center; flex-direction: column; color: #7f735e; }
+.watch-episodes-empty strong { font-size: 11px; color: #a99a81; margin: 13px 0 8px; }
+.watch-episodes-empty p { font-size: 10px; line-height: 1.8; max-width: 205px; }
+.watch-sidebar-link { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 11px; border-radius: 99px; color: #cbdcae; background: #b9d38512; font-size: 10px; border: 1px solid #b9d38525; }
+.watch-related { padding-inline: 3px; }
+.watch-related > header { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 19px; }
+.watch-related h2 { font-size: 13px; color: #c4af8d; }
+.watch-related > header a { color: #9da77c; }
+.watch-related-list { display: flex; flex-direction: column; gap: 15px; }
+.watch-related-card { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
+.watch-related-card > span:last-child { min-width: 0; }
+.watch-related-card strong { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: #c9bda7; font-size: 11px; line-height: 1.5; }
+.watch-related-card:hover strong { color: #d3e6b4; }
+.watch-related-card small, .watch-related-card em { display: block; color: #8f806a; font-size: 8px; font-style: normal; margin-top: 6px; }
+.watch-related-card em { color: #7f8d68; margin-top: 4px; }
+.watch-related-state { font-size: 11px; color: #92816b; line-height: 1.8; padding: 14px 0; }
+.watch-related-state button { color: #bbce9a; font-size: 10px; margin-top: 10px; cursor: pointer; }
+.watch-related-skeletons { display: grid; gap: 15px; }
+.watch-related-skeletons span { display: block; height: 62px; border-radius: 9px; background: #2b271f; animation: nusa-skeleton-pulse 1.4s ease-in-out infinite; }
+.animation-discussion { padding-top: 5px; }
+.watch-discussion-heading { display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 20px; }
+.watch-discussion-heading h2 { display: flex; gap: 8px; align-items: center; font-size: 16px; color: #cfbb99; }
+.watch-discussion-heading h2 > span { font: 400 9px var(--font-sans); color: #8f8069; }
+.watch-discussion-heading select { padding: 7px 5px; max-width: 105px; border: none; background: #29251e; border-radius: 6px; color: #baa98c; font-size: 10px; cursor: pointer; }
+.watch-comment-composer { display: flex; align-items: flex-start; gap: 13px; padding: 19px; border: 1px solid #ad93662c; background: #201e1a; border-radius: 19px; }
+.watch-comment-composer > .reel-avatar { width: 34px; height: 34px; font-size: 13px; border-width: 1px; }
+.watch-comment-composer form { width: 100%; min-width: 0; }
+.watch-comment-composer textarea { width: 100%; resize: vertical; min-height: 85px; max-height: 240px; background: #171611; border: 1px solid #b8a37d20; border-radius: 10px; padding: 13px; font-size: 12px; line-height: 1.8; color: #d0c0a6; }
+.watch-comment-composer textarea:focus { outline: 2px solid #859d5a; outline-offset: 2px; }
+.watch-comment-composer textarea::placeholder { color: #716852; }
+.watch-comment-composer form > div { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; }
+.watch-comment-composer form > div > span { font-size: 9px; color: #776b57; }
+.watch-comment-composer form button { display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border-radius: 99px; background: #adcb79; color: #2e3d1b; font-size: 10px; font-weight: 600; cursor: pointer; }
+.watch-comment-composer form button:disabled { opacity: .4; cursor: not-allowed; }
+.watch-comment-login { display: flex; align-items: center; gap: 15px; width: 100%; color: #b39e7b; }
+.watch-comment-login > svg { flex-shrink: 0; }
+.watch-comment-login > div { flex: 1; }
+.watch-comment-login strong { font-size: 12px; color: #cabb9f; }
+.watch-comment-login p { font-size: 10px; color: #8d7e66; line-height: 1.8; margin-top: 6px; }
+.watch-comment-login a { color: #c4d99f; background: #b6d17e14; padding: 9px 17px; border: 1px solid #b6d17e30; border-radius: 99px; font-size: 10px; }
+.watch-discussion-state { padding: 35px 20px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 13px; color: #8f8068; font-size: 11px; text-align: center; line-height: 1.8; }
+.watch-discussion-state button { color: #c0d29f; cursor: pointer; }
+.watch-comments { display: flex; flex-direction: column; gap: 20px; margin-top: 25px; }
+.watch-comment { display: flex; align-items: flex-start; gap: 12px; }
+.watch-comment-avatar { padding-top: 3px; cursor: pointer; }
+.watch-comment-avatar .reel-avatar { width: 32px; height: 32px; font-size: 12px; border-width: 1px; }
+.watch-comment-content { flex: 1; min-width: 0; background: #25221c; border: 1px solid #a58f651a; border-radius: 0 13px 13px 13px; padding: 15px 17px; }
+.watch-comment-content > header { display: flex; flex-wrap: wrap; align-items: center; gap: 7px 12px; margin-bottom: 9px; }
+.watch-comment-content > header button { font-size: 11px; color: #bfac8a; cursor: pointer; }
+.watch-comment-content time { font-size: 8px; color: #7d705b; }
+.watch-comment-content p { font-size: 12px; line-height: 1.85; color: #c1b69e; white-space: pre-wrap; overflow-wrap: anywhere; }
+.watch-comment-delete { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 9px; color: #a39173; margin-top: 13px; }
+.watch-comment-delete button { display: inline-flex; align-items: center; gap: 4px; font-size: 9px; color: #ac8b6e; cursor: pointer; padding: 3px 0; }
+.watch-comment-delete button:disabled { opacity: .5; cursor: not-allowed; }
+.watch-comment-delete button:last-child { color: #c69575; }
+.watch-more-comments { display: block; width: 100%; text-align: center; padding: 12px; margin-top: 24px; border: 1px solid #ae936033; color: #b4a17f; font-size: 10px; border-radius: 99px; cursor: pointer; }
+.watch-workspace-loading { display: grid; grid-template-columns: 1fr 320px; gap: 28px; }
+.watch-workspace-loading > div { display: flex; align-items: center; justify-content: center; gap: 12px; aspect-ratio: 16 / 9; background: #15130f; border: 1px solid #8b6c3e40; border-radius: 26px; color: #9c8c70; font-size: 12px; }
+.watch-workspace-loading > aside { height: 310px; background: #24211b; border-radius: 22px; }
+.watch-unavailable { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; text-align: center; min-height: 460px; color: #b9a485; }
+.watch-unavailable h1 { font-size: 27px; color: #deccb1; }
+.watch-unavailable p { max-width: 420px; font-size: 12px; line-height: 1.8; }
+.watch-unavailable > div { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+.watch-unavailable button, .watch-unavailable a { display: flex; align-items: center; gap: 8px; border-radius: 9px; border: 1px solid #9c855c50; padding: 11px 16px; color: #c9dca8; font-size: 11px; cursor: pointer; }
+@media (max-width: 1100px) {
+    .watch-layout { grid-template-columns: minmax(0, 1fr) 270px; gap: 20px; }
+    .watch-summary { padding: 22px; }
+    .watch-episodes { padding: 20px 14px 15px; }
+    .watch-cover { width: 78px; height: 56px; }
+    .watch-related-card { gap: 10px; }
+    .watch-viewing-note { font-size: 9px; }
+}
+@media (max-width: 900px) {
+    .watch-layout { display: flex; flex-direction: column; gap: 22px; }
+    .watch-layout > * { width: 100%; }
+    .watch-sidebar { position: static; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .watch-related { padding-top: 10px; }
+    .watch-workspace-loading { grid-template-columns: 1fr; }
+    .watch-workspace-loading > aside { display: none; }
+}
+@media (max-width: 600px) {
+    .animation-watch-main { width: calc(100% - 28px); margin: 23px auto 40px; }
+    .watch-breadcrumb { margin-bottom: 17px; font-size: 9px; }
+    .watch-viewing-note { padding: 10px 13px; border-radius: 10px; font-size: 8px; line-height: 1.7; gap: 8px; }
+    .watch-viewing-note > a { display: none; }
+    .watch-layout { gap: 19px; }
+    .animation-player { border-radius: 17px; }
+    .watch-center-play { width: 49px; height: 49px; top: 43%; }
+    .watch-center-play svg { width: 23px; height: 23px; }
+    .watch-player-controls { padding: 25px 9px 6px; }
+    .watch-player-control-row { gap: 6px; }
+    .watch-player-control-row > div { gap: 4px; }
+    .watch-player-control-row button { width: 26px; height: 27px; }
+    .watch-player-control-row button svg { width: 16px; height: 16px; }
+    .watch-volume { display: none; }
+    .watch-player-clock { font-size: 8px; }
+    .watch-player-seek { height: 8px; margin-bottom: 3px; }
+    .watch-player-state { padding: 14px 20px; gap: 9px; }
+    .watch-player-state > svg { width: 23px; height: 23px; }
+    .watch-player-state p { font-size: 10px; line-height: 1.6; max-width: 240px; }
+    .watch-player-state button { font-size: 9px; padding: 7px 10px; }
+    .watch-player-notice { font-size: 8px; top: 9px; left: 9px; padding: 7px 9px; }
+    .watch-summary { padding: 20px 17px; border-radius: 17px; }
+    .watch-summary h1 { font-size: 22px; line-height: 1.4; }
+    .watch-actions-wrap { margin: 16px 0 21px; }
+    .watch-actions { gap: 6px; }
+    .watch-actions > button { font-size: 9px; padding: 7px 10px; gap: 6px; }
+    .watch-creator-row { gap: 9px; }
+    .watch-creator { gap: 9px; }
+    .watch-creator strong { font-size: 11px; }
+    .watch-creator small { font-size: 8px; }
+    .watch-creator .reel-avatar { width: 32px; height: 32px; font-size: 13px; }
+    .watch-profile-button { font-size: 8px; padding: 7px 9px; }
+    .watch-synopsis p { font-size: 11px; }
+    .watch-sidebar { display: flex; flex-direction: column; gap: 24px; }
+    .watch-episodes { border-radius: 17px; padding: 19px 17px; }
+    .watch-current-title .watch-cover { width: 86px; height: 57px; }
+    .watch-related { padding: 0; }
+    .watch-related-list { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 12px; }
+    .watch-related-card { flex-direction: column; gap: 8px; }
+    .watch-related-card .watch-cover { width: 100%; height: auto; aspect-ratio: 16 / 10; }
+    .watch-related-card > span:last-child { width: 100%; }
+    .watch-related-card strong { font-size: 10px; }
+    .watch-related-card small { margin-top: 4px; font-size: 8px; }
+    .watch-related-card em { font-size: 7px; }
+    .watch-related-skeletons { grid-template-columns: 1fr 1fr; }
+    .watch-discussion-heading h2 { font-size: 14px; gap: 6px; }
+    .watch-discussion-heading h2 > span { font-size: 8px; }
+    .watch-discussion-heading h2 > svg { width: 17px; }
+    .watch-discussion-heading select { font-size: 9px; max-width: 85px; }
+    .watch-comment-composer { padding: 15px; gap: 9px; border-radius: 15px; }
+    .watch-comment-composer > .reel-avatar { width: 28px; height: 28px; font-size: 11px; }
+    .watch-comment-composer textarea { font-size: 11px; padding: 11px; }
+    .watch-comment-login { flex-wrap: wrap; gap: 12px; }
+    .watch-comment-login strong { font-size: 11px; }
+    .watch-comment-login p { font-size: 9px; }
+    .watch-comment-login a { margin-left: 34px; padding: 8px 16px; font-size: 9px; }
+    .watch-comment { gap: 9px; }
+    .watch-comment-content { padding: 13px; }
+    .watch-comment-content p { font-size: 11px; }
+    .watch-comment-content > header button { font-size: 10px; }
+    .watch-comment-content time { font-size: 7px; }
+    .watch-unavailable { min-height: 400px; }
+    .watch-unavailable h1 { font-size: 23px; }
+}
+@media (prefers-reduced-motion: reduce) { .watch-related-skeletons span { animation: none; } }

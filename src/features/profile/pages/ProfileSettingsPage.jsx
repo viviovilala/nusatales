@@ -1,13 +1,16 @@
+import ActionFormLayout from "../../../components/ActionFormLayout";
+import { Button, Field, Input, Textarea, Notice } from "../../../components/ui/form";
+import { LockKeyhole } from "lucide-react";
 import { useStorageImageUrl } from "../../../components/StorageImage";
-import React, { useState, useEffect, useRef } from "react";
-import AppNavbar from "../../../components/AppNavbar";
-import Footer from "../../../components/Footer";
+import React, { useState, useEffect, useRef, useId } from "react";
 import { useAuth } from "../../auth/AuthProvider";
 import { profileRepository, USERNAME_REGEX } from "../profileRepository";
 import { normalizeSupabaseError } from "../../../lib/errors";
 
-export default function ProfileSettingsPage() {
+export default function ProfileSettingsPage({ embedded = false }) {
     const { user, profile, refreshProfile } = useAuth();
+    const formId = useId();
+    const initializedProfileRef = useRef(null);
     const [displayName, setDisplayName] = useState("");
     const [username, setUsername] = useState("");
     const [bio, setBio] = useState("");
@@ -25,12 +28,13 @@ export default function ProfileSettingsPage() {
 
     // Populate initial values
     useEffect(() => {
-        if (profile) {
+        if (profile && initializedProfileRef.current !== user?.id) {
+            initializedProfileRef.current = user?.id;
             setDisplayName(profile.display_name || "");
             setUsername(profile.username || "");
             setBio(profile.bio || "");
             setAvatarPath(profile.avatar_path || "");
-        } else if (user) {
+        } else if (!profile && user && !initializedProfileRef.current) {
             setDisplayName(user.user_metadata?.display_name || "");
         }
     }, [profile, user]);
@@ -104,7 +108,8 @@ export default function ProfileSettingsPage() {
             if (data?.path) {
                 setAvatarPath(data.path);
                 // Immediately save avatar_path to profile
-                await profileRepository.updateProfile(user.id, { avatar_path: data.path });
+                const result = await profileRepository.updateProfile(user.id, { avatar_path: data.path });
+                if (result.error) throw result.error;
                 await refreshProfile();
                 setStatusMessage({ type: "success", text: "Foto profil berhasil diperbarui!" });
             }
@@ -170,188 +175,29 @@ export default function ProfileSettingsPage() {
     const currentAvatarUrl = avatarPreview || signedAvatarUrl;
     const initialLetter = (displayName || user?.email || "U").charAt(0).toUpperCase();
 
-    return (
-        <div className="min-h-screen flex flex-col bg-[#F5F0E0]">
-            <AppNavbar />
-
-            <main className="flex-1 max-w-2xl w-full mx-auto px-6 py-8">
-                <div className="mb-6">
-                    <span className="text-xs font-bold uppercase tracking-wider text-amber-800">
-                        Preferensi Akun
-                    </span>
-                    <h1
-                        className="text-3xl font-black text-[#3B2A0E] mt-1"
-                        style={{ fontFamily: "Georgia, serif" }}
-                    >
-                        Pengaturan Profil
-                    </h1>
-                    <p className="text-sm text-neutral-600">
-                        Kelola identitas publik, username kreator, dan foto studio Anda.
-                    </p>
+    return <ActionFormLayout embedded={embedded} title="Edit profil" description="Perkenalkan dirimu dan cerita yang ingin kamu bagikan.">
+        <form onSubmit={handleSave} className="ui-form ui-profile-form">
+            <Notice tone={statusMessage.type === "success" ? "success" : "error"}>{statusMessage.text}</Notice>
+            <div className="ui-avatar-editor">
+                <div className="ui-avatar-preview">{currentAvatarUrl ? <img src={currentAvatarUrl} alt={displayName || "Foto profil"} /> : <span>{initialLetter}</span>}</div>
+                <div><p className="ui-section-label">Foto profil</p><p className="ui-hint">JPG, PNG, atau WebP. Maksimal 2 MB.</p>
+                    <input id={`${formId}-avatar`} ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleAvatarChange} className="sr-only" tabIndex={-1} aria-label="Pilih foto profil" />
+                    <Button variant="outline" busy={isUploadingAvatar} disabled={isSaving} onClick={() => fileInputRef.current?.click()}>{isUploadingAvatar ? "Mengunggah..." : "Pilih Foto Baru"}</Button>
                 </div>
-
-                {statusMessage.text && (
-                    <div
-                        className={`mb-6 rounded-2xl px-5 py-4 text-sm border font-medium ${
-                            statusMessage.type === "success"
-                                ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                                : "bg-red-50 text-red-800 border-red-200"
-                        }`}
-                    >
-                        {statusMessage.text}
-                    </div>
-                )}
-
-                <form
-                    onSubmit={handleSave}
-                    className="bg-white rounded-3xl p-8 border border-amber-200/80 shadow-sm space-y-6"
-                >
-                    {/* Avatar Uploader Section */}
-                    <div className="flex flex-col sm:flex-row items-center gap-6 pb-6 border-b border-neutral-100">
-                        <div className="relative group">
-                            <div className="w-24 h-24 rounded-full overflow-hidden bg-amber-100 border-4 border-white shadow-md flex items-center justify-center">
-                                {currentAvatarUrl ? (
-                                    <img
-                                        src={currentAvatarUrl}
-                                        alt={displayName}
-                                        className="w-full h-full object-cover"
-                                    />
-                                ) : (
-                                    <span className="text-3xl font-black text-amber-800">
-                                        {initialLetter}
-                                    </span>
-                                )}
-                            </div>
-                            {isUploadingAvatar && (
-                                <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
-                                    <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="text-center sm:text-left flex-1">
-                            <h3 className="font-bold text-neutral-800 mb-1">Foto Profil / Logo Studio</h3>
-                            <p className="text-xs text-neutral-500 mb-3">
-                                Format JPG, PNG, atau WebP. Maksimal 5 MB.
-                            </p>
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept="image/jpeg,image/png,image/webp"
-                                onChange={handleAvatarChange}
-                                className="hidden"
-                            />
-                            <button
-                                type="button"
-                                disabled={isUploadingAvatar}
-                                onClick={() => fileInputRef.current?.click()}
-                                className="px-4 py-2 rounded-full text-xs font-bold text-neutral-800 bg-[#F5F0E0] hover:bg-[#EAE2CE] transition cursor-pointer disabled:opacity-50"
-                            >
-                                {isUploadingAvatar ? "Mengunggah..." : "Pilih Foto Baru"}
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Email (Read-only) */}
-                    <div>
-                        <label className="block text-xs font-semibold text-neutral-600 mb-1 px-1">
-                            Email Terdaftar (Supabase Auth)
-                        </label>
-                        <input
-                            type="text"
-                            disabled
-                            value={user?.email || ""}
-                            className="w-full px-5 py-3 rounded-2xl bg-neutral-100 text-neutral-500 text-sm outline-none cursor-not-allowed"
-                        />
-                    </div>
-
-                    {/* Display Name */}
-                    <div>
-                        <label className="block text-xs font-semibold text-neutral-600 mb-1 px-1">
-                            Nama Tampilan / Nama Studio <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                            type="text"
-                            required
-                            maxLength={60}
-                            value={displayName}
-                            onChange={(e) => setDisplayName(e.target.value)}
-                            placeholder="Contoh: Sanggar Animasi Borobudur"
-                            className="w-full px-5 py-3.5 rounded-2xl bg-[#F7F3EA] text-neutral-900 text-sm outline-none focus:ring-2 focus:ring-[#8DC63F]"
-                        />
-                    </div>
-
-                    {/* Username */}
-                    <div>
-                        <label className="block text-xs font-semibold text-neutral-600 mb-1 px-1">
-                            Username Publik (@username)
-                        </label>
-                        <div className="relative">
-                            <span className="absolute left-5 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-sm">
-                                @
-                            </span>
-                            <input
-                                type="text"
-                                maxLength={24}
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value.toLowerCase())}
-                                placeholder="namastudio"
-                                className="w-full pl-10 pr-5 py-3.5 rounded-2xl bg-[#F7F3EA] text-neutral-900 text-sm outline-none focus:ring-2 focus:ring-[#8DC63F]"
-                            />
-                        </div>
-                        {usernameStatus.message && (
-                            <p
-                                className={`text-xs mt-1.5 px-2 ${
-                                    usernameStatus.state === "available" || usernameStatus.state === "valid"
-                                        ? "text-emerald-600 font-semibold"
-                                        : usernameStatus.state === "checking"
-                                        ? "text-neutral-500"
-                                        : "text-red-600 font-medium"
-                                }`}
-                            >
-                                {usernameStatus.message}
-                            </p>
-                        )}
-                        <p className="text-[11px] text-neutral-500 mt-1 px-1">
-                            Digunakan untuk tautan profil publik:{" "}
-                            <span className="font-mono text-amber-900">
-                                /u/{username.trim().toLowerCase() || "username"}
-                            </span>
-                        </p>
-                    </div>
-
-                    {/* Bio */}
-                    <div>
-                        <div className="flex items-center justify-between mb-1 px-1">
-                            <label className="block text-xs font-semibold text-neutral-600">
-                                Bio Singkat
-                            </label>
-                            <span className="text-[11px] text-neutral-400">
-                                {bio.length}/160
-                            </span>
-                        </div>
-                        <textarea
-                            rows={3}
-                            maxLength={160}
-                            value={bio}
-                            onChange={(e) => setBio(e.target.value)}
-                            placeholder="Ceritakan sedikit tentang karya animasi atau ketertarikan Anda pada cerita rakyat..."
-                            className="w-full px-5 py-3.5 rounded-2xl bg-[#F7F3EA] text-neutral-900 text-sm outline-none focus:ring-2 focus:ring-[#8DC63F] resize-none"
-                        />
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={isSaving || isUploadingAvatar || usernameStatus.state === "taken"}
-                        className="w-full py-4 rounded-full text-white font-semibold text-sm shadow hover:opacity-95 transition disabled:opacity-60 cursor-pointer"
-                        style={{ backgroundColor: "#8DC63F" }}
-                    >
-                        {isSaving ? "Menyimpan Perubahan..." : "Simpan Profil"}
-                    </button>
-                </form>
-            </main>
-
-            <Footer />
-        </div>
-    );
+            </div>
+            <div className="ui-account-email"><div><p>{user?.email}</p><span>Email akun, tidak ditampilkan di profil publik.</span></div><LockKeyhole size={15} aria-hidden="true" /></div>
+            <div className="ui-form-columns">
+            <Field id={`${formId}-name`} label="Nama tampilan / studio" required>
+                <Input id={`${formId}-name`} required maxLength={60} autoComplete="name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Contoh: Sanggar Animasi Borobudur" disabled={isSaving} />
+            </Field>
+            <Field id={`${formId}-username`} label="Username" hint={usernameStatus.message || "3-24 karakter: huruf kecil, angka, atau garis bawah."}>
+                <div className="ui-input-prefix"><span aria-hidden="true">@</span><Input id={`${formId}-username`} maxLength={24} autoCapitalize="none" autoComplete="username" spellCheck={false} value={username} onChange={(e) => setUsername(e.target.value.toLowerCase())} placeholder="namastudio" disabled={isSaving} aria-invalid={["invalid", "taken"].includes(usernameStatus.state)} aria-describedby={`${formId}-username-hint`} /></div>
+            </Field>
+            </div>
+            <Field id={`${formId}-bio`} label="Tentang kamu" trailing={<span className="ui-counter">{bio.length}/160</span>}>
+                <Textarea id={`${formId}-bio`} rows={3} maxLength={160} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Ceritakan sedikit tentang karya animasi atau ketertarikan Anda pada cerita rakyat..." disabled={isSaving} />
+            </Field>
+            <div className="ui-form-footer"><p className="ui-hint">Perubahan nama dan bio disimpan saat kamu menekan tombol ini.</p><Button type="submit" busy={isSaving} disabled={isUploadingAvatar || ["checking", "invalid", "taken"].includes(usernameStatus.state)}>{isSaving ? "Menyimpan..." : "Simpan Profil"}</Button></div>
+        </form>
+    </ActionFormLayout>;
 }

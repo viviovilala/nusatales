@@ -2,16 +2,18 @@
 import React from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
+import { PageScrollLock } from "../../lib/pageScrollLock";
 
 export const Sheet = Dialog.Root;
 export const SheetTrigger = Dialog.Trigger;
 export const SheetClose = Dialog.Close;
 export const SheetTitle = Dialog.Title;
 export const SheetDescription = Dialog.Description;
-export function SheetContent({ children }) {
+export function SheetContent({ children, className = "" }) {
     return <Dialog.Portal>
         <Dialog.Overlay className="nusa-sheet-overlay" />
-        <Dialog.Content className="nusa-sheet-content">
+        <Dialog.Content className={`nusa-sheet-content ${className}`}>
+            <PageScrollLock />
             {children}
             <Dialog.Close className="nusa-icon-button nusa-sheet-close" aria-label="Tutup menu">
                 <X size={20} aria-hidden="true" />

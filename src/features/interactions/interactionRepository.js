@@ -1,6 +1,13 @@
 import { supabase, isSupabaseConfigured } from "../../lib/supabaseClient";
 
 export const interactionRepository = {
+    async getCommentCount(videoId) {
+        if (!isSupabaseConfigured || !videoId) return { count: 0, error: null };
+        const { count, error } = await supabase.from("video_comments")
+            .select("*", { count: "exact", head: true }).eq("video_id", videoId);
+        return { count: count || 0, error };
+    },
+    /** @param {string} videoId @param {string | null} [currentUserId] */
     async getLikeStats(videoId, currentUserId = null) {
         if (!isSupabaseConfigured || !videoId) {
             return { count: 0, hasLiked: false };

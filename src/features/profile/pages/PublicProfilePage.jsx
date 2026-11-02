@@ -61,7 +61,7 @@ export default function PublicProfilePage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen flex flex-col bg-[#F5F0E0]">
+            <div className="site-page min-h-screen flex flex-col bg-[#F5F0E0]">
                 <AppNavbar />
                 <main className="flex-1 flex items-center justify-center">
                     <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
@@ -73,7 +73,7 @@ export default function PublicProfilePage() {
 
     if (notFound || !creator) {
         return (
-            <div className="min-h-screen flex flex-col bg-[#F5F0E0]">
+            <div className="site-page min-h-screen flex flex-col bg-[#F5F0E0]">
                 <AppNavbar />
                 <main className="flex-1 flex items-center justify-center px-6 py-16 text-center">
                     <div className="bg-white rounded-3xl p-8 max-w-md w-full border border-amber-200/80 shadow-sm">
@@ -106,7 +106,7 @@ export default function PublicProfilePage() {
     const initial = (creator.display_name || creator.username || "K").charAt(0).toUpperCase();
 
     return (
-        <div className="min-h-screen flex flex-col bg-[#F5F0E0]">
+        <div className="site-page min-h-screen flex flex-col bg-[#F5F0E0]">
             <AppNavbar />
 
             <main className="flex-1 max-w-5xl w-full mx-auto px-6 py-8">

@@ -154,11 +154,11 @@ export const reelsRepository = {
         return { data: normalized, error: null };
     },
 
-    async getSignedVideoUrl(storagePath) {
+    async getSignedVideoUrl(storagePath, forceRefresh = false) {
         if (!storagePath) return null;
 
         const cached = signedUrlCache.get(storagePath);
-        if (cached && Date.now() < cached.expiresAt) {
+        if (!forceRefresh && cached && Date.now() < cached.expiresAt) {
             return cached.url;
         }
 

@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "lib": ["ES2022", "DOM", "DOM.Iterable"],
+        "module": "ESNext",
+        "moduleResolution": "Bundler",
+        "jsx": "react-jsx",
+        "strict": true,
+        "noUncheckedIndexedAccess": true,
+        "noEmit": true,
+        "allowJs": true,
+        "checkJs": false,
+        "skipLibCheck": true,
+        "esModuleInterop": true
+    },
+    "include": ["src/vite-env.d.ts", "src/app/ActionModalHost.tsx", "src/app/ModalContext.tsx", "src/app/modalRoutes.ts", "src/components/ActionFormLayout.tsx", "src/components/ui/form.tsx", "src/features/reels/**/*.ts", "src/features/reels/**/*.tsx", "src/features/interactions/components/CommentDrawer.tsx", "src/features/videos/studio/**/*.ts", "src/features/videos/studio/**/*.tsx", "src/features/videos/pages/StudioPage.tsx", "src/features/animations/catalog/**/*.ts", "src/features/animations/catalog/**/*.tsx", "src/features/animations/watch/**/*.ts", "src/features/animations/watch/**/*.tsx", "src/features/animations/pages/**/*.tsx"]
+}

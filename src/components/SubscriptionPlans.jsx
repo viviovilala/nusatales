@@ -3,6 +3,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { Check, X, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import Reveal from "./Reveal";
+import { PageScrollLock } from "../lib/pageScrollLock";
 
 // Display copy/prices follow the supplied Figma. Billing is not enabled.
 const plans = [
@@ -26,6 +27,7 @@ function PlanDetails({ plan }) {
         <Dialog.Portal>
             <Dialog.Overlay className="nusa-sheet-overlay" />
             <Dialog.Content className="nusa-plan-dialog">
+                <PageScrollLock />
                 <span className="home-eyebrow">NUSAADHI · SEGERA HADIR</span>
                 <Dialog.Title>Paket {plan.name}</Dialog.Title>
                 <div className="home-plan-price">Rp{plan.price}<span>/bulan</span></div>

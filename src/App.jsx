@@ -4,8 +4,8 @@ import { AppRouter } from "./app/router";
 
 export default function App() {
     return (
-        <AuthProvider>
+        <div className="app-surface batik-surface"><div className="app-content"><AuthProvider>
             <AppRouter />
-        </AuthProvider>
+        </AuthProvider></div></div>
     );
 }

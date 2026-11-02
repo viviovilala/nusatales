@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
+import ActionFormLayout from "../../../components/ActionFormLayout";
+import { Loader2 } from "lucide-react";
 
 export default function AuthCallbackPage() {
     const navigate = useNavigate();
@@ -8,6 +10,7 @@ export default function AuthCallbackPage() {
 
     useEffect(() => {
         let isMounted = true;
+        let redirectTimer;
 
         async function handleCallback() {
             try {
@@ -27,7 +30,7 @@ export default function AuthCallbackPage() {
                 console.error("[AuthCallback] Error resolving session:", err);
                 if (isMounted) {
                     setStatus("Terjadi kesalahan saat verifikasi.");
-                    setTimeout(() => navigate("/login", { replace: true }), 2500);
+                    redirectTimer = setTimeout(() => { if (isMounted) navigate("/login", { replace: true }); }, 2500);
                 }
             }
         }
@@ -36,16 +39,11 @@ export default function AuthCallbackPage() {
 
         return () => {
             isMounted = false;
+            clearTimeout(redirectTimer);
         };
     }, [navigate]);
 
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-[#F5F0E0] p-6 text-center">
-            <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow border border-amber-100">
-                <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                <h3 className="font-bold text-neutral-800 mb-2">Memverifikasi Akun</h3>
-                <p className="text-sm text-neutral-600">{status}</p>
-            </div>
-        </div>
-    );
+    return <ActionFormLayout title="Menghubungkan akun" description="Tunggu sebentar, kami sedang menyiapkan sesimu.">
+        <div className="ui-loading" role="status"><Loader2 size={20} className="ui-spinner" /><span>{status}</span></div>
+    </ActionFormLayout>;
 }

@@ -1,5 +1,6 @@
+import { AppLink as Link } from "../app/ModalContext";
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowRight, Play, Pause, ChevronLeft, ChevronRight, Compass, Film, Sparkles, Clock3, RefreshCw } from "lucide-react";
 import AppNavbar from "../components/AppNavbar";

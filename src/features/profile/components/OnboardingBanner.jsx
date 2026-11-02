@@ -1,5 +1,6 @@
+import { AppLink as Link } from "../../../app/ModalContext";
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+
 import { useAuth } from "../../auth/AuthProvider";
 
 export default function OnboardingBanner() {

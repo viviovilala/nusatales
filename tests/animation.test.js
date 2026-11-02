@@ -3,6 +3,32 @@ import { videoRepository } from "../src/features/videos/videoRepository";
 import { supabase } from "../src/lib/supabaseClient";
 
 describe("Animation Catalog & Full-Video Features", () => {
+    it.each([
+        ["short", [["lte", "duration_seconds", 300]]],
+        ["medium", [["gt", "duration_seconds", 300], ["lte", "duration_seconds", 900]]],
+        ["long", [["gt", "duration_seconds", 900]]],
+    ])("filters %s films using non-overlapping duration boundaries", async (duration, expected) => {
+        const filters = [];
+        const query = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), is: vi.fn().mockReturnThis(), order: vi.fn().mockReturnThis(),
+            lte: vi.fn((...args) => { filters.push(["lte", ...args]); return query; }),
+            gt: vi.fn((...args) => { filters.push(["gt", ...args]); return query; }),
+            range: vi.fn().mockResolvedValue({ data: [], count: 0, error: null }) };
+        const spy = vi.spyOn(supabase, "from").mockReturnValue(query);
+        try { await videoRepository.getAnimationCatalog({ duration }); expect(filters).toEqual(expected); }
+        finally { spy.mockRestore(); }
+    });
+
+    it.each([["newest", "published_at", false, false], ["oldest", "published_at", true, true], ["title", "title", true, true]])("paginates %s films with a stable ID tie-breaker", async (sort, column, ascending, idAscending) => {
+        const query = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), is: vi.fn().mockReturnThis(), order: vi.fn().mockReturnThis(),
+            range: vi.fn().mockResolvedValue({ data: [], count: 0, error: null }) };
+        const spy = vi.spyOn(supabase, "from").mockReturnValue(query);
+        try {
+            await videoRepository.getAnimationCatalog({ sort, offset: 12, limit: 12 });
+            expect(query.order.mock.calls).toEqual([[column, { ascending }], ["id", { ascending: idAscending }]]);
+            expect(query.range).toHaveBeenCalledWith(12, 23);
+        } finally { spy.mockRestore(); }
+    });
+
     it("queries published animation content with exact count", async () => {
         let appliedFilters = {};
         const queryMock = {

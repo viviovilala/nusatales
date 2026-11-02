@@ -5,7 +5,7 @@ import Footer from "../components/Footer";
 
 export default function NotFoundPage() {
     return (
-        <div className="min-h-screen flex flex-col bg-[#F5F0E0]">
+        <div className="site-page min-h-screen flex flex-col bg-[#F5F0E0]">
             <AppNavbar />
 
             <main className="flex-1 flex items-center justify-center px-6 py-16 text-center">
