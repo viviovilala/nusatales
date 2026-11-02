@@ -15,7 +15,7 @@ export const videoRepository = {
                 duration_seconds,
                 status,
                 published_at,
-                creator:profiles (
+                creator:profiles!videos_creator_id_fkey (
                     id,
                     username,
                     display_name,
@@ -72,7 +72,7 @@ export const videoRepository = {
                 status,
                 published_at,
                 creator_id,
-                creator:profiles (
+                creator:profiles!videos_creator_id_fkey (
                     id,
                     username,
                     display_name,

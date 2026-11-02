@@ -17,7 +17,7 @@ export const reelsRepository = {
                 duration_seconds,
                 status,
                 published_at,
-                creator:profiles (
+                creator:profiles!videos_creator_id_fkey (
                     id,
                     username,
                     display_name,
@@ -65,7 +65,7 @@ export const reelsRepository = {
                 duration_seconds,
                 status,
                 published_at,
-                creator:profiles (
+                creator:profiles!videos_creator_id_fkey (
                     id,
                     username,
                     display_name,
