@@ -14,6 +14,7 @@ export default function EditVideoPage() {
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [status, setStatus] = useState("draft");
+    const [contentType, setContentType] = useState("animation");
     const [thumbnailPath, setThumbnailPath] = useState(null);
     const [durationSeconds, setDurationSeconds] = useState(null);
 
@@ -36,7 +37,7 @@ export default function EditVideoPage() {
                 }
 
                 if (data.creator_id !== user?.id) {
-                    if (isMounted) setErrorMessage("Anda tidak memiliki akses untuk mengedit video ini.");
+                    if (isMounted) setErrorMessage("Anda tidak memiliki hak untuk mengedit video ini.");
                     return;
                 }
 
@@ -44,6 +45,7 @@ export default function EditVideoPage() {
                     setTitle(data.title || "");
                     setDescription(data.description || "");
                     setStatus(data.status || "draft");
+                    setContentType(data.content_type || "animation");
                     setThumbnailPath(data.thumbnail_path);
                     setDurationSeconds(data.duration_seconds);
                 }
@@ -81,11 +83,11 @@ export default function EditVideoPage() {
             });
 
             if (error) {
-                setErrorMessage(normalizeSupabaseError(error, "Gagal memperbarui video."));
+                setErrorMessage(normalizeSupabaseError(error, "Gagal memperbarui informasi karya."));
                 return;
             }
 
-            setSuccessMessage("Perubahan informasi video berhasil disimpan.");
+            setSuccessMessage("Perubahan informasi berhasil disimpan.");
         } catch (err) {
             setErrorMessage(normalizeSupabaseError(err));
         } finally {
@@ -103,12 +105,12 @@ export default function EditVideoPage() {
                 const { error } = await videoRepository.publishVideo(id);
                 if (error) throw error;
                 setStatus("published");
-                setSuccessMessage("Video berhasil dipublikasikan ke Reels!");
+                setSuccessMessage("Karya berhasil dipublikasikan ke publik!");
             } else {
                 const { error } = await videoRepository.unpublishVideo(id);
                 if (error) throw error;
                 setStatus("draft");
-                setSuccessMessage("Video ditarik kembali ke draf.");
+                setSuccessMessage("Karya berhasil ditarik kembali ke draf.");
             }
         } catch (err) {
             setErrorMessage(normalizeSupabaseError(err, "Gagal mengubah status publikasi."));
@@ -118,6 +120,8 @@ export default function EditVideoPage() {
     }
 
     const thumbUrl = videoRepository.getThumbnailPublicUrl(thumbnailPath) || "/poto/hero-roro-action.webp";
+    const isAnim = contentType === "animation";
+    const publicUrl = isAnim ? `/watch/${id}` : `/reels/${id}`;
 
     if (isLoading) {
         return (
@@ -145,9 +149,18 @@ export default function EditVideoPage() {
                             className="text-3xl font-black text-[#3B2A0E] mt-1"
                             style={{ fontFamily: "Georgia, serif" }}
                         >
-                            Edit Informasi Video
+                            Edit Informasi Karya
                         </h1>
                     </div>
+
+                    {status === "published" && (
+                        <Link
+                            to={publicUrl}
+                            className="text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 px-4 py-2 rounded-full transition"
+                        >
+                            {isAnim ? "Buka di Player Animasi →" : "Buka di Reels →"}
+                        </Link>
+                    )}
                 </div>
 
                 {errorMessage && (
@@ -165,7 +178,9 @@ export default function EditVideoPage() {
                 <div className="grid md:grid-cols-[1fr_1.4fr] gap-8">
                     {/* Thumbnail & Status Preview */}
                     <div className="bg-white rounded-3xl p-6 border border-amber-200/80 shadow-sm space-y-4">
-                        <div className="relative aspect-[9/14] rounded-2xl overflow-hidden bg-neutral-900 shadow-inner">
+                        <div className={`relative rounded-2xl overflow-hidden bg-neutral-900 shadow-inner ${
+                            isAnim ? "aspect-video w-full" : "aspect-[9/14]"
+                        }`}>
                             <img
                                 src={thumbUrl}
                                 alt={title}
@@ -176,9 +191,12 @@ export default function EditVideoPage() {
                                     {durationSeconds}s
                                 </span>
                             )}
-                            <div className="absolute bottom-3 left-3">
+                            <div className="absolute bottom-3 left-3 flex gap-2">
+                                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-black/60 text-white">
+                                    {isAnim ? "🎬 Film Animasi" : "📱 Reel"}
+                                </span>
                                 <span
-                                    className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                                    className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                                         status === "published"
                                             ? "bg-emerald-500 text-white"
                                             : "bg-amber-400 text-amber-950"
@@ -197,10 +215,10 @@ export default function EditVideoPage() {
                                 className={`w-full py-3 rounded-full text-xs font-bold transition shadow-sm cursor-pointer disabled:opacity-50 ${
                                     status === "published"
                                         ? "bg-amber-100 text-amber-900 hover:bg-amber-200"
-                                        : "bg-[#8DC63F] text-white hover:opacity-90"
+                                        : "bg-[#8DC63F] text-neutral-950 hover:opacity-90"
                                 }`}
                             >
-                                {status === "published" ? "Tarik ke Draf (Unpublish)" : "Publikasikan ke Reels"}
+                                {status === "published" ? "Tarik ke Draf (Unpublish)" : "Publikasikan ke Publik"}
                             </button>
                         </div>
                     </div>
@@ -213,7 +231,7 @@ export default function EditVideoPage() {
                         <div className="space-y-5">
                             <div>
                                 <label className="block text-xs font-semibold text-neutral-600 mb-1 px-1">
-                                    Judul Video <span className="text-red-500">*</span>
+                                    Judul Karya <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     type="text"
@@ -221,7 +239,7 @@ export default function EditVideoPage() {
                                     maxLength={120}
                                     value={title}
                                     onChange={(e) => setTitle(e.target.value)}
-                                    placeholder="Judul video animasi"
+                                    placeholder="Judul karya cerita rakyat"
                                     className="w-full px-5 py-3.5 rounded-2xl bg-[#F7F3EA] text-neutral-900 text-sm outline-none focus:ring-2 focus:ring-[#8DC63F]"
                                 />
                                 <div className="text-right text-[11px] text-neutral-400 mt-1">
@@ -232,7 +250,7 @@ export default function EditVideoPage() {
                             <div>
                                 <div className="flex items-center justify-between mb-1 px-1">
                                     <label className="block text-xs font-semibold text-neutral-600">
-                                        Deskripsi Video
+                                        Deskripsi Cerita
                                     </label>
                                     <span className="text-[11px] text-neutral-400">
                                         {description.length}/2200
@@ -243,7 +261,7 @@ export default function EditVideoPage() {
                                     maxLength={2200}
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
-                                    placeholder="Ceritakan tentang kisah atau latar budaya dari video ini..."
+                                    placeholder="Ceritakan tentang kisah, asal daerah, atau pesan moral cerita..."
                                     className="w-full px-5 py-3.5 rounded-2xl bg-[#F7F3EA] text-neutral-900 text-sm outline-none focus:ring-2 focus:ring-[#8DC63F] resize-none"
                                 />
                             </div>
@@ -253,7 +271,7 @@ export default function EditVideoPage() {
                             <button
                                 type="submit"
                                 disabled={isSaving}
-                                className="flex-1 py-3.5 rounded-full text-xs font-bold text-white shadow hover:opacity-95 transition disabled:opacity-50 cursor-pointer"
+                                className="flex-1 py-3.5 rounded-full text-xs font-bold text-neutral-950 shadow hover:opacity-95 transition disabled:opacity-50 cursor-pointer"
                                 style={{ backgroundColor: "#8DC63F" }}
                             >
                                 {isSaving ? "Menyimpan..." : "Simpan Perubahan"}

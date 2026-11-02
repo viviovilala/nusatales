@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { authRepository } from "./authRepository";
 import { profileRepository } from "../profile/profileRepository";
 import { isSupabaseConfigured } from "../../lib/supabaseClient";
@@ -9,19 +9,50 @@ export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [session, setSession] = useState(null);
     const [profile, setProfile] = useState(null);
-    const [isLoading, setIsLoading] = useState(true);
 
+    // Explicit state machines
+    // authState: 'initializing' | 'anonymous' | 'authenticated' | 'error'
+    const [authState, setAuthState] = useState("initializing");
+    // profileState: 'idle' | 'loading' | 'ready' | 'missing' | 'error'
+    const [profileState, setProfileState] = useState("idle");
+
+    const profileRevisionRef = useRef(0);
+
+    // Standalone profile loader with race condition protection
     const loadProfile = useCallback(async (userId) => {
         if (!userId) {
             setProfile(null);
+            setProfileState("idle");
             return null;
         }
+
+        const currentRev = ++profileRevisionRef.current;
+        setProfileState("loading");
+
         try {
-            const { data } = await profileRepository.getProfile(userId);
-            setProfile(data || null);
-            return data;
+            const { data, error } = await profileRepository.getProfile(userId);
+            if (currentRev !== profileRevisionRef.current) return null;
+
+            if (error) {
+                console.error("[AuthProvider] Profile fetch error:", error);
+                setProfileState("error");
+                return null;
+            }
+
+            if (data) {
+                setProfile(data);
+                setProfileState("ready");
+                return data;
+            } else {
+                setProfile(null);
+                setProfileState("missing");
+                return null;
+            }
         } catch (err) {
-            console.error("[AuthProvider] Failed to fetch profile:", err);
+            if (currentRev === profileRevisionRef.current) {
+                console.error("[AuthProvider] Unexpected profile load error:", err);
+                setProfileState("error");
+            }
             return null;
         }
     }, []);
@@ -33,48 +64,46 @@ export function AuthProvider({ children }) {
         return null;
     }, [user?.id, loadProfile]);
 
+    // 1. Synchronous Auth Listener & Initial Session Bootstrap
     useEffect(() => {
         let isMounted = true;
 
         async function initAuth() {
             try {
-                const { data } = await authRepository.getSession();
+                const { data, error } = await authRepository.getSession();
                 if (!isMounted) return;
 
-                const currentSession = data?.session || null;
-                setSession(currentSession);
-                const currentUser = currentSession?.user || null;
-                setUser(currentUser);
-
-                if (currentUser) {
-                    await loadProfile(currentUser.id);
+                if (error) {
+                    console.error("[AuthProvider] Session retrieval error:", error);
+                    setAuthState("error");
+                    return;
                 }
+
+                const currentSession = data?.session || null;
+                const currentUser = currentSession?.user || null;
+
+                setSession(currentSession);
+                setUser(currentUser);
+                setAuthState(currentUser ? "authenticated" : "anonymous");
             } catch (err) {
-                console.error("[AuthProvider] Session initialization error:", err);
-            } finally {
                 if (isMounted) {
-                    setIsLoading(false);
+                    console.error("[AuthProvider] Auth initialization error:", err);
+                    setAuthState("error");
                 }
             }
         }
 
         initAuth();
 
+        // Supabase Auth listener — strictly SYNCHRONOUS state updates inside callback
         const { data: authListener } = authRepository.onAuthStateChange(
-            async (_event, newSession) => {
+            (_event, newSession) => {
                 if (!isMounted) return;
 
+                const nextUser = newSession?.user || null;
                 setSession(newSession || null);
-                const newUser = newSession?.user || null;
-                setUser(newUser);
-
-                if (newUser) {
-                    await loadProfile(newUser.id);
-                } else {
-                    setProfile(null);
-                }
-
-                setIsLoading(false);
+                setUser(nextUser);
+                setAuthState(nextUser ? "authenticated" : "anonymous");
             }
         );
 
@@ -82,17 +111,30 @@ export function AuthProvider({ children }) {
             isMounted = false;
             authListener?.subscription?.unsubscribe();
         };
-    }, [loadProfile]);
+    }, []);
+
+    // 2. Independent Effect for Profile fetching (decoupled from onAuthStateChange to prevent lockups)
+    useEffect(() => {
+        if (user?.id) {
+            loadProfile(user.id);
+        } else {
+            profileRevisionRef.current++;
+            setProfile(null);
+            setProfileState("idle");
+        }
+    }, [user?.id, loadProfile]);
 
     const signOut = useCallback(async () => {
-        setIsLoading(true);
         try {
             await authRepository.signOut();
+        } catch (err) {
+            console.error("[AuthProvider] Sign out error:", err);
+        } finally {
             setUser(null);
             setSession(null);
             setProfile(null);
-        } finally {
-            setIsLoading(false);
+            setAuthState("anonymous");
+            setProfileState("idle");
         }
     }, []);
 
@@ -101,7 +143,9 @@ export function AuthProvider({ children }) {
         session,
         profile,
         isAuthenticated: Boolean(user),
-        isLoading,
+        isLoading: authState === "initializing",
+        authState,
+        profileState,
         isConfigured: isSupabaseConfigured,
         signOut,
         refreshProfile,

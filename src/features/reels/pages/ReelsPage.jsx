@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { reelsRepository } from "../reelsRepository";
 import ReelItem from "../components/ReelItem";
-import AppNavbar from "../../../components/AppNavbar";
+
+const PAGE_SIZE = 10;
 
 export default function ReelsPage() {
     const { videoId } = useParams();
@@ -12,45 +13,50 @@ export default function ReelsPage() {
     const [activeIndex, setActiveIndex] = useState(0);
     const [isMuted, setIsMuted] = useState(true);
     const [isLoading, setIsLoading] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
     const [notFoundNotice, setNotFoundNotice] = useState("");
 
-    // Wheel and touch navigation trackers
     const lastWheelTime = useRef(0);
     const touchStartY = useRef(0);
+    const currentOffsetRef = useRef(0);
 
-    const loadFeed = useCallback(async () => {
+    // Initial feed load (or deep link load)
+    const loadInitialFeed = useCallback(async () => {
         setIsLoading(true);
         setNotFoundNotice("");
+        currentOffsetRef.current = 0;
 
         try {
             let initialVideos = [];
 
             // If deep linked to specific video
             if (videoId) {
-                const { data: requestedVideo, error: reqErr } =
-                    await reelsRepository.getPublishedVideoById(videoId);
+                const { data: requestedVideo } = await reelsRepository.getPublishedVideoById(videoId);
 
                 if (requestedVideo) {
                     initialVideos.push(requestedVideo);
                 } else {
                     setNotFoundNotice(
-                        "Video yang diminta tidak ditemukan atau belum dipublikasikan ke publik."
+                        "Video Reel yang diminta tidak ditemukan atau belum dipublikasikan."
                     );
                 }
             }
 
-            // Fetch general published feed
-            const { data: feedData } = await reelsRepository.getFeedVideos({ limit: 15 });
+            // Fetch general published reels feed
+            const { data: feedData } = await reelsRepository.getFeedVideos({
+                limit: PAGE_SIZE,
+                offset: 0,
+            });
 
-            // Deduplicate if requested video was already fetched
             const existingIds = new Set(initialVideos.map((v) => v.id));
-            const merged = [
-                ...initialVideos,
-                ...(feedData || []).filter((v) => !existingIds.has(v.id)),
-            ];
+            const freshFeed = (feedData || []).filter((v) => !existingIds.has(v.id));
+            const merged = [...initialVideos, ...freshFeed];
 
             setVideos(merged);
             setActiveIndex(0);
+            currentOffsetRef.current = freshFeed.length;
+            setHasMore((feedData || []).length === PAGE_SIZE);
         } catch (err) {
             console.error("[ReelsPage] Feed error:", err);
         } finally {
@@ -59,8 +65,49 @@ export default function ReelsPage() {
     }, [videoId]);
 
     useEffect(() => {
-        loadFeed();
-    }, [loadFeed]);
+        loadInitialFeed();
+    }, [loadInitialFeed]);
+
+    // Load next page of reels when near the end
+    const loadMoreReels = useCallback(async () => {
+        if (isLoadingMore || !hasMore) return;
+
+        setIsLoadingMore(true);
+        try {
+            const nextOffset = currentOffsetRef.current;
+            const { data: nextBatch } = await reelsRepository.getFeedVideos({
+                limit: PAGE_SIZE,
+                offset: nextOffset,
+            });
+
+            if (!nextBatch || nextBatch.length === 0) {
+                setHasMore(false);
+                return;
+            }
+
+            setVideos((prev) => {
+                const existing = new Set(prev.map((v) => v.id));
+                const filtered = nextBatch.filter((v) => !existing.has(v.id));
+                return [...prev, ...filtered];
+            });
+
+            currentOffsetRef.current += nextBatch.length;
+            if (nextBatch.length < PAGE_SIZE) {
+                setHasMore(false);
+            }
+        } catch (err) {
+            console.error("[ReelsPage] Load more error:", err);
+        } finally {
+            setIsLoadingMore(false);
+        }
+    }, [isLoadingMore, hasMore]);
+
+    // Pre-fetch when user is within 2 videos of the end
+    useEffect(() => {
+        if (videos.length > 0 && activeIndex >= videos.length - 2 && hasMore && !isLoadingMore) {
+            loadMoreReels();
+        }
+    }, [activeIndex, videos.length, hasMore, isLoadingMore, loadMoreReels]);
 
     const goToPrev = useCallback(() => {
         setActiveIndex((prev) => Math.max(0, prev - 1));
@@ -70,10 +117,9 @@ export default function ReelsPage() {
         setActiveIndex((prev) => Math.min(videos.length - 1, prev + 1));
     }, [videos.length]);
 
-    // Keyboard navigation (ArrowUp, ArrowDown)
+    // Keyboard navigation (ArrowUp, ArrowDown, Mute)
     useEffect(() => {
         function handleKeyDown(e) {
-            // Don't intercept if user is typing in an input
             if (["INPUT", "TEXTAREA"].includes(e.target.tagName)) return;
 
             if (e.key === "ArrowDown" || e.key === "PageDown") {
@@ -91,7 +137,7 @@ export default function ReelsPage() {
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [goToNext, goToPrev]);
 
-    // Mouse wheel navigation (debounced)
+    // Mouse wheel navigation
     const handleWheel = (e) => {
         const now = Date.now();
         if (now - lastWheelTime.current < 450) return;
@@ -105,7 +151,7 @@ export default function ReelsPage() {
         }
     };
 
-    // Touch swipe navigation for mobile
+    // Touch swipe navigation
     const handleTouchStart = (e) => {
         touchStartY.current = e.touches[0].clientY;
     };
@@ -125,18 +171,27 @@ export default function ReelsPage() {
 
     return (
         <div className="h-screen w-screen bg-black flex flex-col overflow-hidden text-white select-none">
-            {/* Top Navigation */}
+            {/* Top Navigation Bar */}
             <div className="absolute top-0 inset-x-0 z-40 bg-gradient-to-b from-black/80 to-transparent pointer-events-none p-4">
                 <div className="max-w-7xl mx-auto flex items-center justify-between pointer-events-auto">
-                    <Link
-                        to="/"
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md transition text-xs font-bold text-white border border-white/10"
-                    >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <path d="M19 12H5M12 19l-7-7 7-7" />
-                        </svg>
-                        <span>Beranda</span>
-                    </Link>
+                    <div className="flex items-center gap-3">
+                        <Link
+                            to="/"
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md transition text-xs font-bold text-white border border-white/10"
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <path d="M19 12H5M12 19l-7-7 7-7" />
+                            </svg>
+                            <span>Beranda</span>
+                        </Link>
+
+                        <Link
+                            to="/animations"
+                            className="hidden sm:flex items-center gap-1 px-3 py-1.5 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md transition text-xs font-bold text-amber-200 border border-white/10"
+                        >
+                            <span>Katalog Animasi</span>
+                        </Link>
+                    </div>
 
                     <div className="flex items-center gap-2">
                         <Link
@@ -189,20 +244,20 @@ export default function ReelsPage() {
                             Belum Ada Video Reels
                         </h2>
                         <p className="text-xs text-neutral-400 mb-6 leading-relaxed">
-                            Belum ada animasi budaya yang dipublikasikan. Jadilah kreator pertama yang membagikan kisah cerita rakyat ke NusaTales!
+                            Belum ada video pendek budaya yang dipublikasikan. Jadilah kreator pertama yang membagikan reel kisah rakyat ke NusaTales!
                         </p>
                         <div className="flex flex-col gap-2.5">
                             <Link
                                 to="/studio/upload"
                                 className="w-full py-3 rounded-full text-xs font-bold text-neutral-950 bg-[#8DC63F] hover:bg-[#7db534] transition shadow-md"
                             >
-                                Mulai Unggah Sekarang
+                                Mulai Unggah Reel
                             </Link>
                             <Link
-                                to="/"
+                                to="/animations"
                                 className="w-full py-2.5 rounded-full text-xs font-semibold text-neutral-400 hover:text-white transition"
                             >
-                                Kembali ke Beranda
+                                Jelajahi Film Animasi
                             </Link>
                         </div>
                     </div>

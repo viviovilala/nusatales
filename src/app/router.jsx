@@ -11,6 +11,8 @@ import ForgotPasswordPage from "../features/auth/pages/ForgotPasswordPage";
 import ResetPasswordPage from "../features/auth/pages/ResetPasswordPage";
 import AuthCallbackPage from "../features/auth/pages/AuthCallbackPage";
 import ReelsPage from "../features/reels/pages/ReelsPage";
+import AnimationCatalogPage from "../features/animations/pages/AnimationCatalogPage";
+import WatchAnimationPage from "../features/animations/pages/WatchAnimationPage";
 import StudioPage from "../features/videos/pages/StudioPage";
 import UploadPage from "../features/videos/pages/UploadPage";
 import EditVideoPage from "../features/videos/pages/EditVideoPage";
@@ -22,6 +24,8 @@ export function AppRouter() {
         <Routes>
             {/* Public Routes */}
             <Route path="/" element={<LandingPage />} />
+            <Route path="/animations" element={<AnimationCatalogPage />} />
+            <Route path="/watch/:videoId" element={<WatchAnimationPage />} />
             <Route path="/reels" element={<ReelsPage />} />
             <Route path="/reels/:videoId" element={<ReelsPage />} />
             <Route path="/u/:username" element={<PublicProfilePage />} />
@@ -68,6 +72,7 @@ export function AppRouter() {
             />
 
             {/* Legacy route redirects */}
+            <Route path="/katalog" element={<Navigate to="/animations" replace />} />
             <Route path="/shorts" element={<Navigate to="/reels" replace />} />
             <Route path="/dashboard" element={<Navigate to="/studio" replace />} />
             <Route path="/creator/studio" element={<Navigate to="/studio" replace />} />

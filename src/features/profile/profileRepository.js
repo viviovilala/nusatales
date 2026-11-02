@@ -57,14 +57,52 @@ export const profileRepository = {
             return { data: null, error: { message: "Supabase belum dikonfigurasi." } };
         }
 
-        const payload = {
-            ...updates,
-            updated_at: new Date().toISOString(),
-        };
+        // Whitelist allowed fields only
+        const allowedFields = ["display_name", "username", "bio", "avatar_path"];
+        const payload = {};
 
-        if (payload.username) {
-            payload.username = payload.username.trim().toLowerCase();
+        for (const field of allowedFields) {
+            if (field in updates) {
+                payload[field] = updates[field];
+            }
         }
+
+        // Validation: username format
+        if (payload.username !== undefined && payload.username !== null) {
+            const cleanUser = payload.username.trim().toLowerCase();
+            if (cleanUser.length > 0 && !USERNAME_REGEX.test(cleanUser)) {
+                return {
+                    data: null,
+                    error: { message: "Format username tidak valid. Gunakan 3-24 karakter huruf kecil, angka, atau underscore." },
+                };
+            }
+            payload.username = cleanUser.length > 0 ? cleanUser : null;
+        }
+
+        // Validation: display_name non-empty
+        if (payload.display_name !== undefined) {
+            const cleanDisplay = payload.display_name?.trim();
+            if (!cleanDisplay || cleanDisplay.length > 60) {
+                return {
+                    data: null,
+                    error: { message: "Nama tampilan harus antara 1 sampai 60 karakter." },
+                };
+            }
+            payload.display_name = cleanDisplay;
+        }
+
+        // Validation: avatar_path ownership check (must reside in caller's folder)
+        if (payload.avatar_path) {
+            const expectedPrefix = `${userId}/`;
+            if (!payload.avatar_path.startsWith(expectedPrefix)) {
+                return {
+                    data: null,
+                    error: { message: "Berkas avatar tidak valid atau bukan milik akun Anda." },
+                };
+            }
+        }
+
+        payload.updated_at = new Date().toISOString();
 
         const { data, error } = await supabase
             .from("profiles")

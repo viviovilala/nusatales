@@ -103,6 +103,9 @@ export default function AppNavbar() {
                     <NavLinkItem to="/" isActive={isCurrent("/")}>
                         Beranda
                     </NavLinkItem>
+                    <NavLinkItem to="/animations" isActive={isCurrent("/animations")}>
+                        Animasi
+                    </NavLinkItem>
                     <NavLinkItem to="/reels" isActive={isCurrent("/reels")}>
                         Reels
                     </NavLinkItem>
