@@ -56,8 +56,13 @@ export function normalizeSupabaseError(error, defaultMessage = "Terjadi kesalaha
         }
 
         // Storage
-        if (msg.includes("payload too large") || msg.includes("entity too large") || msg.includes("413")) {
-            return "Ukuran berkas melebihi batas yang diizinkan (maksimal 100 MB).";
+        if (
+            msg.includes("payload too large") ||
+            msg.includes("entity too large") ||
+            msg.includes("413") ||
+            msg.includes("exceeded the maximum allowed size")
+        ) {
+            return "Ukuran berkas melebihi batas 50 MB yang tersedia pada NusaTales MVP (Supabase Free Tier). Harap kompres video menjadi di bawah 50 MB.";
         }
         if (msg.includes("bucket not found")) {
             return "Penyimpanan server belum siap. Hubungi administrator.";

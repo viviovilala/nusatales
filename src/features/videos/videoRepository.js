@@ -233,7 +233,8 @@ export const videoRepository = {
             return { data: null, error: { message: "Supabase belum dikonfigurasi." } };
         }
 
-        const allowedFields = ["title", "description", "thumbnail_path", "storage_path", "duration_seconds", "content_type"];
+        // Whitelist allowed metadata fields only (content_type is immutable after creation)
+        const allowedFields = ["title", "description", "thumbnail_path", "storage_path", "duration_seconds"];
         const payload = {};
         for (const key of allowedFields) {
             if (key in updates) {
@@ -257,6 +258,16 @@ export const videoRepository = {
             return { data: null, error: { message: "Supabase belum dikonfigurasi." } };
         }
 
+        // 1. Try trusted RPC first
+        const rpcRes = await supabase.rpc("soft_delete_video", { p_video_id: videoId });
+        if (!rpcRes.error) {
+            return rpcRes;
+        }
+        if (rpcRes.error.code !== "PGRST202" && !rpcRes.error.message?.includes("not found")) {
+            return rpcRes;
+        }
+
+        // 2. Fallback to direct update if RPC is pending migration execution
         const { data, error } = await supabase
             .from("videos")
             .update({

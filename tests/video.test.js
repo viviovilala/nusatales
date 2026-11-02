@@ -1,8 +1,16 @@
 import { describe, it, expect, vi } from "vitest";
 import { videoRepository } from "../src/features/videos/videoRepository";
+import { MAX_VIDEO_BYTES, MAX_THUMBNAIL_BYTES, MAX_AVATAR_BYTES } from "../src/features/videos/uploadService";
 import { supabase } from "../src/lib/supabaseClient";
 
 describe("Video Repository & Dual-Format Security", () => {
+    describe("Storage Size Constants", () => {
+        it("strictly enforces conservative 50 MB decimal limit for video uploads", () => {
+            expect(MAX_VIDEO_BYTES).toBe(50_000_000);
+            expect(MAX_THUMBNAIL_BYTES).toBe(5_000_000);
+            expect(MAX_AVATAR_BYTES).toBe(2_000_000);
+        });
+    });
     describe("createDraft", () => {
         it("defaults contentType to reel if invalid or omitted", async () => {
             const insertSpy = vi.spyOn(supabase, "from").mockReturnValue({
@@ -75,6 +83,7 @@ describe("Video Repository & Dual-Format Security", () => {
 
             await videoRepository.updateVideo("video-xyz", {
                 title: "Judul Baru",
+                content_type: "reel", // FORBIDDEN: content_type is immutable after creation
                 status: "published", // FORBIDDEN: should be stripped
                 creator_id: "other-user", // FORBIDDEN: should be stripped
                 published_at: new Date().toISOString(), // FORBIDDEN: should be stripped
@@ -83,12 +92,28 @@ describe("Video Repository & Dual-Format Security", () => {
 
             expect(capturedUpdate).toBeDefined();
             expect(capturedUpdate.title).toBe("Judul Baru");
+            expect(capturedUpdate.content_type).toBeUndefined();
             expect(capturedUpdate.status).toBeUndefined();
             expect(capturedUpdate.creator_id).toBeUndefined();
             expect(capturedUpdate.published_at).toBeUndefined();
             expect(capturedUpdate.deleted_at).toBeUndefined();
 
             updateSpy.mockRestore();
+        });
+    });
+
+    describe("softDeleteVideo trusted RPC", () => {
+        it("attempts soft_delete_video RPC first", async () => {
+            const rpcSpy = vi.spyOn(supabase, "rpc").mockResolvedValue({
+                data: { success: true, id: "vid-123", deleted: true },
+                error: null,
+            });
+
+            const res = await videoRepository.softDeleteVideo("vid-123");
+            expect(rpcSpy).toHaveBeenCalledWith("soft_delete_video", { p_video_id: "vid-123" });
+            expect(res.data.deleted).toBe(true);
+
+            rpcSpy.mockRestore();
         });
     });
 

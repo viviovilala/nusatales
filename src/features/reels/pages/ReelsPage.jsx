@@ -35,6 +35,11 @@ export default function ReelsPage() {
                 const { data: requestedVideo } = await reelsRepository.getPublishedVideoById(videoId);
 
                 if (requestedVideo) {
+                    // If content is an Animation, redirect safely to the cinema player
+                    if (requestedVideo.contentType === "animation") {
+                        navigate(`/watch/${videoId}`, { replace: true });
+                        return;
+                    }
                     initialVideos.push(requestedVideo);
                 } else {
                     setNotFoundNotice(

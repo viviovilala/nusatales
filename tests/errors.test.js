@@ -41,6 +41,12 @@ describe("normalizeSupabaseError", () => {
         expect(normalizeSupabaseError(error)).toContain("Gagal terhubung ke server");
     });
 
+    it("maps Storage maximum allowed size exceeded to 50 MB guidance", () => {
+        const error = { message: "The object exceeded the maximum allowed size" };
+        expect(normalizeSupabaseError(error)).toContain("50 MB");
+        expect(normalizeSupabaseError(error)).toContain("Supabase Free Tier");
+    });
+
     it("returns default message when object is empty or unmapped", () => {
         expect(normalizeSupabaseError({}, "Pesan default")).toBe("Pesan default");
     });

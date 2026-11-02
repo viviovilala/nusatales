@@ -1,13 +1,17 @@
 import * as tus from "tus-js-client";
 import { supabase, isSupabaseConfigured } from "../../lib/supabaseClient";
 
+// Strict conservative storage limits (decimal aligned with Supabase Free Tier)
+export const MAX_VIDEO_BYTES = 50_000_000; // 50 MB
+export const MAX_THUMBNAIL_BYTES = 5_000_000; // 5 MB
+export const MAX_AVATAR_BYTES = 2_000_000; // 2 MB
+
 /**
  * Extracts duration, dimensions, and auto-generates a first-frame thumbnail from a video file.
  */
 export async function extractVideoMetadata(videoFile) {
     return new Promise((resolve, reject) => {
         if (typeof window === "undefined" || !window.URL) {
-            // Non-browser environment fallback
             return resolve({
                 durationSeconds: 15,
                 thumbnailBlob: null,
@@ -32,7 +36,6 @@ export async function extractVideoMetadata(videoFile) {
 
         video.onloadedmetadata = () => {
             const rawDuration = video.duration || 0;
-            // Seek to 0.5s or halfway
             video.currentTime = Math.min(0.5, rawDuration / 2);
         };
 
@@ -88,8 +91,9 @@ export async function extractVideoMetadata(videoFile) {
 }
 
 /**
- * Resumable upload using TUS protocol for large media files (Supabase Storage TUS endpoint).
- * Returns an object with { promise, abort }.
+ * Resumable upload using TUS protocol for video media.
+ * Supports resumeFromPreviousUpload(), auto-retry on network transient drops,
+ * and clean cancellation without silent fallbacks.
  */
 export function uploadWithTus({
     bucket,
@@ -105,6 +109,7 @@ export function uploadWithTus({
     const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
     let uploadInstance = null;
+    let isAborted = false;
 
     const promise = new Promise(async (resolve, reject) => {
         try {
@@ -131,10 +136,16 @@ export function uploadWithTus({
                 },
                 chunkSize: 6 * 1024 * 1024, // 6MB chunks
                 onError: (error) => {
+                    if (isAborted) {
+                        const cancelErr = new Error("Pengunggahan dibatalkan oleh pengguna.");
+                        cancelErr.isCancelled = true;
+                        return reject(cancelErr);
+                    }
                     console.error("[TUS Upload Error]", error);
                     reject(error);
                 },
                 onProgress: (bytesUploaded, bytesTotal) => {
+                    if (isAborted) return;
                     const percent = Math.min(100, Math.round((bytesUploaded / bytesTotal) * 100));
                     if (onProgress) {
                         onProgress({
@@ -145,11 +156,29 @@ export function uploadWithTus({
                     }
                 },
                 onSuccess: () => {
+                    if (isAborted) {
+                        const cancelErr = new Error("Pengunggahan dibatalkan.");
+                        cancelErr.isCancelled = true;
+                        return reject(cancelErr);
+                    }
                     resolve({ path: filePath });
                 },
             });
 
-            uploadInstance.start();
+            // Attempt to resume previous unfinished upload if fingerprint matches
+            if (uploadInstance.findPreviousUploads) {
+                uploadInstance.findPreviousUploads().then((previousUploads) => {
+                    if (isAborted) return;
+                    if (previousUploads && previousUploads.length > 0) {
+                        uploadInstance.resumeFromPreviousUpload(previousUploads[0]);
+                    }
+                    uploadInstance.start();
+                }).catch(() => {
+                    if (!isAborted) uploadInstance.start();
+                });
+            } else {
+                uploadInstance.start();
+            }
         } catch (err) {
             reject(err);
         }
@@ -158,6 +187,7 @@ export function uploadWithTus({
     return {
         promise,
         abort: () => {
+            isAborted = true;
             if (uploadInstance) {
                 uploadInstance.abort();
             }
@@ -167,8 +197,8 @@ export function uploadWithTus({
 
 /**
  * Uploads a file with progress reporting.
- * Prefers TUS resumable upload for video media in the 'videos' bucket,
- * and falls back to standard Supabase client upload for images or if TUS encounters an environment issue.
+ * For video media ('videos' bucket), strictly uses TUS with NO silent standard upload fallback.
+ * For small images ('thumbnails' bucket), uses standard upload.
  */
 export async function uploadMediaWithProgress({
     bucket,
@@ -184,30 +214,25 @@ export async function uploadMediaWithProgress({
 
     const determinedType = contentType || file.type || (bucket === "thumbnails" ? "image/webp" : "video/mp4");
 
-    // For video files, attempt TUS resumable upload
-    if (bucket === "videos" && typeof window !== "undefined") {
-        try {
-            const tusTask = uploadWithTus({
-                bucket,
-                filePath,
-                file,
-                onProgress: (prog) => {
-                    if (onProgress) onProgress(prog.percent, prog);
-                },
-            });
+    // VIDEO: Pure TUS upload — strictly NO standard upload fallback on network failure or cancel!
+    if (bucket === "videos") {
+        const tusTask = uploadWithTus({
+            bucket,
+            filePath,
+            file,
+            onProgress: (prog) => {
+                if (onProgress) onProgress(prog.percent, prog);
+            },
+        });
 
-            if (onUploadInstance) {
-                onUploadInstance(tusTask);
-            }
-
-            return await tusTask.promise;
-        } catch (tusErr) {
-            console.warn("[uploadMediaWithProgress] TUS upload failed or interrupted, trying standard upload fallback:", tusErr);
-            // Fall back to standard upload
+        if (onUploadInstance) {
+            onUploadInstance(tusTask);
         }
+
+        return await tusTask.promise;
     }
 
-    // Standard client upload fallback (also used for thumbnails)
+    // THUMBNAILS / IMAGES: Standard Supabase client upload
     if (onProgress) onProgress(30, { percent: 30 });
 
     const { data, error } = await supabase.storage
@@ -227,13 +252,19 @@ export async function uploadMediaWithProgress({
 }
 
 /**
- * Deletes a storage object (used for cleanup when upload is aborted or rejected).
+ * Deletes a storage object with error validation (used for cleanup when upload is aborted or rejected).
  */
 export async function cleanupStorageObject(bucket, filePath) {
-    if (!isSupabaseConfigured || !filePath) return;
+    if (!isSupabaseConfigured || !filePath) return { data: null, error: null };
     try {
-        await supabase.storage.from(bucket).remove([filePath]);
+        const { data, error } = await supabase.storage.from(bucket).remove([filePath]);
+        if (error) {
+            console.error("[cleanupStorageObject] Removal error:", error);
+            return { data: null, error };
+        }
+        return { data, error: null };
     } catch (err) {
-        console.warn("[cleanupStorageObject] Cleanup warning:", err);
+        console.error("[cleanupStorageObject] Exception during cleanup:", err);
+        return { data: null, error: err };
     }
 }

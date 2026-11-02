@@ -63,8 +63,14 @@ export default function WatchAnimationPage() {
 
             try {
                 const { data, error } = await videoRepository.getVideoById(videoId);
-                if (error || !data) {
-                    if (isMounted) setErrorMessage("Video animasi tidak ditemukan atau belum dipublikasikan.");
+                if (error || !data || data.status !== "published") {
+                    if (isMounted) setErrorMessage("Video animasi tidak ditemukan atau belum dipublikasikan ke publik.");
+                    return;
+                }
+
+                // If content is a Reel, redirect safely to the Reels vertical player
+                if (data.content_type === "reel") {
+                    navigate(`/reels/${videoId}`, { replace: true });
                     return;
                 }
 

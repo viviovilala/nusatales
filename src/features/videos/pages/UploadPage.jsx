@@ -4,17 +4,22 @@ import AppNavbar from "../../../components/AppNavbar";
 import Footer from "../../../components/Footer";
 import { useAuth } from "../../auth/AuthProvider";
 import { videoRepository } from "../videoRepository";
-import { extractVideoMetadata, uploadMediaWithProgress, cleanupStorageObject } from "../uploadService";
+import {
+    MAX_VIDEO_BYTES,
+    MAX_THUMBNAIL_BYTES,
+    extractVideoMetadata,
+    uploadMediaWithProgress,
+    cleanupStorageObject,
+} from "../uploadService";
 import { normalizeSupabaseError } from "../../../lib/errors";
 
-const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
 const REEL_MAX_DURATION_SECONDS = 180; // 3 minutes
 
 export default function UploadPage() {
     const { user } = useAuth();
     const navigate = useNavigate();
 
-    // Content Type: 'animation' | 'reel'
+    // Content Type: 'animation' | 'reel' (User selection is sovereign)
     const [contentType, setContentType] = useState("animation");
 
     // Form inputs
@@ -24,20 +29,22 @@ export default function UploadPage() {
     const [videoDuration, setVideoDuration] = useState(null);
     const [thumbnailBlob, setThumbnailBlob] = useState(null);
     const [thumbnailPreview, setThumbnailPreview] = useState(null);
+    const [aspectRatioSuggestion, setAspectRatioSuggestion] = useState("");
 
-    // Upload & Progress states
-    // state: 'IDLE' | 'ANALYZING' | 'CREATING_DRAFT' | 'UPLOADING' | 'FINALIZING' | 'SUCCESS' | 'ERROR'
+    // Upload & Publish State Machine
+    // States: 'IDLE' | 'ANALYZING' | 'CREATING_DRAFT' | 'UPLOADING' | 'METADATA_SAVED' | 'PUBLISHING' | 'PUBLISHED' | 'PUBLISH_FAILED' | 'UPLOAD_FAILED' | 'CANCELLED'
     const [uploadPhase, setUploadPhase] = useState("IDLE");
     const [uploadPercent, setUploadPercent] = useState(0);
     const [uploadStep, setUploadStep] = useState("");
     const [errorMessage, setErrorMessage] = useState("");
+    const [persistedDraftId, setPersistedDraftId] = useState(null);
 
     const videoInputRef = useRef(null);
     const thumbInputRef = useRef(null);
     const [isDragging, setIsDragging] = useState(false);
     const activeUploadTaskRef = useRef(null);
 
-    // Clean up previews on unmount
+    // Clean up previews and abort active tasks on unmount
     useEffect(() => {
         return () => {
             if (thumbnailPreview && thumbnailPreview.startsWith("blob:")) {
@@ -53,17 +60,21 @@ export default function UploadPage() {
         if (!file) return;
 
         setErrorMessage("");
+        setAspectRatioSuggestion("");
 
-        // Check MIME type
+        // 1. Check MIME type
         const allowedTypes = ["video/mp4", "video/webm", "video/quicktime"];
         if (!allowedTypes.includes(file.type)) {
             setErrorMessage("Format video harus berupa MP4, WebM, atau MOV.");
             return;
         }
 
-        // Check file size (100 MB limit)
-        if (file.size > MAX_FILE_SIZE) {
-            setErrorMessage("Ukuran berkas melebihi batas 100 MB.");
+        // 2. Strict 50 MB check before any draft creation
+        if (file.size > MAX_VIDEO_BYTES) {
+            const sizeMb = (file.size / (1000 * 1000)).toFixed(1);
+            setErrorMessage(
+                `Ukuran video (${sizeMb} MB) melebihi batas 50 MB yang tersedia pada NusaTales MVP (Supabase Free Tier). Silakan kompres atau ekspor ulang video sebelum mengunggah.`
+            );
             return;
         }
 
@@ -74,10 +85,10 @@ export default function UploadPage() {
         try {
             const meta = await extractVideoMetadata(file);
 
-            // Conditional duration validation based on contentType
+            // Conditional duration validation based on selected contentType
             if (contentType === "reel" && meta.durationSeconds > REEL_MAX_DURATION_SECONDS) {
                 setErrorMessage(
-                    `Durasi Reel (${meta.durationSeconds} detik) melebihi batas maksimal ${REEL_MAX_DURATION_SECONDS} detik (3 menit). Untuk video lebih panjang, pilih jenis "Film Animasi".`
+                    `Durasi Reel (${meta.durationSeconds} detik) melebihi batas maksimal ${REEL_MAX_DURATION_SECONDS} detik (3 menit). Untuk karya lebih panjang, pilih format "Film Animasi".`
                 );
                 setVideoFile(null);
                 setVideoDuration(null);
@@ -101,11 +112,15 @@ export default function UploadPage() {
                 setThumbnailPreview(previewUrl);
             }
 
-            // Auto-detect format suggestion if aspect ratio is strongly vertical or horizontal
-            if (meta.aspectRatio && meta.aspectRatio < 0.8 && contentType !== "reel") {
-                setContentType("reel");
-            } else if (meta.aspectRatio && meta.aspectRatio > 1.3 && contentType !== "animation") {
-                setContentType("animation");
+            // Aspect ratio recommendation without silent mutation of user's choice
+            if (meta.aspectRatio && meta.aspectRatio < 0.8 && contentType === "animation") {
+                setAspectRatioSuggestion(
+                    "Saran: Video ini berorientasi vertikal (9:16). Disarankan memilih format 'Reel', namun pilihan tetap berada di tangan Anda."
+                );
+            } else if (meta.aspectRatio && meta.aspectRatio > 1.3 && contentType === "reel") {
+                setAspectRatioSuggestion(
+                    "Saran: Video ini berorientasi horizontal (16:9). Disarankan memilih format 'Film Animasi', namun pilihan tetap berada di tangan Anda."
+                );
             }
 
             // Auto-fill title if empty from filename
@@ -134,7 +149,7 @@ export default function UploadPage() {
             return;
         }
 
-        if (file.size > 5 * 1024 * 1024) {
+        if (file.size > MAX_THUMBNAIL_BYTES) {
             setErrorMessage("Ukuran thumbnail maksimal 5 MB.");
             return;
         }
@@ -149,10 +164,33 @@ export default function UploadPage() {
             activeUploadTaskRef.current.abort();
             activeUploadTaskRef.current = null;
         }
-        setUploadPhase("IDLE");
+        setUploadPhase("CANCELLED");
         setUploadPercent(0);
         setUploadStep("");
-        setErrorMessage("Pengunggahan video dibatalkan.");
+        setErrorMessage("Pengunggahan video dibatalkan oleh pengguna.");
+    }
+
+    async function handleRetryPublish() {
+        if (!persistedDraftId) return;
+
+        setUploadPhase("PUBLISHING");
+        setErrorMessage("");
+        setUploadStep("Mencoba mempublikasikan karya kembali...");
+
+        try {
+            const { data, error } = await videoRepository.publishVideo(persistedDraftId);
+            if (error) {
+                throw error;
+            }
+            setUploadPhase("PUBLISHED");
+            setUploadStep("Karya berhasil dipublikasikan! Mengalihkan ke Studio...");
+            setTimeout(() => {
+                navigate("/studio");
+            }, 800);
+        } catch (err) {
+            setUploadPhase("PUBLISH_FAILED");
+            setErrorMessage(normalizeSupabaseError(err, "Gagal mempublikasikan karya. Silakan coba lagi."));
+        }
     }
 
     async function handleSubmit(shouldPublishImmediately = false) {
@@ -170,6 +208,15 @@ export default function UploadPage() {
 
         if (!videoFile || !videoDuration) {
             setErrorMessage("Pilih berkas video yang valid terlebih dahulu.");
+            return;
+        }
+
+        // Re-validate 50 MB before transfer
+        if (videoFile.size > MAX_VIDEO_BYTES) {
+            const sizeMb = (videoFile.size / (1000 * 1000)).toFixed(1);
+            setErrorMessage(
+                `Ukuran video (${sizeMb} MB) melebihi batas 50 MB yang tersedia pada NusaTales MVP. Silakan kompres video terlebih dahulu.`
+            );
             return;
         }
 
@@ -201,6 +248,8 @@ export default function UploadPage() {
             }
 
             createdDraftId = draft.id;
+            setPersistedDraftId(createdDraftId);
+
             const fileExt = videoFile.name.split(".").pop() || "mp4";
             videoStoragePath = `${user.id}/${createdDraftId}/media-${Date.now()}.${fileExt}`;
 
@@ -218,9 +267,9 @@ export default function UploadPage() {
                 });
             }
 
-            // 3. Resumable Upload with real progress
+            // 3. Resumable Upload via pure TUS (no standard upload fallback for video)
             setUploadPhase("UPLOADING");
-            setUploadStep("Mengunggah berkas video ke penyimpanan cloud...");
+            setUploadStep("Mengunggah berkas video ke penyimpanan cloud (TUS Resumable)...");
 
             await uploadMediaWithProgress({
                 bucket: "videos",
@@ -236,48 +285,65 @@ export default function UploadPage() {
             });
 
             // 4. Update video row with storage paths & duration
-            setUploadPhase("FINALIZING");
-            setUploadStep("Memperbarui informasi media dan durasi...");
+            setUploadPhase("METADATA_SAVED");
+            setUploadStep("Menyimpan metadata media...");
 
             const { error: updateErr } = await videoRepository.updateVideo(createdDraftId, {
                 storage_path: videoStoragePath,
                 thumbnail_path: thumbStoragePath,
                 duration_seconds: videoDuration,
-                content_type: contentType,
             });
 
             if (updateErr) {
                 throw new Error(normalizeSupabaseError(updateErr, "Gagal menyimpan metadata video."));
             }
 
-            // 5. Publish if requested
+            // 5. Publish step (strictly isolated from upload success)
             if (shouldPublishImmediately) {
+                setUploadPhase("PUBLISHING");
                 setUploadStep("Mempublikasikan karya ke katalog publik...");
+
                 const { error: pubErr } = await videoRepository.publishVideo(createdDraftId);
                 if (pubErr) {
-                    console.warn("[UploadPage] Draft created, but publish returned warning:", pubErr);
+                    console.error("[UploadPage] Publish RPC error:", pubErr);
+                    setUploadPhase("PUBLISH_FAILED");
+                    setErrorMessage(
+                        normalizeSupabaseError(
+                            pubErr,
+                            "Video berhasil diunggah sebagai draf, tetapi gagal dipublikasikan ke publik."
+                        )
+                    );
+                    return; // Stop here, do NOT show SUCCESS
                 }
             }
 
-            setUploadPhase("SUCCESS");
-            setUploadStep("Berhasil! Mengalihkan ke Studio...");
+            setUploadPhase("PUBLISHED");
+            setUploadStep("Karya berhasil disimpan dan siap ditonton! Mengalihkan ke Studio...");
             setTimeout(() => {
                 navigate("/studio");
-            }, 600);
+            }, 700);
         } catch (err) {
             console.error("[UploadPage] Error during upload:", err);
-            // Cleanup storage if needed
-            if (videoStoragePath) {
-                cleanupStorageObject("videos", videoStoragePath);
+
+            if (err.isCancelled) {
+                setUploadPhase("CANCELLED");
+                setErrorMessage("Pengunggahan video dibatalkan.");
+                if (videoStoragePath) {
+                    cleanupStorageObject("videos", videoStoragePath);
+                }
+                return;
             }
-            setUploadPhase("ERROR");
+
+            setUploadPhase("UPLOAD_FAILED");
             setErrorMessage(normalizeSupabaseError(err, err.message || "Gagal mengunggah video. Silakan coba lagi."));
         } finally {
             activeUploadTaskRef.current = null;
         }
     }
 
-    const isBusy = ["ANALYZING", "CREATING_DRAFT", "UPLOADING", "FINALIZING"].includes(uploadPhase);
+    const isUploadingActive = ["ANALYZING", "CREATING_DRAFT", "UPLOADING", "METADATA_SAVED", "PUBLISHING"].includes(
+        uploadPhase
+    );
 
     return (
         <div className="min-h-screen flex flex-col bg-[#F5F0E0]">
@@ -296,14 +362,46 @@ export default function UploadPage() {
                             Unggah Animasi & Cerita Budaya
                         </h1>
                         <p className="text-sm text-neutral-600">
-                            Pilih format penayangan sesuai jenis karya Anda: Film Animasi (Horizontal) atau Reels (Vertikal).
+                            Pilih format penayangan sesuai jenis karya: Film Animasi (Horizontal) atau Reels (Vertikal).
+                            Maksimal 50 MB per berkas.
                         </p>
                     </div>
                 </div>
 
                 {errorMessage && (
-                    <div className="mb-6 rounded-2xl px-5 py-4 text-sm bg-red-50 text-red-800 border border-red-200 font-medium">
-                        {errorMessage}
+                    <div className="mb-6 rounded-2xl px-5 py-4 text-sm bg-red-50 text-red-800 border border-red-200 font-medium space-y-2">
+                        <p>{errorMessage}</p>
+                        {uploadPhase === "PUBLISH_FAILED" && persistedDraftId && (
+                            <div className="pt-2 flex items-center gap-3">
+                                <button
+                                    type="button"
+                                    onClick={handleRetryPublish}
+                                    className="px-4 py-1.5 rounded-full text-xs font-bold text-white bg-[#8DC63F] hover:bg-[#7db534] shadow-sm cursor-pointer"
+                                >
+                                    Coba Publikasikan Lagi
+                                </button>
+                                <Link
+                                    to="/studio"
+                                    className="px-4 py-1.5 rounded-full text-xs font-bold text-neutral-800 bg-neutral-100 hover:bg-neutral-200"
+                                >
+                                    Buka Draf di Studio
+                                </Link>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Aspect ratio recommendation banner (if any) */}
+                {aspectRatioSuggestion && (
+                    <div className="mb-6 rounded-2xl px-5 py-3.5 text-xs bg-amber-50 text-amber-900 border border-amber-200 flex items-center justify-between">
+                        <span>💡 {aspectRatioSuggestion}</span>
+                        <button
+                            type="button"
+                            onClick={() => setAspectRatioSuggestion("")}
+                            className="text-amber-700 hover:text-amber-950 ml-2 font-bold"
+                        >
+                            ✕
+                        </button>
                     </div>
                 )}
 
@@ -311,7 +409,7 @@ export default function UploadPage() {
                 <div className="mb-8 grid sm:grid-cols-2 gap-4">
                     <button
                         type="button"
-                        disabled={isBusy}
+                        disabled={isUploadingActive}
                         onClick={() => setContentType("animation")}
                         className={`p-5 rounded-3xl border-2 text-left transition cursor-pointer flex items-start gap-4 ${
                             contentType === "animation"
@@ -319,25 +417,32 @@ export default function UploadPage() {
                                 : "border-amber-200 bg-white/70 hover:bg-white"
                         }`}
                     >
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 text-xl ${
-                            contentType === "animation" ? "bg-[#8DC63F] text-neutral-950 font-bold" : "bg-amber-100 text-amber-800"
-                        }`}>
+                        <div
+                            className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 text-xl ${
+                                contentType === "animation"
+                                    ? "bg-[#8DC63F] text-neutral-950 font-bold"
+                                    : "bg-amber-100 text-amber-800"
+                            }`}
+                        >
                             🎬
                         </div>
                         <div>
                             <div className="flex items-center gap-2">
                                 <h3 className="font-bold text-sm text-[#3B2A0E]">Film Animasi (Full Video)</h3>
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">16:9</span>
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
+                                    16:9
+                                </span>
                             </div>
                             <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
-                                Untuk film cerita rakyat berdurasi panjang atau film pendek. Ditayangkan di Katalog Animasi dengan kontrol player horizontal lengkap.
+                                Untuk film cerita rakyat berdurasi penuh atau film pendek. Durasi bebas (minimal 1 detik),
+                                ukuran maksimal tetap 50 MB. Ditayangkan di Katalog Animasi dengan Cinema Player.
                             </p>
                         </div>
                     </button>
 
                     <button
                         type="button"
-                        disabled={isBusy}
+                        disabled={isUploadingActive}
                         onClick={() => setContentType("reel")}
                         className={`p-5 rounded-3xl border-2 text-left transition cursor-pointer flex items-start gap-4 ${
                             contentType === "reel"
@@ -345,18 +450,25 @@ export default function UploadPage() {
                                 : "border-amber-200 bg-white/70 hover:bg-white"
                         }`}
                     >
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 text-xl ${
-                            contentType === "reel" ? "bg-[#8DC63F] text-neutral-950 font-bold" : "bg-amber-100 text-amber-800"
-                        }`}>
+                        <div
+                            className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 text-xl ${
+                                contentType === "reel"
+                                    ? "bg-[#8DC63F] text-neutral-950 font-bold"
+                                    : "bg-amber-100 text-amber-800"
+                            }`}
+                        >
                             📱
                         </div>
                         <div>
                             <div className="flex items-center gap-2">
                                 <h3 className="font-bold text-sm text-[#3B2A0E]">Reels (Video Singkat)</h3>
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">9:16</span>
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
+                                    9:16
+                                </span>
                             </div>
                             <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
-                                Untuk video cuplikan, teaser, atau konten budaya pendek berdurasi maksimal 180 detik. Ditayangkan di feed Reels vertikal.
+                                Untuk cuplikan, teaser, atau konten budaya pendek. Durasi maksimal 180 detik, ukuran
+                                maksimal 50 MB. Ditayangkan di feed Reels vertikal.
                             </p>
                         </div>
                     </button>
@@ -405,7 +517,8 @@ export default function UploadPage() {
                                 </h3>
                                 <p className="text-xs text-neutral-500 max-w-xs mb-3">
                                     Format MP4, WebM, atau MOV.
-                                    {contentType === "reel" ? " Durasi maks 180 detik (Reel)." : " Durasi bebas (Animasi)."} Maksimal 100 MB.
+                                    {contentType === "reel" ? " Durasi maks 180 detik (Reel)." : " Durasi bebas (Animasi)."}
+                                    {" "}Maksimal ukuran 50 MB.
                                 </p>
                                 <span className="px-4 py-1.5 rounded-full text-xs font-bold text-amber-900 bg-amber-100">
                                     Pilih Berkas Video
@@ -419,16 +532,18 @@ export default function UploadPage() {
                                             {videoFile.name}
                                         </h4>
                                         <p className="text-xs text-neutral-500">
-                                            {(videoFile.size / (1024 * 1024)).toFixed(1)} MB • {videoDuration} detik • {contentType === "animation" ? "Film Animasi" : "Reel"}
+                                            {(videoFile.size / (1000 * 1000)).toFixed(1)} MB • {videoDuration} detik •{" "}
+                                            {contentType === "animation" ? "Film Animasi" : "Reel"}
                                         </p>
                                     </div>
                                     <button
                                         type="button"
-                                        disabled={isBusy}
+                                        disabled={isUploadingActive}
                                         onClick={() => {
                                             setVideoFile(null);
                                             setVideoDuration(null);
                                             setThumbnailPreview(null);
+                                            setAspectRatioSuggestion("");
                                         }}
                                         className="text-xs font-semibold text-red-600 hover:underline cursor-pointer disabled:opacity-50"
                                     >
@@ -444,7 +559,7 @@ export default function UploadPage() {
                                         </label>
                                         <button
                                             type="button"
-                                            disabled={isBusy}
+                                            disabled={isUploadingActive}
                                             onClick={() => thumbInputRef.current?.click()}
                                             className="text-xs text-amber-800 font-semibold hover:underline cursor-pointer"
                                         >
@@ -460,9 +575,11 @@ export default function UploadPage() {
                                         onChange={handleCustomThumbnail}
                                     />
 
-                                    <div className={`relative rounded-2xl overflow-hidden bg-neutral-900 mx-auto ${
-                                        contentType === "animation" ? "aspect-video w-full" : "aspect-[9/14] max-h-64"
-                                    }`}>
+                                    <div
+                                        className={`relative rounded-2xl overflow-hidden bg-neutral-900 mx-auto ${
+                                            contentType === "animation" ? "aspect-video w-full" : "aspect-[9/14] max-h-64"
+                                        }`}
+                                    >
                                         {thumbnailPreview ? (
                                             <img
                                                 src={thumbnailPreview}
@@ -501,10 +618,14 @@ export default function UploadPage() {
                                     type="text"
                                     required
                                     maxLength={120}
-                                    disabled={isBusy}
+                                    disabled={isUploadingActive}
                                     value={title}
                                     onChange={(e) => setTitle(e.target.value)}
-                                    placeholder={contentType === "animation" ? "Contoh: Sangkuriang dan Gunung Tangkuban Parahu" : "Contoh: Momen Epik Pertarungan Roro Jonggrang"}
+                                    placeholder={
+                                        contentType === "animation"
+                                            ? "Contoh: Sangkuriang dan Gunung Tangkuban Parahu"
+                                            : "Contoh: Momen Epik Pertarungan Roro Jonggrang"
+                                    }
                                     className="w-full px-5 py-3.5 rounded-2xl bg-[#F7F3EA] text-neutral-900 text-sm outline-none focus:ring-2 focus:ring-[#8DC63F]"
                                 />
                                 <div className="text-right text-[11px] text-neutral-400 mt-1">
@@ -524,7 +645,7 @@ export default function UploadPage() {
                                 <textarea
                                     rows={5}
                                     maxLength={2200}
-                                    disabled={isBusy}
+                                    disabled={isUploadingActive}
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
                                     placeholder="Ceritakan ringkasan kisah cerita rakyat ini, pesan moral, dan latar budayanya..."
@@ -533,7 +654,7 @@ export default function UploadPage() {
                             </div>
 
                             {/* Resumable Upload Progress Bar & Cancel Button */}
-                            {isBusy && (
+                            {isUploadingActive && (
                                 <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 space-y-2">
                                     <div className="flex items-center justify-between text-xs font-bold text-amber-950">
                                         <span>{uploadStep}</span>
@@ -562,7 +683,7 @@ export default function UploadPage() {
                         <div className="pt-6 border-t border-neutral-100 flex flex-col sm:flex-row gap-3">
                             <button
                                 type="button"
-                                disabled={isBusy || !videoFile}
+                                disabled={isUploadingActive || !videoFile}
                                 onClick={() => handleSubmit(false)}
                                 className="flex-1 py-3.5 rounded-full text-xs font-bold text-neutral-800 bg-[#F5F0E0] hover:bg-[#EAE2CE] transition disabled:opacity-50 cursor-pointer"
                             >
@@ -570,7 +691,7 @@ export default function UploadPage() {
                             </button>
                             <button
                                 type="button"
-                                disabled={isBusy || !videoFile}
+                                disabled={isUploadingActive || !videoFile}
                                 onClick={() => handleSubmit(true)}
                                 className="flex-1 py-3.5 rounded-full text-xs font-bold text-neutral-950 shadow hover:opacity-95 transition disabled:opacity-50 cursor-pointer"
                                 style={{ backgroundColor: "#8DC63F" }}

@@ -169,7 +169,10 @@ Browser (React 19 / React Router / Tailwind)
 - A frontend-only Supabase integration is **not** a security shortcut. RLS, Storage policies, grants, and tests are mandatory.
 - Supabase Storage is object storage, **not automatically a full video-transcoding/streaming service**. MVP uses browser-compatible uploaded video formats. HLS/transcoding is a separate later phase.
 - Signed media URLs can remain valid until their expiry even if content is unpublished; use a short TTL and understand that immediate revocation of already-issued URLs is not guaranteed.
-- Video upload size is subject to current Supabase plan, project settings, and bucket limits. Never assume 100 MB works on every plan.
+- Video upload size is strictly capped at **50 MB (50,000,000 bytes)** per file in accordance with the active Supabase Free Tier storage limit.
+- Dual-format content architecture:
+  - **Animation (Full Video)**: Duration >= 1s (no 180s cap), landscape 16:9, max 50 MB.
+  - **Reels (Short Video)**: Duration 1–180s, portrait 9:16, max 50 MB.
 - No custom backend process is necessary for basic read/write operations, but server-side functions may still be necessary for validation and media cleanup.
 
 ### Technical non-goals
@@ -240,7 +243,7 @@ An authenticated user starts a draft with a title. They receive a stable UUID fo
 An owner uploads a supported video file from desktop/mobile.
 
 - Initial MVP policy: MP4 with browser-friendly codecs (H.264/AAC recommended); optional WebM only after target-browser testing.
-- Proposed initial limit: **max 100 MiB and max 180 seconds**, subject to the actual plan/project/bucket limits. The 100 MiB policy is a proposed app rule, NOT a guaranteed Supabase allowance.
+- Established limit: **max 50 MB (50,000,000 bytes)** per file, aligned with the Supabase Free Plan limit. Durations: Reels max 180 seconds; Full Animations have no 180s limitation (>= 1 second). Compression with H.264 / AAC recommended for longer animations.
 - Vertical 9:16 recommended; landscape is allowed with sensible letterboxing.
 - Support drag/drop or file picker, progress %, cancel, retry/resume on unstable networks.
 - Use TUS resumable upload for large files rather than a normal single HTTP request.
