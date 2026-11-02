@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { fileURLToPath } from "node:url";
+import { animationCatalogRows, mockAnimationRelations } from "./helpers/animation-api";
 
 const creators = [0, 1, 2].map((index) => ({ id: `creator-${index}`, username: `studio_${index}`, display_name: ["Studio Nusantara", "Sanggar Rimba", "Pijar Animasi"][index], avatar_path: null, bio: "Menghidupkan cerita rakyat lewat karya animasi." }));
 const records = Array.from({ length: 30 }, (_, index) => ({
@@ -18,14 +19,16 @@ async function project(page) {
             const id = url.searchParams.get("id")?.replace("eq.", "");
             return route.fulfill({ json: creators.find((creator) => creator.id === id) || creators[0] });
         }
-        if (!url.pathname.endsWith("/videos")) return route.fulfill({ json: [] });
+        if (!url.pathname.endsWith("/videos") && !url.pathname.endsWith("/animation_catalog")) return route.fulfill({ json: [] });
         if (url.searchParams.has("id")) return route.fulfill({ json: state.videos.find((video) => `eq.${video.id}` === url.searchParams.get("id")) || null });
         const limit = Number(url.searchParams.get("limit") || 12), offset = Number(url.searchParams.get("offset") || 0);
         const search = (url.searchParams.get("title") || "").replace(/^ilike\.%|%$/g, "");
         const filters = url.searchParams.getAll("duration_seconds");
         const order = url.searchParams.get("order") || "published_at.desc,id.desc";
         state.requests.push({ limit, offset, search, filters, order });
-        let data = state.videos.filter((video) => video.status === "published" && video.content_type === "animation" && (!search || video.title.toLowerCase().includes(search.toLowerCase())));
+        let data = (url.pathname.endsWith("/animation_catalog") ? animationCatalogRows(state.videos) : state.videos).filter((video) => video.status === "published" && video.content_type === "animation" && (!search || video.title.toLowerCase().includes(search.toLowerCase())));
+        const genre = url.searchParams.get("genre_slugs");
+        if (genre) data = data.filter((video) => genre.includes("fantasi"));
         const creator = url.searchParams.get("creator_id")?.replace("eq.", "");
         if (creator) data = data.filter((video) => video.creator_id === creator);
         for (const filter of filters) { const [operator, value] = filter.split("."); data = data.filter((video) => operator === "lte" ? video.duration_seconds <= Number(value) : video.duration_seconds > Number(value)); }
@@ -46,6 +49,7 @@ async function project(page) {
         }
         return route.fulfill({ contentType: "image/png", path: fileURLToPath(new URL("./fixtures/reels-art-2.png", import.meta.url)) });
     });
+    await mockAnimationRelations(page, () => state.videos);
     return state;
 }
 const card = (page, title) => page.getByRole("article", { name: `Animasi ${title}`, exact: true });
@@ -82,15 +86,15 @@ test("search, duration, order and numbered pages use server data and survive his
     await page.getByRole("button", { name: "Hingga 5 menit", exact: true }).click();
     await expect(page).toHaveURL(/durasi=short$/); await ready(page, 10);
     await expect(card(page, "Sangkuriang")).toHaveCount(0);
-    await page.getByRole("combobox", { name: "Urutkan film" }).selectOption("oldest");
+    await page.getByRole("combobox", { name: "Urutkan animasi" }).selectOption("oldest");
     await expect(page.locator(".catalog-card").first()).toHaveAccessibleName("Animasi Legenda 27");
-    await page.getByRole("searchbox", { name: "Cari judul film" }).fill("Legenda");
-    await page.getByRole("button", { name: "Cari film", exact: true }).click(); await ready(page, 9);
+    await page.getByRole("searchbox", { name: "Cari judul animasi" }).fill("Legenda");
+    await page.getByRole("button", { name: "Cari animasi", exact: true }).click(); await ready(page, 9);
     await expect(page.getByRole("heading", { name: "Hasil pencarian: “Legenda”" })).toBeVisible();
     await page.goBack(); await ready(page, 10);
-    await expect(page.getByRole("searchbox", { name: "Cari judul film" })).toHaveValue("");
+    await expect(page.getByRole("searchbox", { name: "Cari judul animasi" })).toHaveValue("");
     await page.goForward(); await ready(page, 9);
-    await expect(page.getByRole("searchbox", { name: "Cari judul film" })).toHaveValue("Legenda");
+    await expect(page.getByRole("searchbox", { name: "Cari judul animasi" })).toHaveValue("Legenda");
     await page.getByRole("button", { name: "Reset filter", exact: true }).click(); await ready(page);
     await expect(page).toHaveURL(/\/animations$/);
 });
@@ -110,11 +114,11 @@ test("out-of-range and malformed page links recover without empty-state confusio
 test("a late search response cannot replace the current results", async ({ page }) => {
     const state = await project(page); await page.goto("/animations"); await ready(page);
     state.heldSearch = "Kisah";
-    const input = page.getByRole("searchbox", { name: "Cari judul film" });
-    await input.fill("Kisah"); await page.getByRole("button", { name: "Cari film", exact: true }).click();
+    const input = page.getByRole("searchbox", { name: "Cari judul animasi" });
+    await input.fill("Kisah"); await page.getByRole("button", { name: "Cari animasi", exact: true }).click();
     await expect.poll(() => Boolean(state.release)).toBe(true);
-    await expect(page.getByRole("status", { name: "Memuat koleksi film" })).toBeVisible();
-    await input.fill("Timun"); await page.getByRole("button", { name: "Cari film", exact: true }).click(); await ready(page, 1);
+    await expect(page.getByRole("status", { name: "Memuat koleksi animasi" })).toBeVisible();
+    await input.fill("Timun"); await page.getByRole("button", { name: "Cari animasi", exact: true }).click(); await ready(page, 1);
     await expect(card(page, "Timun Mas")).toBeVisible();
     state.release();
     await expect(page.getByRole("heading", { name: "Hasil pencarian: “Timun”" })).toBeVisible();
@@ -133,10 +137,10 @@ test("failure, no matches and an empty catalog expose distinct recovery actions"
     await expect(page.locator(".catalog-card")).toHaveCount(0);
     state.failList = false; await page.getByRole("button", { name: "Coba lagi", exact: true }).click(); await ready(page);
     await expect(card(page, "Legenda 12")).toBeVisible();
-    const input = page.getByRole("searchbox", { name: "Cari judul film" });
-    await input.fill("Tidak tersedia"); await page.getByRole("button", { name: "Cari film", exact: true }).click();
+    const input = page.getByRole("searchbox", { name: "Cari judul animasi" });
+    await input.fill("Tidak tersedia"); await page.getByRole("button", { name: "Cari animasi", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Kisahnya belum ketemu." })).toBeVisible();
-    await page.getByRole("button", { name: "Lihat semua film", exact: true }).click(); await ready(page);
+    await page.getByRole("button", { name: "Lihat semua animasi", exact: true }).click(); await ready(page);
     state.videos = []; await page.reload();
     await expect(page.getByRole("heading", { name: "Koleksi cerita segera hadir." })).toBeVisible();
     await expect(page.locator(".catalog-hero-art")).toHaveAttribute("src", "/poto/hero-roro-closeup.webp");

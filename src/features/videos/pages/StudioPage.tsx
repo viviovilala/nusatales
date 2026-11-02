@@ -13,6 +13,7 @@ import { studioDate, studioDuration } from "../studio/studioTypes";
 import type { StudioAction, StudioVideo } from "../studio/studioTypes";
 import StudioDialog from "../studio/StudioDialog";
 import StudioPreview from "../studio/StudioPreview";
+import AnimationLibrary from "../../animations/studio/AnimationLibrary";
 import "../studio/studio.css";
 
 type Format = "all" | StudioVideo["content_type"];
@@ -94,8 +95,8 @@ function StudioWorkspace({ userId }: { userId: string }) {
                 <Reveal className="studio-summary studio-panel">
                     <div className="studio-section-title"><div><span className="studio-eyebrow">SETIAP CERITA BERARTI</span><h2>Ruang tumbuh karyamu</h2></div><span className="studio-live"><span />Studio kreator</span></div>
                     <div className="studio-stats" aria-label="Ringkasan karya">
-                        <button type="button" onClick={() => { reset(); showLibrary(); }}><span><FolderOpen size={17} />Total karya</span><strong>{count(videos.length)}</strong><small>{loaded ? `${animations} animasi · ${videos.length - animations} Shorts` : "Memuat koleksi"}</small></button>
-                        <button type="button" onClick={() => { setStatus("published"); setFormat("all"); setSearch(""); showLibrary(); }}><span><Globe2 size={17} />Dipublikasikan</span><strong>{count(published)}</strong><small>Sudah bisa dinikmati penonton</small></button>
+                        <button type="button" onClick={() => { reset(); showLibrary(); }}><span><FolderOpen size={17} />Total karya</span><strong>{count(videos.length)}</strong><small>{loaded ? `${animations} tayangan animasi · ${videos.length - animations} Shorts` : "Memuat koleksi"}</small></button>
+                        <button type="button" onClick={() => { setStatus("published"); setFormat("all"); setSearch(""); showLibrary(); }}><span><Globe2 size={17} />Dipublikasikan</span><strong>{count(published)}</strong><small>Akses tayangan mengikuti publikasi animasinya</small></button>
                         <button type="button" onClick={() => { setStatus("draft"); setFormat("all"); setSearch(""); showLibrary(); }}><span><FilePenLine size={17} />Dalam draf</span><strong>{count(drafts)}</strong><small>Racik lagi, bagikan saat siap</small></button>
                     </div>
                     <div className="studio-summary-footer"><span><Sparkles size={15} />Satu karya lagi, satu kisah tetap hidup.</span><button type="button" onClick={showLibrary}>Kelola karya <ArrowUpRight size={15} /></button></div>
@@ -108,6 +109,7 @@ function StudioWorkspace({ userId }: { userId: string }) {
 
             {!profile?.username && <div className="studio-onboarding"><div><Settings2 size={19} /><span><strong>Kenalkan studio kamu.</strong> Lengkapi username agar penonton mudah menemukan karyamu.</span></div><Link to="/settings/profile">Lengkapi profil <ArrowUpRight size={14} /></Link></div>}
 
+            <AnimationLibrary userId={userId} />
             <section ref={library} id="karya" className="studio-library studio-panel" aria-labelledby="studio-library-title">
                 <div className="studio-library-heading"><div><span className="studio-eyebrow">KOLEKSI PRIBADIMU</span><h2 id="studio-library-title" tabIndex={-1}>Karya kamu <span>{count(videos.length)}</span></h2><p>Kelola cerita, rapikan detail, dan tentukan kapan dunia melihatnya.</p></div>
                     <div className="studio-library-tools"><Button className="studio-refresh" variant="outline" busy={refreshing} disabled={loading || Boolean(pending)} onClick={() => { void load(); }} aria-label="Muat ulang karya"><RefreshCw size={15} className={refreshing ? "ui-spinner" : ""} /><span>Muat ulang</span></Button>
@@ -115,7 +117,7 @@ function StudioWorkspace({ userId }: { userId: string }) {
                 </div>
 
                 <div className="studio-toolbar">
-                    <div className="studio-format-tabs" role="group" aria-label="Format karya">{([["all", "Semua karya"], ["animation", "Film animasi"], ["reel", "Shorts"]] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={format === value} onClick={() => setFormat(value)}>{value === "all" ? <FolderOpen size={15} /> : value === "animation" ? <Film size={15} /> : <Smartphone size={15} />}{label}</button>)}</div>
+                    <div className="studio-format-tabs" role="group" aria-label="Format karya">{([["all", "Semua karya"], ["animation", "Tayangan animasi"], ["reel", "Shorts"]] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={format === value} onClick={() => setFormat(value)}>{value === "all" ? <FolderOpen size={15} /> : value === "animation" ? <Film size={15} /> : <Smartphone size={15} />}{label}</button>)}</div>
                     <label className="studio-search"><Search size={16} aria-hidden="true" /><Input aria-label="Cari karya" placeholder="Cari judul atau deskripsi..." value={search} onChange={(event) => setSearch(event.target.value)} />{search && <button type="button" aria-label="Hapus pencarian" onClick={() => setSearch("")}><X size={14} /></button>}</label>
                 </div>
                 <div className="studio-filter-row"><div className="studio-selects"><label><span>Status</span><select aria-label="Status karya" value={status} onChange={(event) => setStatus(event.target.value as Status)}><option value="all">Semua status</option><option value="published">Dipublikasikan</option><option value="draft">Draf</option></select></label><label><span>Urutkan</span><select aria-label="Urutan karya" value={sort} onChange={(event) => setSort(event.target.value as Sort)}><option value="newest">Terbaru</option><option value="oldest">Terlama</option><option value="title">Judul A–Z</option></select></label>{filtered && <button type="button" className="studio-clear" onClick={reset}>Reset filter <X size={12} /></button>}</div><span className="studio-result-count" role="status">{loading ? "Memuat karya..." : loaded ? `${results.length} karya${filtered ? " ditemukan" : " dalam koleksi"}` : "Koleksi belum dimuat"}</span></div>
@@ -128,7 +130,7 @@ function StudioWorkspace({ userId }: { userId: string }) {
                         {view === "list" && <div className="studio-list-labels" aria-hidden="true"><span>Karya</span><span>Status</span><span>Tanggal dibuat</span><span>Kelola</span></div>}
                         <div className={`studio-works studio-works-${view}`} aria-busy={refreshing || undefined}>
                             {visible.map((video) => <article key={video.id} className="studio-work" aria-label={`Karya ${video.title}`}>
-                                <div className="studio-work-main"><button type="button" className="studio-cover-button" aria-label={`Preview ${video.title}`} onClick={() => setPreview(video)}><Cover video={video} /><span className="studio-cover-hover"><Eye size={18} /></span></button><div className="studio-work-copy"><span className="studio-work-format">{video.content_type === "animation" ? <Film size={12} /> : <Smartphone size={12} />}{video.content_type === "animation" ? "Film animasi" : "Shorts"}</span><h3>{video.title}</h3><p>{video.description || "Ceritakan sedikit tentang karya ini."}</p><span className="studio-mobile-date">{studioDate(video.created_at)}</span></div></div>
+                                <div className="studio-work-main"><button type="button" className="studio-cover-button" aria-label={`Preview ${video.title}`} onClick={() => setPreview(video)}><Cover video={video} /><span className="studio-cover-hover"><Eye size={18} /></span></button><div className="studio-work-copy"><span className="studio-work-format">{video.content_type === "animation" ? <Film size={12} /> : <Smartphone size={12} />}{video.content_type === "animation" ? "Tayangan animasi" : "Shorts"}</span><h3>{video.title}</h3><p>{video.description || "Ceritakan sedikit tentang karya ini."}</p><span className="studio-mobile-date">{studioDate(video.created_at)}</span></div></div>
                                 <span className={`studio-status ${video.status === "published" ? "is-published" : ""}`}>{video.status === "published" ? <Globe2 size={12} /> : <LockKeyhole size={12} />}{video.status === "published" ? "Dipublikasikan" : "Draf"}</span>
                                 <time className="studio-work-date" dateTime={video.created_at || undefined}>{studioDate(video.created_at)}</time>
                                 <div className="studio-work-actions"><Link to={`/studio/videos/${video.id}/edit`} className="ui-button ui-button-outline" aria-label="Edit"><Pencil size={14} /><span>Edit</span></Link>
@@ -151,7 +153,7 @@ function StudioWorkspace({ userId }: { userId: string }) {
         <Footer />
         {preview && <StudioPreview key={preview.id} video={preview} onClose={() => setPreview(null)} />}
         {confirmation && <StudioDialog title={confirmation.action === "delete" ? "Hapus karya?" : confirmation.action === "publish" ? "Siap membagikan cerita?" : "Kembalikan ke draf?"} description={confirmation.action === "delete" ? "Karya akan dihapus dari koleksi dan tidak bisa ditonton melalui halaman publik. Tindakan ini tidak dapat dibatalkan dari Studio." : confirmation.action === "publish" ? "Karyamu akan muncul di katalog atau Shorts dan bisa ditonton semua orang." : "Karya akan disembunyikan dari katalog dan Shorts. Kamu bisa memublikasikannya kembali nanti."} onClose={() => setConfirmation(null)} busy={Boolean(pending)}>
-            <div className="studio-confirm-work"><Cover video={confirmation.video} /><div><strong>{confirmation.video.title}</strong><span>{confirmation.video.content_type === "animation" ? "Film animasi" : "Shorts"} · {studioDuration(confirmation.video.duration_seconds)}</span></div></div>
+            <div className="studio-confirm-work"><Cover video={confirmation.video} /><div><strong>{confirmation.video.title}</strong><span>{confirmation.video.content_type === "animation" ? "Tayangan animasi" : "Shorts"} · {studioDuration(confirmation.video.duration_seconds)}</span></div></div>
             <Notice>{actionError}</Notice><div className="studio-dialog-actions"><Button variant="outline" disabled={Boolean(pending)} data-dialog-initial onClick={() => setConfirmation(null)}>Batal</Button><Button variant={confirmation.action === "delete" ? "danger" : "primary"} busy={Boolean(pending)} onClick={() => { void confirm(); }}>{!pending && (confirmation.action === "delete" ? <Trash2 size={15} /> : <Check size={15} />)}{pending ? "Menyimpan..." : confirmation.action === "delete" ? "Hapus karya" : confirmation.action === "publish" ? "Ya, publikasikan" : "Tarik ke draf"}</Button></div>
         </StudioDialog>}
     </div>;

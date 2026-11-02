@@ -11,7 +11,7 @@ export default function CatalogHero({ onCreator }: { onCreator: (creator: Catalo
     const [index, setIndex] = useState(0);
     const [revision, setRevision] = useState(0);
     const active = stories[index] || stories[0];
-    const cover = useStorageImageUrl(active?.thumbnailPath);
+    const cover = useStorageImageUrl(active?.bannerPath || active?.thumbnailPath);
     const avatar = useStorageImageUrl(active?.creator.avatarPath);
     const [failedCover, setFailedCover] = useState<string | null>(null);
     const [failedAvatar, setFailedAvatar] = useState<string | null>(null);
@@ -45,7 +45,7 @@ export default function CatalogHero({ onCreator }: { onCreator: (creator: Catalo
             </button>}
             <h1>{active?.title || "Selalu ada kisah untukmu."}</h1>
             <p>{active?.description || (active ? "Kenali pesan dan budaya di balik cerita. Nikmati karya animasi dari kreator Nusantara." : "Temukan legenda, petualangan, dan cerita yang membawa budaya Nusantara lebih dekat.")}</p>
-            {active ? <AppLink to={`/watch/${active.id}`} className="nusa-button"><Play size={15} fill="currentColor" />Tonton sekarang</AppLink>
+            {active ? <AppLink to={`/watch/${active.watchVideoId}`} className="nusa-button"><Play size={15} fill="currentColor" />Tonton sekarang</AppLink>
                 : <a href="#koleksi" className="nusa-button">Jelajahi koleksi <ChevronRight size={16} /></a>}
         </div>
         {stories.length > 1 && <div className="catalog-carousel" role="group" aria-label="Navigasi cerita pilihan">

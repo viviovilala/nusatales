@@ -9,6 +9,9 @@ export function normalizeSupabaseError(error, defaultMessage = "Terjadi kesalaha
     // PostgREST / PostgreSQL specific error codes
     const code = error.code || "";
     if (code === "23505") {
+        if (`${error.message || ""} ${error.details || ""}`.includes("animation_episodes")) {
+            return "Nomor musim dan episode sudah dipakai pada animasi ini. Pilih nomor lain.";
+        }
         if (error.message?.includes("username") || error.details?.includes("username")) {
             return "Username ini sudah digunakan oleh pengguna lain. Silakan pilih username lain.";
         }
@@ -20,6 +23,14 @@ export function normalizeSupabaseError(error, defaultMessage = "Terjadi kesalaha
     }
 
     if (code === "23514") {
+        // Only known application messages are shown verbatim; PostgreSQL check
+        // details and internal constraint names retain the generic fallback.
+        const animationMessages = ["Lengkapi sinopsis, poster, genre, dan minimal satu tayangan terbit sebelum menerbitkan animasi.",
+            "Animasi terbit memerlukan sinopsis, poster, dan genre.", "Format tidak dapat diubah setelah memiliki tayangan.",
+            "Film hanya memiliki satu tayangan utama.", "Pilih maksimal 3 genre dan 5 tema budaya.",
+            "Pilihan genre atau tema budaya tidak valid.", "Unggah sampul sebelum menyimpan.",
+            "Tayangan harus memiliki animasi yang aktif.", "Relasi tayangan tidak ditemukan."];
+        if (animationMessages.includes(error.message)) return error.message;
         if (error.message?.includes("duration") || error.details?.includes("duration")) {
             return "Durasi video tidak sesuai dengan batasan kategori konten.";
         }

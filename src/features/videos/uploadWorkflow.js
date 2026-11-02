@@ -36,12 +36,26 @@ export async function runVideoUpload(input, operation, onPhase, dependencies = {
     const check = () => { if (signal.aborted) throw uploadCancelledError(); };
     const phase = (name, message, percent) => { check(); onPhase(name, message, percent); };
     const requireSuccess = (result) => { if (result.error) throw result.error; return result.data; };
+    async function cleanupOwnedResources() {
+        const cleanupErrors = [];
+        if (draftId) {
+            try { if ((await repository.softDeleteVideo(draftId)).error) cleanupErrors.push("draf"); }
+            catch { cleanupErrors.push("draf"); }
+        }
+        for (const [bucket, path] of [["videos", storagePath], ["thumbnails", thumbnailPath]]) {
+            if (!path) continue;
+            try { if ((await cleanup(bucket, path))?.error) cleanupErrors.push(bucket); }
+            catch { cleanupErrors.push(bucket); }
+        }
+        return cleanupErrors;
+    }
 
     try {
         phase("CREATING_DRAFT", "Menyiapkan draf karya...", 5);
         const draft = requireSuccess(await repository.createDraft({
             creatorId: input.userId, title: input.title, description: input.description,
             contentType: input.contentType,
+            animationId: input.animationId, seasonNumber: input.seasonNumber, episodeNumber: input.episodeNumber,
         }));
         if (!draft?.id) throw new Error("Draf tidak berhasil dibuat.");
         draftId = draft.id;
@@ -85,23 +99,16 @@ export async function runVideoUpload(input, operation, onPhase, dependencies = {
         }
         return { draftId, published: Boolean(input.publish) };
     } catch (error) {
-        if (!signal.aborted) throw error;
-        const cleanupErrors = [];
+        if (!signal.aborted) {
+            // A failed transfer must not permanently occupy a unique episode
+            // slot. Once publication was sent, keep the draft for RPC retry.
+            if (input.contentType !== "animation" || error.phase === "PUBLISH_FAILED") throw error;
+            const cleanupErrors = await cleanupOwnedResources();
+            throw Object.assign(error, { cleanupErrors });
+        }
         // Draft insertion/image upload may finish after cancellation. Wait for
         // that await first, then remove precisely this operation's resources.
-        if (draftId) {
-            try {
-                const result = await repository.softDeleteVideo(draftId);
-                if (result.error) cleanupErrors.push("draf");
-            } catch { cleanupErrors.push("draf"); }
-        }
-        for (const [bucket, path] of [["videos", storagePath], ["thumbnails", thumbnailPath]]) {
-            if (!path) continue;
-            try {
-                const result = await cleanup(bucket, path);
-                if (result?.error) cleanupErrors.push(bucket);
-            } catch { cleanupErrors.push(bucket); }
-        }
+        const cleanupErrors = await cleanupOwnedResources();
         throw Object.assign(uploadCancelledError(), { cleanupErrors });
     }
 }

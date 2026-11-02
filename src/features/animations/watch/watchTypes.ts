@@ -1,11 +1,13 @@
 import type { ReelCreator } from "../../reels/reelTypes";
+import type { AnimationEpisode, AnimationTitle } from "../animationTypes";
 
-// The current API exposes standalone video records. Series/episode identity
-// must come from a future persisted relation, never title matching or creator.
+// Series identity comes only from the persisted relation, never title matching.
 export type WatchAnimation = {
     id: string; title: string; description: string | null; storagePath: string | null;
     thumbnailPath: string | null; durationSeconds: number | null; publishedAt: string | null;
     creator: ReelCreator;
+    animation: AnimationTitle; episodes: AnimationEpisode[];
+    current: { season_number: number; episode_number: number };
 };
 export type WatchComment = { id: string; content: string; createdAt: string; userId: string; user: ReelCreator };
 

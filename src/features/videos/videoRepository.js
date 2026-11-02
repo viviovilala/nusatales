@@ -39,29 +39,13 @@ export const videoRepository = {
         return { data: data || [], error };
     },
 
-    /** @param {{limit?: number, offset?: number, search?: string, duration?: "all" | "short" | "medium" | "long", sort?: "newest" | "oldest" | "title", signal?: AbortSignal}} options */
-    async getAnimationCatalog({ limit = 12, offset = 0, search = "", duration = "all", sort = "newest", signal } = {}) {
+    /** @param {{limit?: number, offset?: number, search?: string, duration?: "all" | "short" | "medium" | "long", sort?: "newest" | "oldest" | "title", genre?: string, signal?: AbortSignal}} options */
+    async getAnimationCatalog({ limit = 12, offset = 0, search = "", duration = "all", sort = "newest", genre = "", signal } = {}) {
         if (!isSupabaseConfigured) return { data: [], count: 0, error: null };
 
         let query = supabase
-            .from("videos")
-            .select(`
-                id,
-                title,
-                description,
-                storage_path,
-                thumbnail_path,
-                duration_seconds,
-                content_type,
-                status,
-                published_at,
-                creator:profiles!videos_creator_id_fkey (
-                    id,
-                    username,
-                    display_name,
-                    avatar_path
-                )
-            `, { count: "exact" })
+            .from("animation_catalog")
+            .select("*", { count: "exact" })
             .eq("status", "published")
             .eq("content_type", "animation")
             .is("deleted_at", null);
@@ -70,6 +54,7 @@ export const videoRepository = {
         if (cleanSearch) {
             query = query.ilike("title", `%${cleanSearch}%`);
         }
+        if (genre) query = query.contains("genre_slugs", [genre]);
 
         if (duration === "short") query = query.lte("duration_seconds", 300);
         else if (duration === "medium") query = query.gt("duration_seconds", 300).lte("duration_seconds", 900);
@@ -86,12 +71,17 @@ export const videoRepository = {
 
         const normalized = (data || []).map((v) => ({
             id: v.id,
+            watchVideoId: v.first_video_id,
             title: v.title,
             description: v.description,
             storagePath: v.storage_path,
             thumbnailPath: v.thumbnail_path,
             durationSeconds: v.duration_seconds,
             contentType: v.content_type || "animation",
+            format: v.format,
+            episodeCount: v.episode_count,
+            genres: v.genres || [],
+            bannerPath: v.banner_path,
             publishedAt: v.published_at,
             creator: {
                 id: v.creator?.id,
@@ -215,12 +205,18 @@ export const videoRepository = {
         return { data, error };
     },
 
-    async createDraft({ title, description, creatorId, contentType = "reel" }) {
+    async createDraft({ title, description, creatorId, contentType = "reel", animationId, seasonNumber = 1, episodeNumber = 1 }) {
         if (!isSupabaseConfigured) {
             return { data: null, error: { message: "Supabase belum dikonfigurasi." } };
         }
 
         const validContentType = ["animation", "reel"].includes(contentType) ? contentType : "reel";
+
+        if (validContentType === "animation") {
+            if (!animationId) return { data: null, error: { message: "Pilih animasi sebelum mengunggah tayangan." } };
+            return supabase.rpc("create_animation_episode", { p_animation_id: animationId, p_title: title.trim(),
+                p_description: description?.trim() || null, p_season: seasonNumber, p_episode: episodeNumber }).single();
+        }
 
         const { data, error } = await supabase
             .from("videos")

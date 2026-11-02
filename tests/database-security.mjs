@@ -16,6 +16,7 @@ let passed = 0;
 const A = "11111111-1111-4111-8111-111111111111", B = "22222222-2222-4222-8222-222222222222";
 const V = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", W = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const ap = `${A}/${V}/thumb.png`, bp = `${B}/${W}/thumb.png`;
+const LEGACY = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 async function as(role, uid, action) {
     await db.exec("begin");
     try {
@@ -52,10 +53,20 @@ try {
     `);
     const directory = new URL("../supabase/migrations/", import.meta.url);
     for (const file of (await readdir(directory)).filter((file) => file.endsWith(".sql")).sort()) {
+        if (file.includes("000012_")) {
+            await db.query("insert into auth.users(id) values ($1)", [A]);
+            await as("authenticated", A, async () => {
+                await db.query("insert into public.videos(id,creator_id,title,description,content_type) values($1,$2,'Legacy animation','Original synopsis','animation')", [LEGACY,A]);
+                await db.query("insert into storage.objects(bucket_id,name) values('thumbnails',$1),('videos',$2)", [`${A}/${LEGACY}/thumb.png`,`${A}/${LEGACY}/media.mp4`]);
+                await db.query("update public.videos set thumbnail_path=$1,storage_path=$2,duration_seconds=600 where id=$3", [`${A}/${LEGACY}/thumb.png`,`${A}/${LEGACY}/media.mp4`,LEGACY]);
+                await db.query("select public.publish_video($1)",[LEGACY]);
+                await db.query("insert into public.video_comments(video_id,user_id,content) values($1,$2,'Preserve this comment')",[LEGACY,A]);
+            });
+        }
         await db.exec(await readFile(new URL(file, directory), "utf8"));
     }
     console.log("Applied every repository migration to isolated PostgreSQL.");
-    await db.query("insert into auth.users(id) values ($1), ($2)", [A, B]);
+    await db.query("insert into auth.users(id) values ($1), ($2) on conflict do nothing", [A, B]);
     for (const [owner, id] of [[A, V], [B, W]]) {
         await as("authenticated", owner, async () => {
             await db.query("insert into public.videos (id,creator_id,title,content_type) values ($1,$2,'Security fixture','reel')", [id, owner]);
@@ -136,6 +147,115 @@ try {
         await as("authenticated", B, () => db.query("delete from storage.objects where name=$1", [bp]));
         await as("authenticated", B, () => db.query("select public.soft_delete_video($1)", [W]));
         assert.ok((await as("authenticated", B, () => db.query("select deleted_at from public.videos where id=$1", [W]))).rows[0].deleted_at);
+    });
+    await test("legacy animation backfill preserves video ID, comment, public media and creates one film title", async () => {
+        const titles = await as("anon",null,()=>db.query("select * from public.animation_catalog where id=$1",[LEGACY]));
+        assert.equal(titles.rows[0].first_video_id,LEGACY); assert.equal(titles.rows[0].format,"film"); assert.equal(titles.rows[0].episode_count,1);
+        assert.equal((await as("anon",null,()=>db.query("select * from public.video_comments where video_id=$1",[LEGACY]))).rows[0].content,"Preserve this comment");
+    });
+    const genre = (await db.query("select id from public.genres order by sort_order limit 1")).rows[0].id;
+    const otherGenres = (await db.query("select id from public.genres order by sort_order limit 4")).rows.map(row=>row.id);
+    const input = { title:"Serial uji",synopsis:"Perjalanan mengenal budaya.",format:"series",language:"Bahasa Indonesia",age_guidance:"all",story_status:"ongoing" };
+    const save = (owner,id,data=input,genres=[genre]) => as("authenticated",owner,()=>db.query("select * from public.save_animation($1,$2::jsonb,$3::uuid[],'{}'::uuid[])",[id,JSON.stringify(data),genres]));
+    const parent = (await save(A,null)).rows[0], victim = (await save(B,null)).rows[0];
+    const make = (owner,parentId,number=1,season=1) => as("authenticated",owner,()=>db.query("select * from public.create_animation_episode($1,'Episode uji','Deskripsi',$2,$3)",[parentId,season,number]));
+    const status = (owner,id,action) => as("authenticated",owner,()=>db.query("select * from public.set_animation_status($1,$2)",[id,action]));
+    const episode = (await make(A,parent.id)).rows[0];
+    await test("new animation draft cannot bypass atomic episode RPC",()=>deny(()=>as("authenticated",A,()=>db.query("insert into public.videos(creator_id,title,content_type) values($1,'orphan','animation')",[A]))));
+    await test("draft parent and relation are invisible cross-user",async()=>{
+        assert.equal((await as("authenticated",B,()=>db.query("select * from public.animations where id=$1",[parent.id]))).rows.length,0);
+        assert.equal((await as("anon",null,()=>db.query("select * from public.animation_episodes where animation_id=$1",[parent.id]))).rows.length,0);
+    });
+    await test("cross-user parent edits and episode insertion are denied",async()=>{
+        await deny(()=>save(A,victim.id)); await deny(()=>make(A,victim.id));
+        await deny(()=>status(A,victim.id,"delete"));
+    });
+    await test("taxonomy writes and direct title/relation mutation are denied",async()=>{
+        await deny(()=>as("authenticated",A,()=>db.query("insert into public.genres(name,slug) values('fake','fake')")));
+        await deny(()=>as("authenticated",A,()=>db.query("update public.animations set status='published' where id=$1",[parent.id])));
+        await deny(()=>as("authenticated",A,()=>db.query("delete from public.animation_episodes where video_id=$1",[episode.id])));
+    });
+    await test("duplicate episode slot and invalid numbering are rejected atomically",async()=>{
+        const before=(await db.query("select count(*)::int n from public.videos")).rows[0].n;
+        await deny(()=>make(A,parent.id),"23505"); await deny(()=>make(A,parent.id,0),"23514");
+        assert.equal((await db.query("select count(*)::int n from public.videos")).rows[0].n,before);
+    });
+    await test("maximum three genres and valid taxonomy references are enforced",async()=>{
+        await deny(()=>save(A,parent.id,input,otherGenres),"23514");
+        await deny(()=>save(A,parent.id,input,["eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"]),"23514");
+    });
+    await test("incomplete title cannot be published",()=>deny(()=>status(A,parent.id,"publish"),"23514"));
+    const poster=`${A}/animations/${parent.id}/poster.png`, media=`${A}/${episode.id}/media.mp4`, thumbnail=`${A}/${episode.id}/thumb.png`;
+    await as("authenticated",A,async()=>{
+        await db.query("insert into storage.objects(bucket_id,name) values('thumbnails',$1),('thumbnails',$2),('videos',$3)",[poster,thumbnail,media]);
+        await db.query("update public.videos set storage_path=$1,thumbnail_path=$2,duration_seconds=90 where id=$3",[media,thumbnail,episode.id]);
+        await db.query("select public.publish_video($1)",[episode.id]);
+    });
+    await test("published episode under draft parent remains hidden including media and interactions",async()=>{
+        for(const role of ["anon","authenticated"]) {
+            const uid=role==="anon"?null:B;
+            assert.equal((await as(role,uid,()=>db.query("select * from public.videos where id=$1",[episode.id]))).rows.length,0);
+            assert.equal((await as(role,uid,()=>db.query("select * from storage.objects where name=any($1::text[])",[[poster,media,thumbnail]]))).rows.length,0);
+        }
+        await deny(()=>as("authenticated",A,()=>db.query("insert into public.video_likes(video_id,user_id) values($1,$2)",[episode.id,A])));
+    });
+    await test("parent cover ownership cannot be borrowed from another title or creator",async()=>{
+        await deny(()=>save(A,parent.id,{...input,poster_path:bp}));
+        await deny(()=>save(A,parent.id,{...input,poster_path:`${A}/animations/${victim.id}/poster.png`}));
+    });
+    await save(A,parent.id,{...input,poster_path:poster});
+    await test("complete title publishes and catalog groups episodes with real totals",async()=>{
+        await status(A,parent.id,"publish");
+        const e2=(await make(A,parent.id,2)).rows[0];
+        await as("authenticated",A,async()=>{
+            const path=`${A}/${e2.id}/media.mp4`; await db.query("insert into storage.objects(bucket_id,name) values('videos',$1)",[path]);
+            await db.query("update public.videos set storage_path=$1,duration_seconds=30 where id=$2",[path,e2.id]); await db.query("select public.publish_video($1)",[e2.id]);
+        });
+        const catalog=await as("anon",null,()=>db.query("select * from public.animation_catalog where id=$1",[parent.id]));
+        assert.equal(catalog.rows.length,1); assert.equal(catalog.rows[0].first_video_id,episode.id); assert.equal(catalog.rows[0].episode_count,2); assert.equal(Number(catalog.rows[0].duration_seconds),120);
+        assert.equal((await as("anon",null,()=>db.query("select * from storage.objects where name=any($1::text[])",[[poster,media,thumbnail]]))).rows.length,3);
+        await as("authenticated",B,()=>db.query("insert into public.video_comments(video_id,user_id,content) values($1,$2,'Visible comment')",[episode.id,B]));
+    });
+    await test("published parent cannot lose required metadata",()=>deny(()=>save(A,parent.id,{...input,poster_path:null}),"23514"));
+    await test("a forged privileged poster reference cannot expose another creator's draft artwork",async()=>{
+        const secret=`${B}/animations/${victim.id}/secret.png`;
+        await as("authenticated",B,()=>db.query("insert into storage.objects(bucket_id,name) values('thumbnails',$1)",[secret]));
+        await db.query("update public.animations set poster_path=$1 where id=$2",[secret,parent.id]);
+        assert.equal((await as("anon",null,()=>db.query("select * from storage.objects where name=$1",[secret]))).rows.length,0);
+        await db.query("update public.animations set poster_path=$1 where id=$2",[poster,parent.id]);
+    });
+    await test("format remains immutable after the first episode",()=>deny(()=>save(A,parent.id,{...input,format:"film",poster_path:poster}),"23514"));
+    await test("unpublishing parent hides children, images, comments and catalog even from another logged-in user",async()=>{
+        await status(A,parent.id,"unpublish");
+        for(const [role,uid] of [["anon",null],["authenticated",B]]){
+            assert.equal((await as(role,uid,()=>db.query("select * from public.animation_catalog where id=$1",[parent.id]))).rows.length,0);
+            assert.equal((await as(role,uid,()=>db.query("select * from storage.objects where name=any($1::text[])",[[poster,media,thumbnail]]))).rows.length,0);
+            // Authors retain their own comment for deletion; other comments stay hidden.
+            assert.equal((await as(role,uid,()=>db.query("select * from public.video_comments where video_id=$1 and user_id<>coalesce(auth.uid(),'00000000-0000-0000-0000-000000000000')",[episode.id]))).rows.length,0);
+        }
+        await deny(()=>as("authenticated",B,()=>db.query("insert into public.video_comments(video_id,user_id,content) values($1,$2,'blocked')",[episode.id,B])));
+    });
+    await test("film cardinality is enforced and deleted upload slots can be reused",async()=>{
+        const film=(await save(A,null,{...input,format:"film"})).rows[0]; const first=(await make(A,film.id)).rows[0];
+        await deny(()=>make(A,film.id,2),"23514"); await deny(()=>make(A,film.id,1,2),"23514");
+        await as("authenticated",A,()=>db.query("select public.soft_delete_video($1)",[first.id]));
+        const replacement=(await make(A,film.id)).rows[0]; assert.notEqual(replacement.id,first.id);
+    });
+    await test("only own draft episodes can move; Reels cannot become episodes",async()=>{
+        await deny(()=>as("authenticated",A,()=>db.query("select public.move_animation_episode($1,$2,1,3)",[episode.id,victim.id])));
+        await deny(()=>as("authenticated",A,()=>db.query("select public.move_animation_episode($1,$2,1,3)",[episode.id,parent.id])));
+        const draft=(await make(A,parent.id,3)).rows[0];
+        await deny(()=>as("authenticated",A,()=>db.query("select public.move_animation_episode($1,$2,1,1)",[draft.id,victim.id])));
+        const destination=(await save(A,null)).rows[0];
+        await as("authenticated",A,()=>db.query("select public.move_animation_episode($1,$2,2,4)",[draft.id,destination.id]));
+        assert.equal((await db.query("select season_number from public.animation_episodes where video_id=$1",[draft.id])).rows[0].season_number,2);
+        await deny(()=>db.query("insert into public.animation_episodes values($1,$2,1,99)",[V,parent.id]),"23514");
+    });
+    await test("deleting a parent blocks new uploads and re-publication without removing old media IDs",async()=>{
+        await status(A,parent.id,"delete"); await deny(()=>make(A,parent.id,4));
+        await as("authenticated",A,()=>db.query("select public.unpublish_video($1)",[episode.id]));
+        await deny(()=>as("authenticated",A,()=>db.query("select public.publish_video($1)",[episode.id])),"23514");
+        assert.equal((await db.query("select id from public.videos where id=$1",[episode.id])).rows.length,1);
     });
     console.log(`${passed} database security checks passed.`);
 } finally { await db.close(); }

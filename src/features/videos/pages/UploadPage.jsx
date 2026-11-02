@@ -2,7 +2,8 @@ import ActionFormLayout from "../../../components/ActionFormLayout";
 import { Button, Field, Input, Textarea, Notice } from "../../../components/ui/form";
 import { Film, Smartphone, Check, UploadCloud, FileVideo, X, ImagePlus, LockKeyhole, ArrowUpRight } from "lucide-react";
 import React, { useState, useRef, useEffect, useId } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import AnimationPicker from "../../animations/studio/AnimationPicker";
 import { useAuth } from "../../auth/AuthProvider";
 import { videoRepository } from "../videoRepository";
 import {
@@ -20,9 +21,13 @@ export default function UploadPage({ embedded = false, onStatusChange }) {
     const { user } = useAuth();
     const formId = useId();
     const navigate = useNavigate();
+    const location = useLocation();
 
     // Content Type: 'animation' | 'reel' (User selection is sovereign)
     const [contentType, setContentType] = useState("animation");
+    const [animationId, setAnimationId] = useState("");
+    const [seasonNumber, setSeasonNumber] = useState(1);
+    const [episodeNumber, setEpisodeNumber] = useState(1);
 
     // Form inputs
     const [title, setTitle] = useState("");
@@ -212,6 +217,11 @@ export default function UploadPage({ embedded = false, onStatusChange }) {
             return;
         }
 
+        if (contentType === "animation" && (!animationId || !Number.isInteger(seasonNumber) || seasonNumber < 1 || seasonNumber > 999 || !Number.isInteger(episodeNumber) || episodeNumber < 1 || episodeNumber > 99999)) {
+            setErrorMessage("Pilih animasi serta nomor musim dan episode yang valid.");
+            return;
+        }
+
         if (!title.trim()) {
             setErrorMessage("Judul video tidak boleh kosong.");
             return;
@@ -245,7 +255,7 @@ export default function UploadPage({ embedded = false, onStatusChange }) {
             const result = await runVideoUpload({
                 userId: user.id, title: title.trim(), description: description.trim() || null,
                 file: videoFile, thumbnail: thumbnailBlob, duration: videoDuration,
-                contentType, publish: shouldPublishImmediately,
+                contentType, animationId, seasonNumber, episodeNumber, publish: shouldPublishImmediately,
             }, operation, (phase, step, percent) => {
                 if (!isCurrent()) return;
                 setUploadPhase(phase);
@@ -270,7 +280,7 @@ export default function UploadPage({ embedded = false, onStatusChange }) {
             } else {
                 setUploadPhase(err.phase || "UPLOAD_FAILED");
                 if (err.draftId) setPersistedDraftId(err.draftId);
-                setErrorMessage(normalizeSupabaseError(err, "Gagal mengunggah video. Silakan coba lagi."));
+                setErrorMessage(`${normalizeSupabaseError(err, "Gagal mengunggah video. Silakan coba lagi.")}${err.cleanupErrors?.length ? " Sebagian draf atau berkas belum dibersihkan. Hapus tayangan draf yang gagal di Studio sebelum mencoba nomor episode yang sama." : ""}`);
             }
         } finally {
             if (activeOperationRef.current === operation) activeOperationRef.current = null;
@@ -281,6 +291,18 @@ export default function UploadPage({ embedded = false, onStatusChange }) {
         uploadPhase
     );
     const isComplete = ["PUBLISHED", "DRAFT_SAVED"].includes(uploadPhase);
+
+    // A Studio shortcut selects its parent without remounting the persistent
+    // upload form. Never retarget an operation that is already running.
+    useEffect(() => {
+        if (location.pathname !== "/studio/upload" || isUploadingActive || isComplete) return;
+        const params = new URLSearchParams(location.search);
+        const parent = params.get("animation");
+        if (!parent) return;
+        const number = Number(params.get("episode") || 1);
+        setContentType("animation"); setAnimationId(parent); setSeasonNumber(1);
+        setEpisodeNumber(Number.isInteger(number) && number > 0 && number <= 99999 ? number : 1);
+    }, [location.key]);
 
     function startNewUpload() {
         setTitle("");
@@ -310,10 +332,11 @@ export default function UploadPage({ embedded = false, onStatusChange }) {
         <div className="ui-field">
             <span className="ui-section-label">Format karya</span>
             <div className="ui-format-picker" aria-label="Format karya">
-                <button type="button" aria-pressed={contentType === "animation"} disabled={isUploadingActive || isComplete} onClick={() => setContentType("animation")}><Film size={19} /><span><strong>Film animasi</strong><small>Horizontal / 16:9</small></span>{contentType === "animation" && <Check size={16} />}</button>
+                <button type="button" aria-pressed={contentType === "animation"} disabled={isUploadingActive || isComplete} onClick={() => setContentType("animation")}><Film size={19} /><span><strong>Animasi / episode</strong><small>Film atau episode serial</small></span>{contentType === "animation" && <Check size={16} />}</button>
                 <button type="button" aria-pressed={contentType === "reel"} disabled={isUploadingActive || isComplete} onClick={() => setContentType("reel")}><Smartphone size={19} /><span><strong>Reels</strong><small>Vertikal / Maks. 3 menit</small></span>{contentType === "reel" && <Check size={16} />}</button>
             </div>
         </div>
+        {contentType === "animation" && user?.id && <AnimationPicker userId={user.id} value={animationId} season={seasonNumber} episode={episodeNumber} disabled={isUploadingActive || isComplete} onChange={(id, season, episode) => { setAnimationId(id); setSeasonNumber(season); setEpisodeNumber(episode); }} />}
         {aspectRatioSuggestion && <Notice tone="info">{aspectRatioSuggestion}</Notice>}
         <div className="ui-upload-grid">
             <div className="ui-form">

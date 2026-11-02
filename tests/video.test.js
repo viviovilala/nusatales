@@ -35,33 +35,21 @@ describe("Video Repository & Dual-Format Security", () => {
             insertSpy.mockRestore();
         });
 
-        it("supports contentType animation for full-length films", async () => {
-            let capturedInsert = null;
-            const insertSpy = vi.spyOn(supabase, "from").mockReturnValue({
-                insert: vi.fn().mockImplementation((payload) => {
-                    capturedInsert = payload;
-                    return {
-                        select: vi.fn().mockReturnValue({
-                            single: vi.fn().mockResolvedValue({
-                                data: { id: "anim-id", ...payload },
-                                error: null,
-                            }),
-                        }),
-                    };
-                }),
-            });
-
-            const res = await videoRepository.createDraft({
-                title: "Film Animasi Sangkuriang",
-                description: "Kisah Sangkuriang durasi panjang",
-                creatorId: "user-123",
-                contentType: "animation",
-            });
-
-            expect(capturedInsert).toBeDefined();
-            expect(capturedInsert.content_type).toBe("animation");
-            expect(capturedInsert.title).toBe("Film Animasi Sangkuriang");
-            insertSpy.mockRestore();
+        it("creates animation media and episode relation atomically through the trusted RPC", async () => {
+            const single = vi.fn().mockResolvedValue({ data: { id: "anim-id" }, error: null });
+            const rpc = vi.spyOn(supabase, "rpc").mockReturnValue({ single });
+            const insert = vi.spyOn(supabase, "from");
+            try {
+                await videoRepository.createDraft({ title: " Episode dua ", description: "Ringkasan", creatorId: "user-123", contentType: "animation", animationId: "parent", seasonNumber: 2, episodeNumber: 3 });
+                expect(rpc).toHaveBeenCalledWith("create_animation_episode", { p_animation_id: "parent", p_title: "Episode dua", p_description: "Ringkasan", p_season: 2, p_episode: 3 });
+                expect(insert).not.toHaveBeenCalled();
+                expect(single).toHaveBeenCalledOnce();
+            } finally { rpc.mockRestore(); insert.mockRestore(); }
+        });
+        it("rejects animation upload without a parent before issuing a write", async () => {
+            const rpc = vi.spyOn(supabase, "rpc"), insert = vi.spyOn(supabase, "from");
+            try { const result = await videoRepository.createDraft({ title: "Orphan", contentType: "animation" }); expect(result.error).toBeTruthy(); expect(rpc).not.toHaveBeenCalled(); expect(insert).not.toHaveBeenCalled(); }
+            finally { rpc.mockRestore(); insert.mockRestore(); }
         });
     });
 

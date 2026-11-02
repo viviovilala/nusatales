@@ -61,9 +61,13 @@ async function login(page) {
 test("modal keeps the background, scroll, form and history; auth switches use one entry", async ({ page }, info) => {
     await project(page);
     await page.goto("/");
-    await page.locator(".nusa-footer").scrollIntoViewIfNeeded();
+    await page.evaluate(() => document.fonts.ready);
+    const trigger = page.getByRole("link", { name: "Jadi kreator", exact: true });
+    // Measure after the actual trigger is in view. Clicking an offscreen link
+    // can scroll it by itself, independently of modal/history restoration.
+    await trigger.scrollIntoViewIfNeeded();
     const scroll = await page.evaluate(() => scrollY);
-    await page.getByRole("link", { name: "Jadi kreator", exact: true }).click();
+    await trigger.click();
     await expect(page).toHaveURL(/\/login$/);
     const dialog = page.getByRole("dialog", { name: "Masuk", exact: true });
     await expect(dialog).toBeVisible();
@@ -151,6 +155,7 @@ test("closing an active upload preserves its file and job; Studio updates after 
     await page.getByRole("link", { name: "Studio", exact: true }).click();
     await page.locator(".nusa-upload-link").click();
     const dialog = page.getByRole("dialog", { name: "Unggah karya", exact: true });
+    await dialog.getByRole("button", { name: /Reels/ }).click();
     await dialog.locator('input[type="file"]').first().setInputFiles({ name: "kisah-uji.webm", mimeType: "video/webm", buffer: Buffer.from("test-media") });
     await expect(dialog.getByRole("button", { name: "Simpan Draf Saja" })).toBeEnabled();
     await dialog.getByRole("button", { name: "Simpan Draf Saja" }).click();
@@ -162,7 +167,7 @@ test("closing an active upload preserves its file and job; Studio updates after 
     await page.locator(".nusa-upload-link").click();
     await expect(dialog.getByRole("heading", { name: "kisah-uji.webm", exact: true })).toBeVisible();
     state.releaseUpload();
-    await expect(dialog.getByRole("status")).toContainText("Draf karya berhasil disimpan!");
+    await expect(dialog.getByText("Draf karya berhasil disimpan!", { exact: true })).toBeVisible();
     await expect(dialog.getByRole("link", { name: "Lihat di Studio", exact: true })).toBeVisible();
     expect(state.inserts).toBe(1);
     expect(state.uploads).toBe(1);

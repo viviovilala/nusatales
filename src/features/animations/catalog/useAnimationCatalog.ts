@@ -17,7 +17,7 @@ export function useAnimationCatalog(query: CatalogQuery) {
         async function load() {
             try {
                 const response = await videoRepository.getAnimationCatalog({ limit: CATALOG_PAGE_SIZE, offset: (query.page - 1) * CATALOG_PAGE_SIZE,
-                    search: query.search, duration: query.duration, sort: query.sort, signal: controller.signal });
+                    search: query.search, duration: query.duration, sort: query.sort, genre: query.genre, signal: controller.signal });
                 if (!active) return;
                 if (response.error) throw response.error;
                 // Duplicate IDs cannot create duplicate links even if a server

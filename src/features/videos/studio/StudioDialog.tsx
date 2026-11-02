@@ -1,6 +1,7 @@
 import { useId, useLayoutEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import { X } from "lucide-react";
+import { createPortal } from "react-dom";
 import { usePageScrollLock } from "../../../lib/pageScrollLock";
 
 export default function StudioDialog({ title, description, children, onClose, busy = false, wide = false }: {
@@ -22,15 +23,16 @@ export default function StudioDialog({ title, description, children, onClose, bu
             target?.focus({ preventScroll: true });
         };
     }, []);
-    return <dialog ref={ref} className={`studio-dialog ${wide ? "studio-dialog-wide" : ""}`} aria-labelledby={`${id}-title`} aria-describedby={`${id}-description`}
-        onCancel={(event) => { event.preventDefault(); if (!busy) onClose(); }}
+    return createPortal(<dialog ref={ref} className={`studio-dialog ${wide ? "studio-dialog-wide" : ""}`} aria-labelledby={`${id}-title`} aria-describedby={`${id}-description`}
+        onCancel={(event) => { event.preventDefault(); event.stopPropagation(); if (!busy) onClose(); }}
         onClick={(event) => {
             if (busy || event.target !== event.currentTarget) return;
             const rect = event.currentTarget.getBoundingClientRect();
             if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) onClose();
         }} onKeyDown={(event) => {
             if (event.key !== "Tab") return;
-            const controls = [...event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), video[controls], [tabindex="0"]')].filter((element) => element.getClientRects().length);
+            event.stopPropagation();
+            const controls = [...event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), textarea:not(:disabled), select:not(:disabled), video[controls], [tabindex="0"]')].filter((element) => !element.matches(":disabled") && element.getClientRects().length);
             const first = controls[0]; const last = controls.at(-1);
             if (!first) { event.preventDefault(); return; }
             if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
@@ -39,5 +41,5 @@ export default function StudioDialog({ title, description, children, onClose, bu
         <header><div><span className="studio-eyebrow">NUSATALES STUDIO</span><h2 id={`${id}-title`}>{title}</h2></div>
             <button className="studio-icon-button" type="button" aria-label="Tutup dialog" disabled={busy} onClick={onClose}><X size={19} /></button></header>
         <p id={`${id}-description`} className="studio-dialog-description">{description}</p>{children}
-    </dialog>;
+    </dialog>, document.body);
 }

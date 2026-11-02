@@ -31,6 +31,13 @@ describe("normalizeSupabaseError", () => {
         expect(normalizeSupabaseError(error)).toContain("tidak ditemukan");
     });
 
+    it("keeps animation publish guidance actionable without exposing raw check details", () => {
+        const message = "Lengkapi sinopsis, poster, genre, dan minimal satu tayangan terbit sebelum menerbitkan animasi.";
+        expect(normalizeSupabaseError({ code: "23514", message })).toBe(message);
+        expect(normalizeSupabaseError({ code: "23514", message: "new row violates secret_check" })).not.toContain("secret_check");
+        expect(normalizeSupabaseError({ code: "23505", message: "duplicate key violates animation_episodes_animation_id_season_number_episode_number_key" })).toContain("Nomor musim dan episode sudah dipakai");
+    });
+
     it("maps Supabase Auth invalid credentials", () => {
         const error = { message: "Invalid login credentials" };
         expect(normalizeSupabaseError(error)).toBe("Email atau kata sandi tidak cocok.");

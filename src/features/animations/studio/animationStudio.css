@@ -1,0 +1,46 @@
+.animation-library { margin: 26px 0; padding: 28px; }
+.animation-library-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:22px; }
+.animation-library-heading h2 { font:700 23px var(--font-display); color:var(--nusa-brown,#744725); }
+.animation-library-heading p { margin-top:6px; font-size:12px; color:#8b735d; }
+.animation-title-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+.animation-title-card { border:1px solid #dfd4c2; border-radius:18px; padding:16px; min-width:0; background:#fffdf8; }
+.animation-title-card .animation-card-art { display:flex; gap:14px; align-items:center; }
+.animation-title-card img,.animation-card-fallback { width:64px; height:84px; border-radius:9px; object-fit:cover; background:#f0eadb; flex-shrink:0; }
+.animation-card-fallback { display:grid; place-items:center; color:#977552; }
+.animation-title-card h3 { font:700 16px var(--font-display); overflow-wrap:anywhere; margin:5px 0; }
+.animation-title-card small,.animation-title-card p { font-size:11px; color:#927c66; }
+.animation-title-card > button { margin-top:16px; width:100%; }
+.animation-editor > fieldset { border:0; min-width:0; padding:0; display:grid; gap:22px; }
+.animation-editor fieldset:disabled { opacity:.65; }
+.animation-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+.animation-form-grid .ui-input { width:100%; }
+.animation-art-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+.animation-art-picker { min-width:0; display:grid; gap:8px; font-size:12px; color:#775337; }
+.animation-art-picker > div { height:150px; border:1px dashed #cbb99d; border-radius:14px; background:#f5f0e4; display:grid; place-items:center; overflow:hidden; }
+.animation-art-picker img { width:100%; height:100%; object-fit:contain; }
+.animation-art-picker input { width:100%; font-size:11px; }
+.animation-art-picker small { color:#8c7966; font-size:10px; }
+.animation-taxonomy { border:0; padding:0; display:flex; flex-wrap:wrap; gap:8px; }
+.animation-taxonomy legend { margin-bottom:12px; font-size:12px; font-weight:600; color:#6d492c; }
+.animation-taxonomy legend small { margin-left:8px; font-weight:400; color:#95816d; }
+.animation-taxonomy label { display:flex; align-items:center; gap:7px; padding:8px 11px; border:1px solid #ded3be; border-radius:30px; font-size:11px; cursor:pointer; }
+.animation-taxonomy label:has(input:checked) { background:#edf4df; border-color:#94b358; color:#476526; }
+.animation-taxonomy input { accent-color:#587b36; }
+.animation-editor > .ui-hint { margin:20px 0; }
+.animation-picker { display:grid; gap:12px; padding:18px; background:#f4f5e9; border:1px solid #dce5c6; border-radius:16px; margin-bottom:22px; }
+.animation-picker > label { font-size:12px; font-weight:600; color:#65482d; }
+.animation-picker > select { width:100%; }
+.animation-picker .animation-form-grid { gap:12px; }
+.animation-picker .ui-hint { margin:0; }
+.animation-manage-actions { display:flex; gap:9px; flex-wrap:wrap; margin:18px 0; }
+.animation-episode-rows { display:grid; gap:10px; margin:18px 0; }
+.animation-episode-row { display:flex; justify-content:space-between; gap:14px; padding:15px; border:1px solid #e6ddce; border-radius:14px; align-items:center; }
+.animation-episode-row > div:first-child { min-width:0; }
+.animation-episode-row strong { display:block; font-size:13px; color:#684a30; overflow-wrap:anywhere; }
+.animation-episode-row small { display:block; font-size:11px; color:#8e7c66; margin-top:5px; }
+.animation-episode-row .ui-button { padding:8px 11px; min-height:34px; }
+.animation-episode-actions { display:flex; flex-wrap:wrap; gap:6px; }
+.animation-status-note { font-size:12px; color:#84725e; background:#f4f1e8; border-radius:12px; padding:12px 15px; }
+.animation-transfer { display:grid; gap:14px; margin:16px 0; padding:16px; border:1px solid #d7dfc3; border-radius:14px; background:#f3f5eb; }
+@media(max-width:900px) { .animation-title-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:600px) { .animation-library { padding:19px; } .animation-library-heading { align-items:flex-start; flex-direction:column; } .animation-title-grid { grid-template-columns:1fr; } .animation-form-grid { grid-template-columns:1fr; } .animation-art-picker > div { height:110px; } .animation-episode-row { align-items:flex-start; flex-direction:column; } }

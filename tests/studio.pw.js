@@ -86,7 +86,7 @@ test("Studio combines search, format, status and sorting, paginates and preserve
     await expect(page.getByRole("article")).toHaveCount(12);
     await page.getByRole("button", { name: "Halaman karya berikutnya" }).click();
     await expect(page.getByRole("article")).toHaveCount(3);
-    await page.getByRole("button", { name: "Film animasi", exact: true }).click();
+    await page.getByRole("button", { name: "Tayangan animasi", exact: true }).click();
     await page.getByLabel("Status karya").selectOption("published");
     await page.getByLabel("Cari karya").fill("Nusantara");
     await expect(page.getByRole("article")).toHaveCount(3);

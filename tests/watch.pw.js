@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { fileURLToPath } from "node:url";
 import { mockMediaPlayback } from "./helpers/media-mock";
+import { animationCatalogRows, mockAnimationRelations } from "./helpers/animation-api";
 
 const user = { id: "11111111-1111-4111-8111-111111111111", email: "watch@example.test", aud: "authenticated", role: "authenticated", user_metadata: { display_name: "Studio Uji" } };
 const creator = { id: user.id, display_name: "Studio Uji", username: "studio_uji", bio: "Cerita dari Nusantara.", avatar_path: "owner/avatar.png" };
@@ -20,7 +21,7 @@ async function project(page) {
     await page.route("**/rest/v1/**", async (route) => {
         const request = route.request(), url = new URL(request.url());
         if (url.pathname.endsWith("/profiles")) return route.fulfill({ json: creator });
-        if (url.pathname.endsWith("/videos")) {
+        if (url.pathname.endsWith("/videos") || url.pathname.endsWith("/animation_catalog")) {
             const id = url.searchParams.get("id")?.replace("eq.", "");
             if (id) {
                 if (state.holdRecord && id === "slow-reel") { await new Promise((resolve) => { state.releaseRecord = resolve; }); try { return await route.fulfill({ json: reel }); } catch { return; } }
@@ -31,7 +32,7 @@ async function project(page) {
             if (state.relatedFail) return route.fulfill({ status: 400, json: { message: "Rekomendasi belum tersedia." } });
             // Include a bad reel in this fixture to verify the viewer filters it
             // defensively and never presents it as an episode or animation.
-            return route.fulfill({ json: [...films, reel], headers: { "content-range": "0-3/4", "access-control-expose-headers": "content-range" } });
+            return route.fulfill({ json: url.pathname.endsWith("/animation_catalog") ? [...animationCatalogRows(films), { ...reel, first_video_id: reel.id, genres: [] }] : [...films, reel], headers: { "content-range": "0-3/4", "access-control-expose-headers": "content-range" } });
         }
         if (url.pathname.endsWith("/video_likes")) {
             if (request.method() === "HEAD") return route.fulfill({ body: "", headers: { "content-range": `*/${state.likes}`, "access-control-expose-headers": "content-range" } });
@@ -66,6 +67,7 @@ async function project(page) {
         if (url.pathname.includes("/videos/")) return route.fulfill({ body: "fixture", contentType: "video/webm" });
         return route.fulfill({ path: fileURLToPath(new URL("./fixtures/reels-art-2.png", import.meta.url)), contentType: "image/png" });
     });
+    await mockAnimationRelations(page, () => films);
     return state;
 }
 async function ready(page, id = 0) {
@@ -80,12 +82,13 @@ async function login(page) {
     await dialog.getByRole("button", { name: "Masuk", exact: true }).click(); await expect(dialog).not.toBeVisible();
 }
 
-test("dark animation workspace matches the two-column structure without invented episodes or reels", async ({ page }, info) => {
+test("dark animation workspace uses the persisted film title and excludes Reels", async ({ page }, info) => {
     await page.setViewportSize({ width: 1440, height: 1000 });
     const state = await project(page); await page.goto("/watch/animation-0"); await ready(page);
     await expect(page.getByRole("heading", { name: "Daftar episode", exact: true })).toBeVisible();
-    await expect(page.getByText("Episode belum tersedia.", { exact: true })).toBeVisible();
-    await expect(page.locator(".watch-current-title")).toContainText("TAYANGAN SAAT INI");
+    await expect(page.locator(".watch-episode-link")).toHaveCount(1);
+    await expect(page.locator(".watch-episode-link")).toHaveAttribute("aria-current", "page");
+    await expect(page.locator(".watch-current-title")).toContainText("FILM ANIMASI");
     await expect(page.locator(".watch-related-card")).toHaveCount(2);
     await expect(page.locator(".watch-related-card").first()).toHaveAttribute("href", "/watch/animation-1");
     await expect(page.locator(".watch-related")).not.toContainText("Reel terpisah");

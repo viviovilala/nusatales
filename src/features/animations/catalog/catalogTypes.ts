@@ -1,5 +1,10 @@
 export type CatalogVideo = {
     id: string;
+    watchVideoId: string;
+    format: "film" | "series";
+    episodeCount: number;
+    genres: string[];
+    bannerPath?: string | null;
     title: string;
     description: string | null;
     thumbnailPath: string | null;
@@ -9,7 +14,7 @@ export type CatalogVideo = {
 };
 export type CatalogDuration = "all" | "short" | "medium" | "long";
 export type CatalogSort = "newest" | "oldest" | "title";
-export type CatalogQuery = { search: string; page: number; duration: CatalogDuration; sort: CatalogSort };
+export type CatalogQuery = { search: string; page: number; duration: CatalogDuration; sort: CatalogSort; genre: string };
 export const CATALOG_PAGE_SIZE = 12;
 export const durationFilters: ReadonlyArray<{ value: CatalogDuration; label: string }> = [
     { value: "all", label: "Semua durasi" }, { value: "short", label: "Hingga 5 menit" },
@@ -24,6 +29,7 @@ export function readCatalogQuery(params: URLSearchParams): CatalogQuery {
         page: Number.isSafeInteger(page) && page > 0 && page <= 100000 ? page : 1,
         duration: duration === "short" || duration === "medium" || duration === "long" ? duration : "all",
         sort: sort === "oldest" || sort === "title" ? sort : "newest",
+        genre: /^[a-z0-9-]{1,80}$/.test(params.get("genre") || "") ? params.get("genre")! : "",
     };
 }
 export function catalogParams(query: CatalogQuery) {
@@ -31,6 +37,7 @@ export function catalogParams(query: CatalogQuery) {
     if (query.search) params.set("q", query.search);
     if (query.duration !== "all") params.set("durasi", query.duration);
     if (query.sort !== "newest") params.set("urut", query.sort);
+    if (query.genre) params.set("genre", query.genre);
     if (query.page > 1) params.set("page", String(query.page));
     return params;
 }

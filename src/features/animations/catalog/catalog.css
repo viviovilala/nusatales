@@ -50,6 +50,12 @@
 .catalog-sort select:focus-visible { outline: 2px solid #718c38; outline-offset: 3px; border-radius: 4px; }
 .catalog-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 26px 24px; }
 .catalog-card { min-width: 0; background: var(--nusa-paper); border: 1px solid #eee6d4; border-radius: 12px; overflow: hidden; transition: box-shadow .2s, transform .2s; }
+.catalog-card-genres { color:#8c7659; font-size:9px; margin:5px 0; }
+.catalog-toolbar { flex-wrap:wrap; }
+.catalog-genre { display:flex; align-items:center; gap:8px; font-size:11px; color:#896643; }
+.catalog-genre select { min-width:145px; width:auto; font-size:11px; }
+.catalog-duration-note { font-size:10px; color:#8f7c64; margin:12px 0 0; }
+.catalog-duration-note button { color:#527331; text-decoration:underline; cursor:pointer; }
 .catalog-card:hover { box-shadow: 0 8px 22px #6f462716; transform: translateY(-3px); }
 .catalog-poster { display: block; position: relative; width: 100%; aspect-ratio: 7 / 8; overflow: hidden; background: #eee6d5; }
 .catalog-poster > img { width: 100%; height: 100%; object-fit: cover; transition: transform .4s; }

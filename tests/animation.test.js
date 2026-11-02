@@ -59,6 +59,7 @@ describe("Animation Catalog & Full-Video Features", () => {
 
         const res = await videoRepository.getAnimationCatalog({ limit: 12, offset: 0 });
 
+        expect(fromSpy).toHaveBeenCalledWith("animation_catalog");
         expect(appliedFilters.status).toBe("published");
         expect(appliedFilters.content_type).toBe("animation");
         expect(res.data.length).toBe(1);
@@ -66,6 +67,13 @@ describe("Animation Catalog & Full-Video Features", () => {
         expect(res.data[0].durationSeconds).toBe(900);
 
         fromSpy.mockRestore();
+    });
+
+    it("filters genre membership on the parent catalog, not episode titles", async () => {
+        const query = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), is: vi.fn().mockReturnThis(), contains: vi.fn().mockReturnThis(), order: vi.fn().mockReturnThis(), range: vi.fn().mockResolvedValue({ data: [], count: 0, error: null }) };
+        const spy = vi.spyOn(supabase, "from").mockReturnValue(query);
+        try { await videoRepository.getAnimationCatalog({ genre: "fantasi" }); expect(query.contains).toHaveBeenCalledWith("genre_slugs", ["fantasi"]); }
+        finally { spy.mockRestore(); }
     });
 
     it("applies search filtering when search keyword is supplied", async () => {

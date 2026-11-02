@@ -4,6 +4,7 @@ import { useAppModal } from "../../../app/ModalContext";
 import { videoRepository } from "../../videos/videoRepository";
 import { normalizeSupabaseError } from "../../../lib/errors";
 import type { WatchAnimation } from "./watchTypes";
+import { animationRepository } from "../animationRepository";
 type CreatorRow = { id?: string; username?: string | null; display_name?: string | null; avatar_path?: string | null };
 
 export function useWatchAnimation(videoId: string) {
@@ -24,12 +25,15 @@ export function useWatchAnimation(videoId: string) {
                 if (!data || data.status !== "published") throw new Error("Animasi ini belum tersedia untuk ditonton.");
                 if (data.content_type === "reel") { navigate(`/reels/${videoId}`, { replace: true }); return; }
                 if (data.content_type !== "animation") throw new Error("Tayangan ini bukan bagian dari koleksi animasi.");
+                const context = await animationRepository.context(videoId);
+                if (!active) return;
                 // The JS repository has no generated database schema types;
                 // normalize the joined relation at this typed API boundary.
                 const relation = data.creator as unknown as CreatorRow | CreatorRow[] | null;
                 const creator = Array.isArray(relation) ? relation[0] : relation;
                 setVideo({ id: data.id, title: data.title, description: data.description, storagePath: data.storage_path,
                     thumbnailPath: data.thumbnail_path, durationSeconds: data.duration_seconds, publishedAt: data.published_at,
+                    animation: context.animation, episodes: context.episodes, current: context.current,
                     creator: { id: creator?.id || data.creator_id, username: creator?.username,
                         displayName: creator?.display_name || "Kreator NusaTales", avatarPath: creator?.avatar_path } });
             } catch (error) { if (active) setError(normalizeSupabaseError(error, "Animasi belum berhasil dimuat.") || "Animasi belum berhasil dimuat."); }

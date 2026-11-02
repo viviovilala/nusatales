@@ -16,6 +16,18 @@ function fixture() {
 }
 
 describe("Upload operation cancellation", () => {
+    it("passes the selected title and numbering into the atomic draft operation", async () => {
+        const deps = fixture();
+        await runVideoUpload({ ...input, contentType: "animation", animationId: "parent", seasonNumber: 2, episodeNumber: 4 }, createUploadOperation(), vi.fn(), deps);
+        expect(deps.repository.createDraft).toHaveBeenCalledWith(expect.objectContaining({ contentType: "animation", animationId: "parent", seasonNumber: 2, episodeNumber: 4 }));
+    });
+    it("releases an animation episode slot after a failed transfer before publication", async () => {
+        const deps = fixture(); deps.upload.mockRejectedValue(new Error("Transfer failed"));
+        await expect(runVideoUpload({ ...input, contentType: "animation", animationId: "parent", episodeNumber: 2 }, createUploadOperation(), vi.fn(), deps)).rejects.toMatchObject({ message: "Transfer failed", cleanupErrors: [] });
+        expect(deps.repository.softDeleteVideo).toHaveBeenCalledWith("draft");
+        expect(deps.cleanup).toHaveBeenCalledWith("thumbnails", expect.stringContaining("owner/draft/"));
+        expect(deps.repository.publishVideo).not.toHaveBeenCalled();
+    });
     it.each(["draft", "thumbnail", "video", "metadata"])(
         "never publishes when cancelled during %s and cleans its own resources", async (stage) => {
             const deps = fixture();
