@@ -1,32 +1,262 @@
-import React from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { reelsRepository } from "../reelsRepository";
+import ReelItem from "../components/ReelItem";
 import AppNavbar from "../../../components/AppNavbar";
-import { Link } from "react-router-dom";
 
 export default function ReelsPage() {
-    return (
-        <div className="min-h-screen flex flex-col bg-neutral-950 text-white">
-            <AppNavbar />
+    const { videoId } = useParams();
+    const navigate = useNavigate();
 
-            <main className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                <div className="max-w-md w-full bg-neutral-900 border border-neutral-800 rounded-3xl p-8">
-                    <div className="w-16 h-16 bg-amber-500/20 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M8 5v14l11-7z" />
+    const [videos, setVideos] = useState([]);
+    const [activeIndex, setActiveIndex] = useState(0);
+    const [isMuted, setIsMuted] = useState(true);
+    const [isLoading, setIsLoading] = useState(true);
+    const [notFoundNotice, setNotFoundNotice] = useState("");
+
+    // Wheel and touch navigation trackers
+    const lastWheelTime = useRef(0);
+    const touchStartY = useRef(0);
+
+    const loadFeed = useCallback(async () => {
+        setIsLoading(true);
+        setNotFoundNotice("");
+
+        try {
+            let initialVideos = [];
+
+            // If deep linked to specific video
+            if (videoId) {
+                const { data: requestedVideo, error: reqErr } =
+                    await reelsRepository.getPublishedVideoById(videoId);
+
+                if (requestedVideo) {
+                    initialVideos.push(requestedVideo);
+                } else {
+                    setNotFoundNotice(
+                        "Video yang diminta tidak ditemukan atau belum dipublikasikan ke publik."
+                    );
+                }
+            }
+
+            // Fetch general published feed
+            const { data: feedData } = await reelsRepository.getFeedVideos({ limit: 15 });
+
+            // Deduplicate if requested video was already fetched
+            const existingIds = new Set(initialVideos.map((v) => v.id));
+            const merged = [
+                ...initialVideos,
+                ...(feedData || []).filter((v) => !existingIds.has(v.id)),
+            ];
+
+            setVideos(merged);
+            setActiveIndex(0);
+        } catch (err) {
+            console.error("[ReelsPage] Feed error:", err);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [videoId]);
+
+    useEffect(() => {
+        loadFeed();
+    }, [loadFeed]);
+
+    const goToPrev = useCallback(() => {
+        setActiveIndex((prev) => Math.max(0, prev - 1));
+    }, []);
+
+    const goToNext = useCallback(() => {
+        setActiveIndex((prev) => Math.min(videos.length - 1, prev + 1));
+    }, [videos.length]);
+
+    // Keyboard navigation (ArrowUp, ArrowDown)
+    useEffect(() => {
+        function handleKeyDown(e) {
+            // Don't intercept if user is typing in an input
+            if (["INPUT", "TEXTAREA"].includes(e.target.tagName)) return;
+
+            if (e.key === "ArrowDown" || e.key === "PageDown") {
+                e.preventDefault();
+                goToNext();
+            } else if (e.key === "ArrowUp" || e.key === "PageUp") {
+                e.preventDefault();
+                goToPrev();
+            } else if (e.key === "m" || e.key === "M") {
+                setIsMuted((prev) => !prev);
+            }
+        }
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [goToNext, goToPrev]);
+
+    // Mouse wheel navigation (debounced)
+    const handleWheel = (e) => {
+        const now = Date.now();
+        if (now - lastWheelTime.current < 450) return;
+
+        if (e.deltaY > 30) {
+            lastWheelTime.current = now;
+            goToNext();
+        } else if (e.deltaY < -30) {
+            lastWheelTime.current = now;
+            goToPrev();
+        }
+    };
+
+    // Touch swipe navigation for mobile
+    const handleTouchStart = (e) => {
+        touchStartY.current = e.touches[0].clientY;
+    };
+
+    const handleTouchEnd = (e) => {
+        const touchEndY = e.changedTouches[0].clientY;
+        const deltaY = touchStartY.current - touchEndY;
+
+        if (Math.abs(deltaY) > 50) {
+            if (deltaY > 0) {
+                goToNext();
+            } else {
+                goToPrev();
+            }
+        }
+    };
+
+    return (
+        <div className="h-screen w-screen bg-black flex flex-col overflow-hidden text-white select-none">
+            {/* Top Navigation */}
+            <div className="absolute top-0 inset-x-0 z-40 bg-gradient-to-b from-black/80 to-transparent pointer-events-none p-4">
+                <div className="max-w-7xl mx-auto flex items-center justify-between pointer-events-auto">
+                    <Link
+                        to="/"
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md transition text-xs font-bold text-white border border-white/10"
+                    >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <path d="M19 12H5M12 19l-7-7 7-7" />
                         </svg>
-                    </div>
-                    <h1 className="text-2xl font-bold mb-2">Reels Cerita Nusantara</h1>
-                    <p className="text-sm text-neutral-400 mb-6">
-                        Pemain video vertikal dan feed animasi budaya sedang dalam tahap perakitan (Slice 4).
-                    </p>
-                    <div className="flex gap-3 justify-center">
+                        <span>Beranda</span>
+                    </Link>
+
+                    <div className="flex items-center gap-2">
                         <Link
                             to="/studio/upload"
-                            className="px-5 py-2.5 rounded-full text-xs font-bold text-neutral-950 bg-amber-400 hover:bg-amber-300 transition"
+                            className="px-4 py-1.5 rounded-full text-xs font-bold text-neutral-950 bg-[#8DC63F] hover:bg-[#7db534] shadow-md transition"
                         >
-                            Mulai Unggah Video
+                            + Unggah Karya
                         </Link>
                     </div>
                 </div>
+            </div>
+
+            {/* Notice for missing deep link */}
+            {notFoundNotice && (
+                <div className="absolute top-16 inset-x-4 z-40 max-w-md mx-auto bg-amber-900/90 border border-amber-600 text-amber-100 text-xs px-4 py-2.5 rounded-2xl shadow-xl flex items-center justify-between">
+                    <span>{notFoundNotice}</span>
+                    <button
+                        onClick={() => setNotFoundNotice("")}
+                        className="text-amber-200 hover:text-white ml-2 text-sm"
+                    >
+                        ✕
+                    </button>
+                </div>
+            )}
+
+            {/* Main Reels Viewer Area */}
+            <main
+                onWheel={handleWheel}
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+                className="flex-1 relative flex items-center justify-center overflow-hidden"
+            >
+                {isLoading ? (
+                    <div className="flex flex-col items-center gap-3">
+                        <div className="w-12 h-12 border-4 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                        <p className="text-xs font-bold text-amber-200">Memuat Reels Cerita Rakyat...</p>
+                    </div>
+                ) : videos.length === 0 ? (
+                    /* True Empty State */
+                    <div className="max-w-sm w-full mx-4 bg-neutral-900/90 border border-neutral-800 rounded-4xl p-8 text-center backdrop-blur-md shadow-2xl">
+                        <img
+                            src="/poto/splash-senyum.webp"
+                            className="w-24 h-auto mx-auto mb-4 object-contain"
+                            alt="Maskot NusaTales"
+                        />
+                        <h2
+                            className="text-2xl font-bold text-amber-100 mb-2"
+                            style={{ fontFamily: "Georgia, serif" }}
+                        >
+                            Belum Ada Video Reels
+                        </h2>
+                        <p className="text-xs text-neutral-400 mb-6 leading-relaxed">
+                            Belum ada animasi budaya yang dipublikasikan. Jadilah kreator pertama yang membagikan kisah cerita rakyat ke NusaTales!
+                        </p>
+                        <div className="flex flex-col gap-2.5">
+                            <Link
+                                to="/studio/upload"
+                                className="w-full py-3 rounded-full text-xs font-bold text-neutral-950 bg-[#8DC63F] hover:bg-[#7db534] transition shadow-md"
+                            >
+                                Mulai Unggah Sekarang
+                            </Link>
+                            <Link
+                                to="/"
+                                className="w-full py-2.5 rounded-full text-xs font-semibold text-neutral-400 hover:text-white transition"
+                            >
+                                Kembali ke Beranda
+                            </Link>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="relative w-full max-w-[440px] h-full flex items-center justify-center">
+                        {videos.map((video, idx) => (
+                            <div
+                                key={video.id}
+                                className={`absolute inset-0 transition-opacity duration-300 ${
+                                    idx === activeIndex
+                                        ? "opacity-100 pointer-events-auto z-10"
+                                        : "opacity-0 pointer-events-none z-0"
+                                }`}
+                            >
+                                <ReelItem
+                                    video={video}
+                                    isActive={idx === activeIndex}
+                                    isMuted={isMuted}
+                                    onToggleMute={() => setIsMuted((prev) => !prev)}
+                                />
+                            </div>
+                        ))}
+
+                        {/* Desktop Navigation Arrows */}
+                        {videos.length > 1 && (
+                            <div className="hidden lg:flex flex-col gap-3 absolute -right-16 top-1/2 -translate-y-1/2 z-30">
+                                <button
+                                    type="button"
+                                    disabled={activeIndex === 0}
+                                    onClick={goToPrev}
+                                    className="w-10 h-10 rounded-full bg-neutral-800/80 hover:bg-neutral-700 text-white flex items-center justify-center transition disabled:opacity-30 cursor-pointer shadow-lg border border-neutral-700"
+                                    title="Video Sebelumnya (Arrow Up)"
+                                    aria-label="Video Sebelumnya"
+                                >
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                        <path d="M18 15l-6-6-6 6" />
+                                    </svg>
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={activeIndex === videos.length - 1}
+                                    onClick={goToNext}
+                                    className="w-10 h-10 rounded-full bg-neutral-800/80 hover:bg-neutral-700 text-white flex items-center justify-center transition disabled:opacity-30 cursor-pointer shadow-lg border border-neutral-700"
+                                    title="Video Selanjutnya (Arrow Down)"
+                                    aria-label="Video Selanjutnya"
+                                >
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                        <path d="M6 9l6 6 6-6" />
+                                    </svg>
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
             </main>
         </div>
     );
