@@ -85,6 +85,7 @@ export default function AnimationCatalogPage() {
                         <button type="submit" className="catalog-search-submit" aria-label="Cari animasi">Cari</button>
                     </form>
                 </div>
+                {catalog.refreshError && <Notice>{catalog.refreshError}</Notice>}
                 <p className="catalog-duration-note">Filter durasi memakai total durasi tayangan terbit dalam satu judul animasi.{genreError && <> Pilihan genre belum dimuat. <button type="button" onClick={() => setGenreRevision((value) => value + 1)}>Coba lagi</button></>}</p>
                 <div className="catalog-meta-row"><div className="catalog-result-meta" role="status">{pending ? "Menyiapkan koleksi..." : catalog.error ? "Koleksi belum berhasil dimuat" : `${catalog.count.toLocaleString("id-ID")} animasi${filtered ? " ditemukan" : " untuk dijelajahi"}`}{filtered && <button type="button" onClick={reset}>Reset filter <X size={12} /></button>}</div>
                     <label className="catalog-sort"><SlidersHorizontal size={14} /><span className="sr-only">Urutkan animasi</span><select aria-label="Urutkan animasi" value={query.sort} onChange={(event) => update({ sort: event.target.value as CatalogSort, page: 1 })}><option value="newest">Terbaru</option><option value="oldest">Terlama</option><option value="title">Judul A–Z</option></select></label></div>

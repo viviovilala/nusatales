@@ -7,6 +7,7 @@ import { catalogDuration } from "../catalog/catalogTypes";
 import type { CatalogVideo } from "../catalog/catalogTypes";
 import type { WatchAnimation } from "./watchTypes";
 import { episodeLabel } from "../animationTypes";
+import { useContentUpdates } from "../../../lib/contentSync";
 
 export function WatchCover({ path }: { path: string | null }) {
     const image = useStorageImageUrl(path); const [failed, setFailed] = useState<string | null>(null);
@@ -15,6 +16,7 @@ export function WatchCover({ path }: { path: string | null }) {
 export default function WatchSidebar({ video }: { video: WatchAnimation }) {
     const [works, setWorks] = useState<CatalogVideo[]>([]), [loading, setLoading] = useState(true), [error, setError] = useState("");
     const [revision, setRevision] = useState(0);
+    useContentUpdates(() => setRevision((value) => value + 1));
     const [season, setSeason] = useState(video.current.season_number);
     const seasons = [...new Set(video.episodes.map((episode) => episode.season_number))];
     const currentIndex = video.episodes.findIndex((episode) => episode.video_id === video.id);

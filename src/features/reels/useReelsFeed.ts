@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { reelsRepository } from "./reelsRepository";
 import type { ReelVideo } from "./reelTypes";
+import { useContentUpdates } from "../../lib/contentSync";
 
 const PAGE_SIZE = 10;
 
@@ -19,6 +20,11 @@ export function useReelsFeed(videoId?: string) {
     const offset = useRef(0);
     const loadingMore = useRef(false);
     const advanceAfterLoad = useRef<number | null>(null);
+    const [refreshTick, setRefreshTick] = useState(0);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const refreshing = useRef(false), refreshed = useRef(0), loadedRoute = useRef<string | null>(null);
+    const latest = useRef({ videos, activeIndex }); latest.current = { videos, activeIndex };
+    useContentUpdates(() => { if (error) setRevision((value) => value + 1); else setRefreshTick((value) => value + 1); });
 
     useEffect(() => {
         const request = ++generation.current;
@@ -26,6 +32,7 @@ export function useReelsFeed(videoId?: string) {
         offset.current = 0;
         loadingMore.current = false;
         advanceAfterLoad.current = null;
+        loadedRoute.current = null; refreshing.current = false; setIsRefreshing(false);
         setHasMore(false);
         setIsLoading(true);
         setIsLoadingMore(false);
@@ -62,6 +69,7 @@ export function useReelsFeed(videoId?: string) {
                 })]);
                 offset.current = records.length;
                 setHasMore(records.length === PAGE_SIZE);
+                loadedRoute.current = videoId || "";
             } catch {
                 if (current()) setError("Shorts belum berhasil dimuat. Periksa koneksimu dan coba lagi.");
             } finally {
@@ -73,7 +81,7 @@ export function useReelsFeed(videoId?: string) {
     }, [videoId, revision]);
 
     const loadMore = useCallback(async () => {
-        if (loadingMore.current || !hasMore || isLoading) return false;
+        if (loadingMore.current || refreshing.current || !hasMore || isLoading) return false;
         const request = generation.current;
         loadingMore.current = true;
         setIsLoadingMore(true);
@@ -105,9 +113,48 @@ export function useReelsFeed(videoId?: string) {
         }
     }, [hasMore, isLoading]);
 
+    // Background changes replace the loaded page, but keep the same mounted
+    // player by ID and verify a deep-linked/current clip before retaining it.
     useEffect(() => {
-        if (videos.length && activeIndex >= videos.length - 3 && hasMore && !isLoadingMore && !moreError) loadMore();
-    }, [activeIndex, videos.length, hasMore, isLoadingMore, moreError, loadMore]);
+        if (refreshTick === refreshed.current || isLoading || isLoadingMore || loadedRoute.current !== (videoId || "")) return;
+        refreshed.current = refreshTick;
+        const version = ++generation.current;
+        let active = true;
+        refreshing.current = true; setIsRefreshing(true);
+        async function refresh() {
+            try {
+                const limit = Math.max(PAGE_SIZE, offset.current);
+                const result = await reelsRepository.getFeedVideos({ limit, offset: 0 });
+                if (!active || version !== generation.current) return;
+                if (result.error) throw result.error;
+                const records = (result.data || []) as ReelVideo[];
+                const next = [...records];
+                const current = latest.current.videos[latest.current.activeIndex];
+                if (current && !next.some((item) => item.id === current.id)) {
+                    const check = await reelsRepository.getPublishedVideoById(current.id);
+                    if (!active || version !== generation.current) return;
+                    if (check.error) throw check.error;
+                    if (latest.current.videos[latest.current.activeIndex]?.id !== current.id) { setRefreshTick((value) => value + 1); return; }
+                    if (check.data?.contentType === "reel") next.push(check.data as ReelVideo);
+                }
+                const unique = [...new Map(next.map((item) => [item.id, item])).values()];
+                const index = unique.findIndex((item) => item.id === current?.id);
+                setVideos(unique);
+                setActiveIndex(index >= 0 ? index : Math.min(latest.current.activeIndex, Math.max(0, unique.length - 1)));
+                if (current && index < 0) setNotice("Reel ini tidak lagi tersedia untuk publik.");
+                offset.current = records.length;
+                setHasMore(records.length === limit);
+                setMoreError("");
+            } catch { if (active) setNotice("Daftar Shorts belum berhasil diperbarui. Coba lagi saat koneksi pulih."); }
+            finally { if (active && version === generation.current) { refreshing.current = false; setIsRefreshing(false); } }
+        }
+        void refresh();
+        return () => { active = false; refreshing.current = false; };
+    }, [refreshTick, isLoading, isLoadingMore, videoId]);
+
+    useEffect(() => {
+        if (videos.length && activeIndex >= videos.length - 3 && hasMore && !isLoadingMore && !isRefreshing && !moreError) loadMore();
+    }, [activeIndex, videos.length, hasMore, isLoadingMore, isRefreshing, moreError, loadMore]);
 
     useEffect(() => {
         const from = advanceAfterLoad.current;

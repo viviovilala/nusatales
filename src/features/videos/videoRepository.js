@@ -25,6 +25,7 @@ export const videoRepository = {
                 )
             `)
             .eq("status", "published")
+            .eq("video_is_public", true)
             .is("deleted_at", null);
 
         if (contentType) {
@@ -102,6 +103,7 @@ export const videoRepository = {
             .select("id, title, description, storage_path, thumbnail_path, duration_seconds, content_type, published_at")
             .eq("creator_id", creatorId)
             .eq("status", "published")
+            .eq("video_is_public", true)
             .is("deleted_at", null);
 
         if (contentType) {
@@ -118,7 +120,7 @@ export const videoRepository = {
 
         let query = supabase
             .from("videos")
-            .select("id, title, description, storage_path, thumbnail_path, duration_seconds, content_type, status, created_at, published_at")
+            .select("id, title, description, storage_path, thumbnail_path, duration_seconds, content_type, status, created_at, published_at, publicly_available:video_is_public")
             .eq("creator_id", creatorId)
             .is("deleted_at", null);
 
@@ -159,6 +161,7 @@ export const videoRepository = {
                 status,
                 published_at,
                 creator_id,
+                publicly_available:video_is_public,
                 creator:profiles!videos_creator_id_fkey (
                     id,
                     username,
@@ -271,7 +274,7 @@ export const videoRepository = {
         }
 
         // Trusted RPC execution - strictly NO direct DB update fallback
-        const { data, error } = await supabase.rpc("publish_video", {
+        const { data, error } = await supabase.rpc("publish_work", {
             p_video_id: videoId,
         });
 

@@ -257,5 +257,63 @@ try {
         await deny(()=>as("authenticated",A,()=>db.query("select public.publish_video($1)",[episode.id])),"23514");
         assert.equal((await db.query("select id from public.videos where id=$1",[episode.id])).rows.length,1);
     });
+    const revision = async()=>Number((await db.query("select revision from public.public_content_revision where id=true")).rows[0].revision);
+    const beforePrivate=await revision();
+    const publicTitle=(await save(A,null)).rows[0],publicEpisode=(await make(A,publicTitle.id)).rows[0];
+    const publicPoster=`${A}/animations/${publicTitle.id}/poster.png`,publicMedia=`${A}/${publicEpisode.id}/media.mp4`;
+    await as("authenticated",A,async()=>{
+        await db.query("insert into storage.objects(bucket_id,name) values('thumbnails',$1),('videos',$2)",[publicPoster,publicMedia]);
+        await db.query("update public.videos set storage_path=$1,duration_seconds=35 where id=$2",[publicMedia,publicEpisode.id]);
+    });
+    await test("private draft creation and uploads do not broadcast public revisions",async()=>assert.equal(await revision(),beforePrivate));
+    const publishWork=(owner,id)=>as("authenticated",owner,()=>db.query("select public.publish_work($1) result",[id]));
+    await test("the same publish_work RPC exposes Reels from account B to account A and anonymous viewers",async()=>{
+        const reel=(await as("authenticated",B,()=>db.query("insert into public.videos(creator_id,title,content_type) values($1,'Reel B','reel') returning id",[B]))).rows[0];
+        const path=`${B}/${reel.id}/media.mp4`;
+        await as("authenticated",B,async()=>{
+            await db.query("insert into storage.objects(bucket_id,name) values('videos',$1)",[path]);
+            await db.query("update public.videos set storage_path=$1,duration_seconds=15 where id=$2",[path,reel.id]);
+        });
+        const before=await revision();await publishWork(B,reel.id);assert.ok(await revision()>before);
+        for(const [role,uid] of [["authenticated",A],["anon",null]]){
+            assert.equal((await as(role,uid,()=>db.query("select id from public.videos v where id=$1 and public.video_is_public(v)",[reel.id]))).rows.length,1);
+            assert.equal((await as(role,uid,()=>db.query("select * from storage.objects where name=$1",[path]))).rows.length,1);
+        }
+    });
+    await test("failed atomic publication keeps video and title private and rolls back notifications",async()=>{
+        const before=await revision();
+        await deny(()=>publishWork(A,publicEpisode.id),"23514");
+        assert.equal((await db.query("select status from public.videos where id=$1",[publicEpisode.id])).rows[0].status,"draft");
+        assert.equal(await revision(),before);
+    });
+    await save(A,publicTitle.id,{...input,poster_path:publicPoster});
+    await test("publish_work makes animation and video readable to a second account and anonymous viewers",async()=>{
+        const result=await publishWork(A,publicEpisode.id); assert.equal(result.rows[0].result.publicly_available,true);
+        for(const [role,uid] of [["authenticated",A],["authenticated",B],["anon",null]]){
+            const rows=await as(role,uid,()=>db.query("select v.id,public.video_is_public(v) visible from public.videos v where v.id=$1 and public.video_is_public(v)",[publicEpisode.id]));
+            assert.equal(rows.rows.length,1);assert.equal(rows.rows[0].visible,true);
+            assert.equal((await as(role,uid,()=>db.query("select * from public.animation_catalog where id=$1",[publicTitle.id]))).rows.length,1);
+            assert.equal((await as(role,uid,()=>db.query("select * from storage.objects where name=$1",[publicMedia]))).rows.length,1);
+        }
+        assert.ok(await revision()>beforePrivate);
+    });
+    await test("idempotent public publication neither rewrites data nor emits duplicate revisions",async()=>{
+        const before=await revision();await publishWork(A,publicEpisode.id);assert.equal(await revision(),before);
+    });
+    await test("cross-user publication is rejected and cannot broadcast",async()=>{
+        const before=await revision();await deny(()=>publishWork(B,publicEpisode.id));assert.equal(await revision(),before);
+    });
+    await test("unpublish broadcasts a public invalidation while removing the work from all public queries",async()=>{
+        const before=await revision();await status(A,publicTitle.id,"unpublish");assert.ok(await revision()>before);
+        const own=await as("authenticated",A,()=>db.query("select public.video_is_public(v) visible from public.videos v where id=$1",[publicEpisode.id]));assert.equal(own.rows[0].visible,false);
+        for(const [role,uid] of [["authenticated",A],["authenticated",B],["anon",null]])assert.equal((await as(role,uid,()=>db.query("select v.id from public.videos v where id=$1 and public.video_is_public(v)",[publicEpisode.id]))).rows.length,0);
+        await publishWork(A,publicEpisode.id);assert.equal((await db.query("select status from public.animations where id=$1",[publicTitle.id])).rows[0].status,"published");
+    });
+    await test("public revision contains no media data and cannot be written by clients",async()=>{
+        const rows=await as("anon",null,()=>db.query("select * from public.public_content_revision"));assert.deepEqual(Object.keys(rows.rows[0]).sort(),["id","revision","updated_at"]);
+        await deny(()=>as("authenticated",A,()=>db.query("update public.public_content_revision set revision=999")));
+        await deny(()=>as("authenticated",A,()=>db.query("select public.bump_public_content_revision()")));
+        assert.equal((await db.query("select count(*)::int n from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='public_content_revision'")).rows[0].n,1);
+    });
     console.log(`${passed} database security checks passed.`);
 } finally { await db.close(); }

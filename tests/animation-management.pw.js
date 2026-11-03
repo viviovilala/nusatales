@@ -37,7 +37,15 @@ async function project(page, initialTitles = [], initialVideos = []) {
             if(body.p_action==="publish"&&(!item.poster_path||!item.synopsis||!item.animation_genres.length||!state.videos.some(video=>video.animation_id===item.id&&video.status==="published"&&!video.deleted_at)))return fail("Lengkapi sinopsis, poster, genre, dan minimal satu tayangan terbit sebelum menerbitkan animasi.");
             item.status=body.p_action==="publish"?"published":"draft";if(body.p_action==="delete")item.deleted_at="2026-11-02";return route.fulfill({json:item});
         }
-        if(["publish_video","unpublish_video","soft_delete_video"].includes(path)){state.calls.push({name:path,body});const item=state.videos.find(item=>item.id===body.p_video_id);if(path==="soft_delete_video")item.deleted_at="2026-11-02";else item.status=path==="publish_video"?"published":"draft";return route.fulfill({json:null});}
+        if(["publish_work","unpublish_video","soft_delete_video"].includes(path)){
+            state.calls.push({name:path,body});const item=state.videos.find(item=>item.id===body.p_video_id);
+            if(path==="publish_work"){
+                const parent=state.titles.find(parent=>parent.id===item.animation_id);
+                if(!parent?.poster_path||!parent.synopsis||!parent.animation_genres.length)return fail("Lengkapi sinopsis, poster, dan genre sebelum menerbitkan animasi.");
+                parent.status="published";item.status="published";item.publicly_available=true;
+            }else if(path==="soft_delete_video")item.deleted_at="2026-11-02";else{item.status="draft";item.publicly_available=false;}
+            return route.fulfill({json:null});
+        }
         if(path==="animations") {if(state.failRead)return fail("Animasi belum dapat dimuat.");const id=url.searchParams.get("id")?.replace("eq.","");const data=state.titles.filter(item=>!item.deleted_at);return route.fulfill({json:id?data.find(item=>item.id===id)||null:data});}
         if(path==="animation_episodes") {const id=url.searchParams.get("video_id")?.replace("eq.",""),parent=url.searchParams.get("animation_id")?.replace("eq.","");const links=state.videos.filter(item=>item.content_type==="animation"&&!item.deleted_at).map(item=>({video_id:item.id,animation_id:item.animation_id,season_number:item.season_number,episode_number:item.episode_number,video:item}));return route.fulfill({json:id?links.find(item=>item.video_id===id)||null:links.filter(item=>item.animation_id===parent).sort((a,b)=>a.season_number-b.season_number||a.episode_number-b.episode_number)});}
         if(path==="animation_catalog") {
@@ -64,7 +72,7 @@ async function project(page, initialTitles = [], initialVideos = []) {
 async function studio(page){await page.goto("/login");const login=page.getByRole("dialog",{name:"Masuk",exact:true});await login.getByPlaceholder("nama@email.com").fill(user.email);await login.getByPlaceholder("Masukkan kata sandi...").fill("fixture-password");await login.getByRole("button",{name:"Masuk",exact:true}).click();await page.getByRole("link",{name:"Studio",exact:true}).click();await expect(page.getByRole("heading",{name:"Studio ceritamu."})).toBeVisible();}
 async function manage(page){await page.getByRole("article",{name:"Animasi Legenda Nusantara",exact:true}).getByRole("button",{name:"Kelola episode"}).click();const dialog=page.getByRole("dialog",{name:"Legenda Nusantara",exact:true});await expect(dialog.getByRole("heading",{name:"Daftar tayangan"})).toBeVisible();return dialog;}
 
-test("create an animation with metadata and poster, upload its episode, then publish the title",async({page},info)=>{
+test("create an animation with metadata and poster, then publish title and uploaded episode together",async({page},info)=>{
     const state=await project(page);await studio(page);await page.getByRole("button",{name:"Buat animasi",exact:true}).click();const editor=page.getByRole("dialog",{name:"Buat animasi",exact:true});
     await editor.getByLabel("Judul animasi").fill("Legenda Nusantara");await editor.getByLabel("Sinopsis animasi").fill("Perjalanan mengenal Nusantara.");await editor.getByLabel("Fantasi",{exact:true}).check();await editor.getByLabel("Cerita rakyat",{exact:true}).check();await editor.getByLabel("Poster animasi",{exact:true}).setInputFiles(artwork);await editor.getByLabel("Asal daerah (opsional)").fill("Yogyakarta");await editor.getByLabel("Panduan usia").selectOption("13+");
     await editor.evaluate(element=>{element.scrollTop=0;});await page.screenshot({path:info.outputPath("create-animation-desktop.png")});await editor.getByRole("button",{name:"Simpan animasi",exact:true}).click();
@@ -73,7 +81,7 @@ test("create an animation with metadata and poster, upload its episode, then pub
     await dialog.getByRole("link",{name:"Tambah episode",exact:true}).click();const upload=page.getByRole("dialog",{name:"Unggah karya",exact:true});await expect(upload.getByLabel("Animasi",{exact:true})).toHaveValue("title-1");
     await upload.getByLabel("Pilih berkas video",{exact:true}).setInputFiles({name:"episode-satu.webm",mimeType:"video/webm",buffer:Buffer.from("fixture")});await upload.getByLabel("Judul karya").fill("Awal perjalanan");await upload.getByRole("button",{name:"Unggah & Publikasikan",exact:true}).click();await expect(upload.getByText("Karya berhasil dipublikasikan!",{exact:true})).toBeVisible();
     const call=state.calls.find(call=>call.name==="create_animation_episode");expect(call.body).toMatchObject({p_animation_id:"title-1",p_season:1,p_episode:1,p_title:"Awal perjalanan"});
-    await upload.getByRole("button",{name:"Tutup popup"}).click();const reopened=await manage(page);await expect(reopened.getByText("Awal perjalanan",{exact:true})).toBeVisible();await reopened.getByRole("button",{name:"Terbitkan animasi",exact:true}).click();await reopened.getByRole("button",{name:"Ya, lanjutkan"}).click();await expect(reopened.getByText(/Animasi terbit/)).toBeVisible();
+    await upload.getByRole("button",{name:"Tutup popup"}).click();const reopened=await manage(page);await expect(reopened.getByText("Awal perjalanan",{exact:true})).toBeVisible();await expect(reopened.getByText(/Animasi terbit/)).toBeVisible();expect(state.calls.some(call=>call.name==="publish_work")).toBe(true);
     expect(state.titles[0].status).toBe("published");await page.screenshot({path:info.outputPath("manage-animation-desktop.png")});await page.keyboard.press("Escape");await page.getByRole("link",{name:"Jelajah",exact:true}).click();await expect(page.locator(".catalog-card")).toHaveCount(1);await expect(page.locator(".catalog-card")).toContainText("1 episode");await page.locator(".catalog-poster").click();await expect(page.locator(".watch-summary h1")).toHaveText("Awal perjalanan");await expect(page.locator(".watch-current-title")).toContainText("Legenda Nusantara");
 });
 

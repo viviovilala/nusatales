@@ -9,6 +9,7 @@ export type StudioVideo = {
     status: "published" | "draft";
     created_at: string | null;
     published_at: string | null;
+    publicly_available?: boolean;
 };
 
 export type StudioAction = "publish" | "unpublish" | "delete";

@@ -5,6 +5,7 @@ import { ModalContext } from "./ModalContext";
 import { getModalRoute, safeReturnPath } from "./modalRoutes";
 import ActionModalHost from "./ActionModalHost";
 import { RequireAuth } from "../features/auth/RequireAuth";
+import { useContentSync } from "../lib/contentSync";
 
 // Pages
 import LandingPage from "../pages/LandingPage";
@@ -23,6 +24,7 @@ export function AppRouter() {
     const currentLocation = useRef(location);
     currentLocation.current = location;
     const { user, isLoading } = useAuth();
+    useContentSync(user?.id || null);
     const requested = getModalRoute(location.pathname);
     // Keep the same Routes location while the address bar displays an action.
     const background = requested ? location.state?.modalBackground || { pathname: "/", search: "", hash: "", key: "modal-home" } : location;

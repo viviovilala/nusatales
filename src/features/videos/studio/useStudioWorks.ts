@@ -58,9 +58,9 @@ export function useStudioWorks(userId: string) {
             if (!active.current) return null;
             const status = action === "publish" ? "published" : "draft";
             setVideos((items) => action === "delete" ? items.filter((item) => item.id !== video.id)
-                : items.map((item) => item.id === video.id ? { ...item, status, published_at: action === "publish" ? new Date().toISOString() : null } : item));
+                : items.map((item) => item.id === video.id ? { ...item, status, publicly_available: action === "publish", published_at: action === "publish" ? new Date().toISOString() : null } : item));
             setMessage(action === "delete" ? `“${video.title}” berhasil dihapus.` : action === "publish" ? `“${video.title}” sudah dipublikasikan.` : `“${video.title}” dikembalikan ke draf.`);
-            const detail: StudioChange = action === "delete" ? { id: video.id, deleted: true } : { id: video.id, status };
+            const detail: StudioChange & { publicly_available?: boolean } = action === "delete" ? { id: video.id, deleted: true } : { id: video.id, status, publicly_available: action === "publish" };
             window.dispatchEvent(new CustomEvent<StudioChange>("nusatales:videos-changed", { detail }));
             return null;
         } catch (error) {

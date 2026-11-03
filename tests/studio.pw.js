@@ -9,7 +9,7 @@ function works(count = 15) {
         id: `22222222-2222-4222-8222-${String(index).padStart(12, "0")}`, creator_id: user.id,
         title: index === 0 ? "Roro Jonggrang" : index === 1 ? "Jejak Batik" : `Cerita ${String(index).padStart(2, "0")}`,
         description: index % 2 === 0 ? "Legenda dan budaya Nusantara." : "Cerita singkat tentang perjalanan budaya.",
-        content_type: index % 2 === 0 ? "animation" : "reel", status: index % 3 === 0 ? "published" : "draft",
+        content_type: index % 2 === 0 ? "animation" : "reel", status: index % 3 === 0 ? "published" : "draft", publicly_available: index % 3 === 0,
         thumbnail_path: `owner/${index}/thumbnail.png`, storage_path: index === 14 ? null : `owner/${index}/media.webm`, duration_seconds: 70 + index,
         created_at: `2026-10-${String(index + 1).padStart(2, "0")}T12:00:00Z`, published_at: index % 3 === 0 ? "2026-10-20T12:00:00Z" : null,
     }));
@@ -31,7 +31,7 @@ async function project(page, initial = works()) {
             if (state.holdAction) await new Promise((resolve) => { state.releaseAction = resolve; });
             if (state.failAction) return route.fulfill({ status: 400, json: { message: "Perubahan ditolak, coba lagi." } });
             if (action === "soft_delete_video") state.videos = state.videos.filter((video) => video.id !== id);
-            else { const video = state.videos.find((video) => video.id === id); if (video) video.status = action === "publish_video" ? "published" : "draft"; }
+            else { const video = state.videos.find((video) => video.id === id); if (video) { video.status = action === "publish_work" ? "published" : "draft"; video.publicly_available = action === "publish_work"; } }
             return route.fulfill({ json: null });
         }
         if (url.pathname.endsWith("/videos")) {
@@ -156,7 +156,7 @@ test("publication and deletion confirm, lock duplicate writes and keep failed ac
     await dialog.getByRole("button", { name: "Hapus karya", exact: true }).click();
     await expect(work(page, "Jejak Batik")).toHaveCount(0);
     await expect(page.locator("#studio-library-title")).toBeFocused();
-    expect(state.calls.map((call) => call.action)).toEqual(["publish_video", "publish_video", "unpublish_video", "soft_delete_video", "soft_delete_video"]);
+    expect(state.calls.map((call) => call.action)).toEqual(["publish_work", "publish_work", "unpublish_video", "soft_delete_video", "soft_delete_video"]);
 });
 
 test("loading errors stay distinct from empty; refresh keeps the last collection", async ({ page }, info) => {

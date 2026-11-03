@@ -25,13 +25,14 @@ export default function WatchAnimationPage() {
 
 function WatchWorkspace({ videoId }: { videoId: string }) {
     const navigate = useNavigate();
-    const { video, loading, error, retry } = useWatchAnimation(videoId);
+    const { video, loading, error, refreshError, retry } = useWatchAnimation(videoId);
     const suspended = useViewerSuspended();
     const [creator, setCreator] = useState<ReelCreator | null>(null), [expanded, setExpanded] = useState(false);
     return <div className="site-page watch-page animation-watch-page">
         <AppNavbar />
         <main id="main-content" className="animation-watch-main" tabIndex={-1}>
             <nav className="watch-breadcrumb" aria-label="Lokasi menonton"><AppLink to="/animations"><ArrowLeft size={14} />Jelajah animasi</AppLink><span>/</span><span>Ruang menonton</span></nav>
+            {refreshError && <p role="status" className="watch-related-state">Status tayangan belum berhasil diperbarui. <button type="button" onClick={retry}>Coba lagi</button></p>}
             {loading ? <div className="watch-workspace-loading" role="status"><div><Loader2 size={28} className="ui-spinner" />Menyiapkan ruang menonton...</div><aside /></div>
                 : error || !video ? <section className="watch-unavailable" role="alert"><Film size={36} strokeWidth={1.3} /><h1>Animasi belum bisa ditonton.</h1><p>{error || "Tayangan ini belum tersedia."}</p><div><button type="button" onClick={retry}>Coba lagi</button><AppLink to="/animations">Kembali ke Jelajah <ArrowUpRight size={14} /></AppLink></div></section>
                     : <div className="watch-layout">

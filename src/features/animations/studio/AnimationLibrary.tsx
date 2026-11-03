@@ -76,7 +76,7 @@ function ManageAnimation({ id, titles, onClose, onEdit }: { id: string; titles: 
         finally { lock.current = false; setBusy(false); animationChanged(); }
     }
     const nextEpisode = Math.max(0, ...episodes.filter((episode) => episode.season_number === 1).map((episode) => episode.episode_number)) + 1;
-    return <StudioDialog wide title={animation?.title || "Kelola animasi"} description="Kelola cerita dan tayangannya di satu tempat. Terbitkan animasi dan tayangannya agar dapat ditonton." onClose={onClose} busy={busy}>
+    return <StudioDialog wide title={animation?.title || "Kelola animasi"} description="Terbitkan tayangan untuk membagikannya bersama animasi. Sinopsis, poster, dan genre animasi harus lengkap; simpan draf selama belum siap." onClose={onClose} busy={busy}>
         <Notice>{error || loadError}</Notice>
         {loading ? <p role="status">Memuat detail animasi...</p> : !animation ? <Button variant="outline" onClick={() => setRevision((value) => value + 1)}>Coba lagi</Button> : <>
             <p className="animation-status-note">{animation.format === "series" ? "Serial" : "Film"} · Animasi {animation.status === "published" ? "terbit" : "draf"} · {episodes.length} tayangan · {animation.genres.join(", ") || "Genre belum diisi"}</p>

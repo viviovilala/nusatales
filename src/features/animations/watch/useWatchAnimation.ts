@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppModal } from "../../../app/ModalContext";
 import { videoRepository } from "../../videos/videoRepository";
 import { normalizeSupabaseError } from "../../../lib/errors";
 import type { WatchAnimation } from "./watchTypes";
 import { animationRepository } from "../animationRepository";
+import { useContentUpdates } from "../../../lib/contentSync";
 type CreatorRow = { id?: string; username?: string | null; display_name?: string | null; avatar_path?: string | null };
 
 export function useWatchAnimation(videoId: string) {
@@ -13,19 +14,35 @@ export function useWatchAnimation(videoId: string) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [revision, setRevision] = useState(0);
+    const loaded = useRef(false);
+    const loadedId = useRef(videoId);
+    const [refreshError, setRefreshError] = useState("");
+    useContentUpdates(() => setRevision((value) => value + 1));
     useEffect(() => {
         let active = true;
-        setLoading(true); setError(""); setVideo(null);
+        if (loadedId.current !== videoId) { loadedId.current = videoId; loaded.current = false; setVideo(null); }
+        if (!loaded.current) { setLoading(true); setError(""); }
+        setRefreshError("");
         async function load() {
             try {
                 const result = await videoRepository.getVideoById(videoId);
                 if (!active) return;
                 if (result.error) throw result.error;
                 const data = result.data;
-                if (!data || data.status !== "published") throw new Error("Animasi ini belum tersedia untuk ditonton.");
+                if (!data || data.status !== "published" || data.publicly_available === false) {
+                    loaded.current = false; setVideo(null);
+                    throw new Error("Animasi ini belum tersedia untuk ditonton.");
+                }
                 if (data.content_type === "reel") { navigate(`/reels/${videoId}`, { replace: true }); return; }
                 if (data.content_type !== "animation") throw new Error("Tayangan ini bukan bagian dari koleksi animasi.");
-                const context = await animationRepository.context(videoId);
+                let context;
+                try { context = await animationRepository.context(videoId); }
+                catch (cause) {
+                    // Context can become inaccessible after an unpublish. The
+                    // repository's explicit unavailable errors stop playback.
+                    if (active && cause instanceof Error && /belum|tidak ditemukan/.test(cause.message)) { loaded.current = false; setVideo(null); }
+                    throw cause;
+                }
                 if (!active) return;
                 // The JS repository has no generated database schema types;
                 // normalize the joined relation at this typed API boundary.
@@ -36,13 +53,17 @@ export function useWatchAnimation(videoId: string) {
                     animation: context.animation, episodes: context.episodes, current: context.current,
                     creator: { id: creator?.id || data.creator_id, username: creator?.username,
                         displayName: creator?.display_name || "Kreator NusaTales", avatarPath: creator?.avatar_path } });
-            } catch (error) { if (active) setError(normalizeSupabaseError(error, "Animasi belum berhasil dimuat.") || "Animasi belum berhasil dimuat."); }
+                loaded.current = true; setError("");
+            } catch (error) { if (active) {
+                const message = normalizeSupabaseError(error, "Animasi belum berhasil dimuat.") || "Animasi belum berhasil dimuat.";
+                if (loaded.current) setRefreshError(message); else setError(message);
+            } }
             finally { if (active) setLoading(false); }
         }
         void load();
         return () => { active = false; };
     }, [videoId, revision, navigate]);
-    return { video, loading, error, retry: () => setRevision((value) => value + 1) };
+    return { video, loading, error, refreshError, retry: () => setRevision((value) => value + 1) };
 }
 
 export function useViewerSuspended() {

@@ -4,7 +4,7 @@ import { normalizeSupabaseError } from "../../../lib/errors";
 import { CATALOG_PAGE_SIZE, catalogParams } from "./catalogTypes";
 import type { CatalogQuery, CatalogVideo } from "./catalogTypes";
 
-type Result = { key: string; videos: CatalogVideo[]; count: number; loading: boolean; error: string };
+type Result = { key: string; videos: CatalogVideo[]; count: number; loading: boolean; error: string; refreshError?: string };
 export function useAnimationCatalog(query: CatalogQuery) {
     const key = catalogParams(query).toString();
     const [revision, setRevision] = useState(0);
@@ -13,7 +13,8 @@ export function useAnimationCatalog(query: CatalogQuery) {
     useEffect(() => {
         let active = true;
         const controller = new AbortController();
-        setResult({ key, videos: [], count: 0, loading: true, error: "" });
+        setResult((previous) => previous.key === key && previous.videos.length
+            ? { ...previous, refreshError: "", error: "" } : { key, videos: [], count: 0, loading: true, error: "" });
         async function load() {
             try {
                 const response = await videoRepository.getAnimationCatalog({ limit: CATALOG_PAGE_SIZE, offset: (query.page - 1) * CATALOG_PAGE_SIZE,
@@ -26,7 +27,11 @@ export function useAnimationCatalog(query: CatalogQuery) {
                 const videos = (response.data as CatalogVideo[]).filter((video) => { if (seen.has(video.id)) return false; seen.add(video.id); return true; });
                 setResult({ key, videos, count: response.count, loading: false, error: "" });
             } catch (error) {
-                if (active) setResult({ key, videos: [], count: 0, loading: false, error: normalizeSupabaseError(error, "Koleksi belum berhasil dimuat.") || "Koleksi belum berhasil dimuat." });
+                if (active) setResult((previous) => {
+                    const message = normalizeSupabaseError(error, "Koleksi belum berhasil dimuat.") || "Koleksi belum berhasil dimuat.";
+                    return previous.key === key && previous.videos.length ? { ...previous, loading: false, refreshError: message }
+                        : { key, videos: [], count: 0, loading: false, error: message };
+                });
             }
         }
         void load();

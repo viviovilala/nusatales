@@ -56,7 +56,7 @@ function StudioWorkspace({ userId }: { userId: string }) {
     const results = useMemo(() => {
         const query = search.trim().toLocaleLowerCase("id-ID");
         const filtered = videos.filter((video) => (format === "all" || video.content_type === format)
-            && (status === "all" || video.status === status)
+            && (status === "all" || (status === "published" ? video.publicly_available === true : video.publicly_available !== true))
             && (!query || `${video.title} ${video.description || ""}`.toLocaleLowerCase("id-ID").includes(query)));
         const timestamp = (value: string | null) => value && Number.isFinite(Date.parse(value)) ? Date.parse(value) : 0;
         return filtered.sort((a, b) => sort === "title" ? a.title.localeCompare(b.title, "id")
@@ -65,8 +65,8 @@ function StudioWorkspace({ userId }: { userId: string }) {
     const pages = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
     const currentPage = Math.min(page, pages);
     const visible = results.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-    const published = videos.filter((video) => video.status === "published").length;
-    const drafts = videos.filter((video) => video.status === "draft").length;
+    const published = videos.filter((video) => video.publicly_available === true).length;
+    const drafts = videos.length - published;
     const animations = videos.filter((video) => video.content_type === "animation").length;
     const filtered = format !== "all" || status !== "all" || search.trim() !== "";
     const count = (value: number) => loaded ? value.toLocaleString("id-ID") : "—";
@@ -131,14 +131,15 @@ function StudioWorkspace({ userId }: { userId: string }) {
                         <div className={`studio-works studio-works-${view}`} aria-busy={refreshing || undefined}>
                             {visible.map((video) => <article key={video.id} className="studio-work" aria-label={`Karya ${video.title}`}>
                                 <div className="studio-work-main"><button type="button" className="studio-cover-button" aria-label={`Preview ${video.title}`} onClick={() => setPreview(video)}><Cover video={video} /><span className="studio-cover-hover"><Eye size={18} /></span></button><div className="studio-work-copy"><span className="studio-work-format">{video.content_type === "animation" ? <Film size={12} /> : <Smartphone size={12} />}{video.content_type === "animation" ? "Tayangan animasi" : "Shorts"}</span><h3>{video.title}</h3><p>{video.description || "Ceritakan sedikit tentang karya ini."}</p><span className="studio-mobile-date">{studioDate(video.created_at)}</span></div></div>
-                                <span className={`studio-status ${video.status === "published" ? "is-published" : ""}`}>{video.status === "published" ? <Globe2 size={12} /> : <LockKeyhole size={12} />}{video.status === "published" ? "Dipublikasikan" : "Draf"}</span>
+                                <span className={`studio-status ${video.publicly_available ? "is-published" : ""}`}>{video.publicly_available ? <Globe2 size={12} /> : <LockKeyhole size={12} />}{video.publicly_available ? "Dipublikasikan" : video.status === "published" ? "Belum publik" : "Draf"}</span>
                                 <time className="studio-work-date" dateTime={video.created_at || undefined}>{studioDate(video.created_at)}</time>
                                 <div className="studio-work-actions"><Link to={`/studio/videos/${video.id}/edit`} className="ui-button ui-button-outline" aria-label="Edit"><Pencil size={14} /><span>Edit</span></Link>
                                     <DropdownMenu.Root modal={false}><DropdownMenu.Trigger type="button" className="studio-icon-button" disabled={Boolean(pending)} aria-label={`Aksi ${video.title}`}><MoreHorizontal size={20} /></DropdownMenu.Trigger><DropdownMenu.Portal><DropdownMenu.Content className="nusa-dropdown studio-work-menu" align="end" sideOffset={8}>
                                         <DropdownMenu.Label className="nusa-dropdown-label">Kelola karya</DropdownMenu.Label>
                                         <DropdownMenu.Item onSelect={() => setPreview(video)}><Eye size={15} />Preview karya</DropdownMenu.Item>
-                                        {video.status === "published" && <DropdownMenu.Item asChild><Link to={video.content_type === "animation" ? `/watch/${video.id}` : `/reels/${video.id}`}><ArrowUpRight size={15} />Lihat halaman publik</Link></DropdownMenu.Item>}
-                                        <DropdownMenu.Item disabled={video.status === "draft" && !video.storage_path} onSelect={() => ask(video, video.status === "published" ? "unpublish" : "publish")}>{video.status === "published" ? <ArrowDownToLine size={15} /> : <Globe2 size={15} />}{video.status === "published" ? "Tarik ke draf" : "Publikasikan"}</DropdownMenu.Item>
+                                        {video.publicly_available && <DropdownMenu.Item asChild><Link to={video.content_type === "animation" ? `/watch/${video.id}` : `/reels/${video.id}`}><ArrowUpRight size={15} />Lihat halaman publik</Link></DropdownMenu.Item>}
+                                        <DropdownMenu.Item disabled={!video.storage_path} onSelect={() => ask(video, video.publicly_available ? "unpublish" : "publish")}>{video.publicly_available ? <ArrowDownToLine size={15} /> : <Globe2 size={15} />}{video.publicly_available ? "Tarik ke draf" : "Publikasikan"}</DropdownMenu.Item>
+                                        {video.status === "published" && !video.publicly_available && <DropdownMenu.Item onSelect={() => ask(video, "unpublish")}><ArrowDownToLine size={15} />Tarik tayangan ke draf</DropdownMenu.Item>}
                                         <DropdownMenu.Separator className="nusa-dropdown-separator" /><DropdownMenu.Item className="studio-danger-item" onSelect={() => ask(video, "delete")}><Trash2 size={15} />Hapus karya</DropdownMenu.Item>
                                     </DropdownMenu.Content></DropdownMenu.Portal></DropdownMenu.Root>
                                 </div>
@@ -152,7 +153,7 @@ function StudioWorkspace({ userId }: { userId: string }) {
         </main>
         <Footer />
         {preview && <StudioPreview key={preview.id} video={preview} onClose={() => setPreview(null)} />}
-        {confirmation && <StudioDialog title={confirmation.action === "delete" ? "Hapus karya?" : confirmation.action === "publish" ? "Siap membagikan cerita?" : "Kembalikan ke draf?"} description={confirmation.action === "delete" ? "Karya akan dihapus dari koleksi dan tidak bisa ditonton melalui halaman publik. Tindakan ini tidak dapat dibatalkan dari Studio." : confirmation.action === "publish" ? "Karyamu akan muncul di katalog atau Shorts dan bisa ditonton semua orang." : "Karya akan disembunyikan dari katalog dan Shorts. Kamu bisa memublikasikannya kembali nanti."} onClose={() => setConfirmation(null)} busy={Boolean(pending)}>
+        {confirmation && <StudioDialog title={confirmation.action === "delete" ? "Hapus karya?" : confirmation.action === "publish" ? "Siap membagikan cerita?" : "Kembalikan ke draf?"} description={confirmation.action === "delete" ? "Karya akan dihapus dari koleksi dan tidak bisa ditonton melalui halaman publik. Tindakan ini tidak dapat dibatalkan dari Studio." : confirmation.action === "publish" ? confirmation.video.content_type === "animation" ? "Animasi dan tayangan akan diterbitkan bersama setelah sinopsis, poster, dan genre lengkap." : "Karyamu akan muncul di Shorts dan bisa ditonton semua orang." : "Karya akan disembunyikan dari katalog dan Shorts. Kamu bisa memublikasikannya kembali nanti."} onClose={() => setConfirmation(null)} busy={Boolean(pending)}>
             <div className="studio-confirm-work"><Cover video={confirmation.video} /><div><strong>{confirmation.video.title}</strong><span>{confirmation.video.content_type === "animation" ? "Tayangan animasi" : "Shorts"} · {studioDuration(confirmation.video.duration_seconds)}</span></div></div>
             <Notice>{actionError}</Notice><div className="studio-dialog-actions"><Button variant="outline" disabled={Boolean(pending)} data-dialog-initial onClick={() => setConfirmation(null)}>Batal</Button><Button variant={confirmation.action === "delete" ? "danger" : "primary"} busy={Boolean(pending)} onClick={() => { void confirm(); }}>{!pending && (confirmation.action === "delete" ? <Trash2 size={15} /> : <Check size={15} />)}{pending ? "Menyimpan..." : confirmation.action === "delete" ? "Hapus karya" : confirmation.action === "publish" ? "Ya, publikasikan" : "Tarik ke draf"}</Button></div>
         </StudioDialog>}

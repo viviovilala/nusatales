@@ -1,6 +1,8 @@
 # Animasi, film, dan episode
 
-Implementasi ada di migration `20261102000012_animation_titles_and_episodes.sql`.
+Model judul/episode ada di migration `20261102000012_animation_titles_and_episodes.sql`.
+Publikasi lintas akun dan pembaruan daftar memerlukan tambahan migration
+`20261103000013_publication_and_content_realtime.sql`.
 Di antarmuka pengguna istilahnya **Animasi**, **Film**, **Serial**, dan **Episode**.
 
 ## Model data
@@ -54,10 +56,15 @@ Jelajah memakai **total durasi per judul**, bukan durasi tiap episode.
 1. **Buat animasi**: simpan judul, format dan metadata sebagai draf. Draf boleh
    dilengkapi bertahap. Upload poster/banner dilakukan sesudah ID tersedia.
 2. **Kelola episode / film**: tambah tayangan, isi nomor dan judul episode,
-   unggah media, lalu simpan draf atau terbitkan tayangan.
-3. **Terbitkan animasi**: perlu sinopsis, poster yang benar-benar ada, genre,
-   dan minimal satu tayangan terbit. Tayangan terbit dari animasi draf tetap
-   tersembunyi dari publik.
+   unggah media, lalu simpan draf atau publikasikan karya. `publish_work`
+   menerbitkan tayangan dan judul animasinya dalam satu transaksi. Judul perlu
+   sinopsis, poster yang benar-benar ada, dan genre; jika belum lengkap,
+   publikasi batal tanpa membuka akses sebagian.
+3. **Terbitkan animasi** juga tersedia pada pengelolaan judul yang sudah memiliki
+   tayangan terbit. Data lama dengan tayangan terbit tetapi judul masih draf
+   ditandai **Belum publik**. Klik **Terbitkan animasi & tayangan** untuk
+   menerbitkannya setelah metadata dilengkapi. Migration tidak menerbitkan draf
+   lama secara otomatis.
 4. Episode draf bisa diatur ulang nomornya atau dipindahkan ke animasi lain
    milik kreator yang sama. Tarik tayangan terbit ke draf sebelum memindahkan.
    Format judul tidak bisa diubah setelah memiliki relasi tayangan.
@@ -68,7 +75,7 @@ Popup membuat animasi tidak mengirim form upload di belakangnya. Draf yang
 sudah dibuat tetap terlihat di Studio bila upload poster gagal; retry memakai
 ID draf yang sama. Unggahan video tetap memakai workflow cancellation yang ada.
 Slot episode dari unggahan yang sudah dihapus dapat dipakai ulang.
-Kegagalan transfer animasi sebelum publikasi membersihkan draf milik operasi
+Kegagalan transfer Reels maupun animasi sebelum publikasi membersihkan draf milik operasi
 tersebut agar nomor episode dapat dicoba ulang. Kegagalan publikasi tetap
 mempertahankan media dan draf karena RPC mungkin sudah terkirim.
 
@@ -80,7 +87,9 @@ Client hanya mendapat SELECT pada tabel animasi dan relasinya. Penulisan melalui
 - `create_animation_episode`: buat draf media + relasi episode secara atomik.
 - `move_animation_episode`: atur relasi draf milik sendiri.
 - `set_animation_status`: publish, unpublish, soft delete judul.
-- `publish_video`, `unpublish_video`, `soft_delete_video`: workflow media lama.
+- `publish_work`: aksi publikasi aplikasi, memastikan media benar-benar publik.
+- `publish_video`: API lama untuk menyiapkan tayangan di bawah judul draf.
+- `unpublish_video`, `soft_delete_video`: sembunyikan/hapus media milik sendiri.
 
 RPC memverifikasi akun, kepemilikan, status dan constraint. Relasi episode juga
 memiliki trigger integritas; Reels dan media kreator lain tidak dapat dipasang.
@@ -111,11 +120,35 @@ lama yang bukan milik kreator/video tidak disalin menjadi poster publik.
 
 Untuk menggabungkan beberapa video lama menjadi serial: buat judul serial,
 tarik tayangan ke draf, pindahkan melalui **Atur animasi / nomor**, terbitkan
-tayangan, lalu terbitkan serial. Judul film lama yang kosong dapat dihapus.
+tayangan melalui **Publikasikan**; serial ikut diterbitkan jika metadatanya lengkap.
+Judul film lama yang kosong dapat dihapus.
+
+## Pembaruan lintas browser
+
+Daftar publik memakai computed field `video_is_public`, bukan hanya status video.
+Dengan begitu, akses Studio milik kreator tidak membuat katalog pribadinya
+menampilkan tayangan yang sebenarnya belum dapat ditonton akun lain.
+
+Migration 13 menambahkan `public_content_revision`: satu baris berisi nomor revisi
+dan waktu perubahan, dengan SELECT untuk anon/authenticated dan tanpa hak tulis
+client. Trigger menaikkan revisi saat konten publik berubah, termasuk unpublish
+atau penghapusan. Perubahan draf privat tidak menyiarkan revisi publik. Publication
+`supabase_realtime` hanya mendapat tabel revisi ini dari migration tersebut;
+baris video, judul, path, atau identitas kreator tidak disiarkan oleh mekanisme ini.
+
+Client berlangganan perubahan revisi, menggabungkan notifikasi berdekatan, lalu
+membaca ulang data melalui RLS. Polling revisi tiap 30 detik, reconnect, kembali
+ke tab, dan event online membantu pemulihan bila WebSocket terputus. Filter,
+halaman, teks popup yang belum disimpan, dan player aktif dipertahankan ketika
+daftar berubah. Tayangan yang sudah tidak publik dikeluarkan dari player setelah
+verifikasi ulang; signed URL lama tetap mengikuti masa berlaku Storage.
+
+Kontrak mengikuti [computed fields PostgREST](https://docs.postgrest.org/en/latest/references/api/computed_fields.html)
+dan [Postgres Changes Supabase](https://supabase.com/docs/guides/realtime/postgres-changes).
 
 ## Penerapan Supabase
 
-Migration ini **belum diterapkan ke project remote oleh agent**. Workspace tidak
+Migration 13 **belum diterapkan ke project remote oleh agent**. Workspace tidak
 memiliki CLI/link project atau koneksi administrator Supabase yang tersedia
 saat pengerjaan. Pengujian SQL dilakukan pada database PostgreSQL terisolasi.
 
@@ -126,11 +159,16 @@ saat pengerjaan. Pengujian SQL dilakukan pada database PostgreSQL terisolasi.
    Supabase SQL Editor sebagai administrator. File dibungkus transaksi; kegagalan
    harus di-rollback, bukan dilanjutkan sebagian. Jika memakai CLI yang sudah
    terhubung, review migration pending dan target project sebelum menerapkannya.
-3. Deploy client yang cocok setelah schema baru siap. Frontend baru sengaja
+3. Jalankan migration 13 utuh setelah migration 12 berhasil. Untuk instalasi yang
+   sudah memiliki migration 12, jangan jalankan ulang file 12. Verifikasi fungsi
+   `publish_work(uuid)`, `video_is_public(public.videos)`, tabel
+   `public_content_revision`, serta keanggotaan tabel tersebut di publication
+   `supabase_realtime` sebelum menyalakan client baru.
+4. Deploy client yang cocok setelah schema baru siap. Frontend baru sengaja
    tidak kembali ke katalog video datar jika schema baru belum tersedia.
-4. Periksa hasil backfill: jumlah judul film hasil migrasi sesuai video animasi
+5. Periksa hasil backfill: jumlah judul film hasil migrasi sesuai video animasi
    lama; episode dan URL lama masih ada; Reels tidak mendapat relasi episode.
-5. Verifikasi remote dengan akun uji khusus: kreator A dan B, anonymous, media
+6. Verifikasi remote dengan akun uji khusus: kreator A dan B, anonymous, media
    draf/terbit, publish/unpublish judul, genre, upload, pembatalan, dan signed URL.
    Jangan memakai akun pribadi utama atau mengirim password/service key di chat.
 

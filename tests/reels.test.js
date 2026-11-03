@@ -33,6 +33,7 @@ describe("Reels Repository & Feed Pagination", () => {
 
         expect(appliedFilters.status).toBe("published");
         expect(appliedFilters.content_type).toBe("reel");
+        expect(appliedFilters.video_is_public).toBe(true);
         expect(res.data.length).toBe(1);
         expect(res.data[0].contentType).toBe("reel");
 
@@ -60,7 +61,7 @@ describe("Reels Repository & Feed Pagination", () => {
         storageSpy.mockRestore();
     });
 
-    it("gracefully falls back when content_type column is missing (error 42703)", async () => {
+    it("does not widen the public feed if a required schema field is missing", async () => {
         let firstCall = true;
         const fromSpy = vi.spyOn(supabase, "from").mockImplementation(() => {
             if (firstCall) {
@@ -92,9 +93,9 @@ describe("Reels Repository & Feed Pagination", () => {
 
         const res = await reelsRepository.getFeedVideos({ limit: 5 });
 
-        expect(res.error).toBeNull();
-        expect(res.data.length).toBe(1);
-        expect(res.data[0].contentType).toBe("reel");
+        expect(res.error.code).toBe("42703");
+        expect(res.data).toEqual([]);
+        expect(fromSpy).toHaveBeenCalledOnce();
 
         fromSpy.mockRestore();
     });

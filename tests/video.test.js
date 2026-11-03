@@ -4,6 +4,16 @@ import { MAX_VIDEO_BYTES, MAX_THUMBNAIL_BYTES, MAX_AVATAR_BYTES, uploadWithTus, 
 import { supabase } from "../src/lib/supabaseClient";
 
 describe("Video Repository & Dual-Format Security", () => {
+    it("filters public Home and creator lists by effective visibility even for an owner", async () => {
+        const query = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), is: vi.fn().mockReturnThis(), order: vi.fn().mockReturnThis(), range: vi.fn().mockResolvedValue({ data: [], error: null }) };
+        const from = vi.spyOn(supabase, "from").mockReturnValue(query);
+        try {
+            await videoRepository.getPublishedFeed({ contentType: null });
+            expect(query.eq).toHaveBeenCalledWith("video_is_public", true);
+            query.eq.mockClear(); await videoRepository.getCreatorPublishedVideos("owner");
+            expect(query.eq).toHaveBeenCalledWith("video_is_public", true);
+        } finally { from.mockRestore(); }
+    });
     describe("Storage Size Constants", () => {
         it("strictly enforces conservative 50 MB decimal limit for video uploads", () => {
             expect(MAX_VIDEO_BYTES).toBe(50_000_000);
@@ -137,7 +147,7 @@ describe("Video Repository & Dual-Format Security", () => {
     });
 
     describe("publishVideo & unpublishVideo RPC integrity", () => {
-        it("executes publish_video RPC and does NOT fall back to direct status update when RPC errors", async () => {
+        it("executes atomic publish_work RPC and does NOT fall back to direct status update when RPC errors", async () => {
             const rpcSpy = vi.spyOn(supabase, "rpc").mockResolvedValue({
                 data: null,
                 error: { code: "PGRST202", message: "function publish_video does not exist" },
@@ -146,7 +156,7 @@ describe("Video Repository & Dual-Format Security", () => {
 
             const result = await videoRepository.publishVideo("vid-123");
 
-            expect(rpcSpy).toHaveBeenCalledWith("publish_video", { p_video_id: "vid-123" });
+            expect(rpcSpy).toHaveBeenCalledWith("publish_work", { p_video_id: "vid-123" });
             // Crucial: ensure no direct table update fallback was triggered!
             expect(updateSpy).not.toHaveBeenCalled();
             expect(result.error).toBeDefined();

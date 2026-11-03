@@ -5,6 +5,7 @@ import AppNavbar from "../../../components/AppNavbar";
 import Footer from "../../../components/Footer";
 import { profileRepository } from "../profileRepository";
 import { videoRepository } from "../../videos/videoRepository";
+import { useContentUpdates } from "../../../lib/contentSync";
 
 export default function PublicProfilePage() {
     const { username } = useParams();
@@ -12,12 +13,14 @@ export default function PublicProfilePage() {
     const [videos, setVideos] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
+    const [revision, setRevision] = useState(0);
+    useContentUpdates(() => setRevision((value) => value + 1));
 
     useEffect(() => {
         let isMounted = true;
 
         async function fetchCreatorData() {
-            setIsLoading(true);
+            if (!creator) setIsLoading(true);
             setNotFound(false);
 
             try {
@@ -55,7 +58,7 @@ export default function PublicProfilePage() {
         return () => {
             isMounted = false;
         };
-    }, [username]);
+    }, [username, revision]);
 
     const avatarUrl = useStorageImageUrl(creator?.avatar_path);
 

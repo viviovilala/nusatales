@@ -19,6 +19,7 @@ export default function EditVideoPage({ embedded = false, videoId }) {
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [status, setStatus] = useState("draft");
+    const [publiclyAvailable, setPubliclyAvailable] = useState(false);
     const [contentType, setContentType] = useState("animation");
     const [thumbnailPath, setThumbnailPath] = useState(null);
     const [durationSeconds, setDurationSeconds] = useState(null);
@@ -33,17 +34,32 @@ export default function EditVideoPage({ embedded = false, videoId }) {
     // Cached popup forms keep unsaved text, but publication/deletion from Studio
     // must be reflected immediately when the same editor is opened again.
     useEffect(() => {
+        let active = true;
+        let request = 0;
+        async function refreshVisibility() {
+            const version = ++request;
+            const result = await videoRepository.getVideoById(id);
+            if (!active || version !== request || result.error) return;
+            if (!result.data) { setCanEdit(false); setPubliclyAvailable(false); return; }
+            setStatus(result.data.status);
+            setPubliclyAvailable(result.data.publicly_available === true);
+        }
         function sync(event) {
             const change = event.detail;
-            if (!change || change.id !== id) return;
-            if (change.deleted) {
+            if (change?.id === id && change.deleted) {
                 setCanEdit(false);
                 setSuccessMessage("");
                 setErrorMessage("Karya ini sudah dihapus dari Studio.");
-            } else if (change.status) setStatus(change.status);
+            } else {
+                if (change?.id === id && change.status) {
+                    setStatus(change.status);
+                    if (typeof change.publicly_available === "boolean") setPubliclyAvailable(change.publicly_available);
+                }
+                void refreshVisibility().catch(() => {});
+            }
         }
         window.addEventListener("nusatales:videos-changed", sync);
-        return () => window.removeEventListener("nusatales:videos-changed", sync);
+        return () => { active = false; window.removeEventListener("nusatales:videos-changed", sync); };
     }, [id]);
 
     useEffect(() => {
@@ -69,6 +85,7 @@ export default function EditVideoPage({ embedded = false, videoId }) {
                     setTitle(data.title || "");
                     setDescription(data.description || "");
                     setStatus(data.status || "draft");
+                    setPubliclyAvailable(data.publicly_available === true);
                     setContentType(data.content_type || "animation");
                     setThumbnailPath(data.thumbnail_path);
                     setDurationSeconds(data.duration_seconds);
@@ -123,7 +140,7 @@ export default function EditVideoPage({ embedded = false, videoId }) {
         }
     }
 
-    async function handleTogglePublish() {
+    async function handleTogglePublish(forceUnpublish = false) {
         if (savingRef.current || !canEdit) return;
         savingRef.current = true;
         setErrorMessage("");
@@ -131,18 +148,21 @@ export default function EditVideoPage({ embedded = false, videoId }) {
         setIsSaving(true);
 
         try {
-            if (status === "draft") {
+            const publishing = !forceUnpublish && !publiclyAvailable;
+            if (publishing) {
                 const { error } = await videoRepository.publishVideo(id);
                 if (error) throw error;
                 setStatus("published");
+                setPubliclyAvailable(true);
                 setSuccessMessage("Karya berhasil dipublikasikan ke publik!");
             } else {
                 const { error } = await videoRepository.unpublishVideo(id);
                 if (error) throw error;
                 setStatus("draft");
+                setPubliclyAvailable(false);
                 setSuccessMessage("Karya berhasil ditarik kembali ke draf.");
             }
-            window.dispatchEvent(new Event("nusatales:videos-changed"));
+            window.dispatchEvent(new CustomEvent("nusatales:videos-changed", { detail: { id, status: publishing ? "published" : "draft", publicly_available: publishing } }));
         } catch (err) {
             setErrorMessage(normalizeSupabaseError(err, "Gagal mengubah status publikasi."));
         } finally {
@@ -161,10 +181,11 @@ export default function EditVideoPage({ embedded = false, videoId }) {
             {canEdit && <div className="ui-editor-grid">
                 <aside className="ui-media-summary">
                     <div className={`ui-cover-preview ${!isAnim ? "ui-cover-portrait" : ""}`}>{thumbUrl && failedThumbnail !== thumbUrl ? <img src={thumbUrl} alt={title} onError={() => setFailedThumbnail(thumbUrl)} /> : <div className="ui-cover-empty"><Film size={32} strokeWidth={1.5} /><span>Thumbnail belum tersedia</span></div>}{durationSeconds > 0 && <span className="ui-duration">{studioDuration(durationSeconds)}</span>}</div>
-                    <div className="ui-summary-row"><span className="ui-badge">{isAnim ? "Film animasi" : "Reel"}</span><span className={`ui-badge ${status === "published" ? "ui-badge-green" : ""}`}>{status === "published" ? "Dipublikasikan" : "Draf"}</span></div>
-                    <p className="ui-hint">{status === "published" ? "Karyamu bisa ditonton semua orang." : "Karya ini hanya dapat dilihat olehmu."}</p>
-                    <Button variant="outline" busy={isSaving} onClick={handleTogglePublish}>{status === "published" ? "Tarik ke Draf" : "Publikasikan Karya"}</Button>
-                    {status === "published" && <Link to={publicUrl} className="ui-text-link ui-preview-link">Lihat karya <ArrowUpRight size={14} /></Link>}
+                    <div className="ui-summary-row"><span className="ui-badge">{isAnim ? "Tayangan animasi" : "Reel"}</span><span className={`ui-badge ${publiclyAvailable ? "ui-badge-green" : ""}`}>{publiclyAvailable ? "Dipublikasikan" : status === "published" ? "Belum publik" : "Draf"}</span></div>
+                    <p className="ui-hint">{publiclyAvailable ? "Karyamu bisa ditonton semua orang." : isAnim ? "Tayangan belum terlihat oleh penonton. Publikasi akan menerbitkan animasi beserta tayangannya setelah sinopsis, poster, dan genre lengkap." : "Karya ini hanya dapat dilihat olehmu."}</p>
+                    <Button variant="outline" busy={isSaving} onClick={() => handleTogglePublish()}>{publiclyAvailable ? "Tarik ke Draf" : status === "published" && isAnim ? "Terbitkan animasi & tayangan" : "Publikasikan Karya"}</Button>
+                    {status === "published" && !publiclyAvailable && <Button variant="ghost" disabled={isSaving} onClick={() => handleTogglePublish(true)}>Tarik ke Draf</Button>}
+                    {publiclyAvailable && <Link to={publicUrl} className="ui-text-link ui-preview-link">Lihat karya <ArrowUpRight size={14} /></Link>}
                 </aside>
                 <form onSubmit={handleSave} className="ui-form">
                     <Field id={`${formId}-title`} label="Judul karya" required trailing={<span className="ui-counter">{title.length}/120</span>}>

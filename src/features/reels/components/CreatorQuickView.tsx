@@ -8,6 +8,7 @@ import { Button, Notice } from "../../../components/ui/form";
 import ReelsDialog from "./ReelsDialog";
 import ReelAvatar from "./ReelAvatar";
 import type { ReelCreator } from "../reelTypes";
+import { useContentUpdates } from "../../../lib/contentSync";
 
 type PublicWork = { id: string; title: string; content_type: string; thumbnail_path: string | null };
 export default function CreatorQuickView({ creator, open, onClose, onReel }: {
@@ -18,6 +19,7 @@ export default function CreatorQuickView({ creator, open, onClose, onReel }: {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [revision, setRevision] = useState(0);
+    useContentUpdates(() => { if (open) setRevision((value) => value + 1); });
     useEffect(() => {
         if (!open || !creator) return;
         let current = true;

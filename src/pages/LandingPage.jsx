@@ -11,6 +11,7 @@ import Reveal, { useReveal } from "../components/Reveal";
 import { videoRepository } from "../features/videos/videoRepository";
 import { videoHref } from "../lib/videoLinks";
 import { useAuth } from "../features/auth/AuthProvider";
+import { useContentUpdates } from "../lib/contentSync";
 
 // Editorial artwork introduces the cultural collection. Playback links below
 // always use actual published records rather than inventing video IDs/counts.
@@ -64,6 +65,7 @@ export default function LandingPage() {
     const [filter, setFilter] = useState("all");
     const [loadState, setLoadState] = useState("loading");
     const [retry, setRetry] = useState(0);
+    useContentUpdates(() => setRetry((value) => value + 1));
 
     useEffect(() => {
         if (reducedMotion || !autoPlay || hovered || focused) return;
@@ -72,7 +74,7 @@ export default function LandingPage() {
     }, [reducedMotion, autoPlay, hovered, focused]);
     useEffect(() => {
         let current = true;
-        setLoadState("loading");
+        if (!videos.length) setLoadState("loading");
         videoRepository.getPublishedFeed({ limit: 18, contentType: null }).then(({ data, error }) => {
             if (!current) return;
             if (error) { setLoadState("error"); return; }

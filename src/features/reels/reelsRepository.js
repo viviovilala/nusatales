@@ -30,60 +30,15 @@ export const reelsRepository = {
             `)
             .eq("status", "published")
             .eq("content_type", "reel")
+            .eq("video_is_public", true)
             .is("deleted_at", null)
             .order("published_at", { ascending: false })
             .order("id", { ascending: false })
             .range(offset, offset + limit - 1);
 
-        if (error) {
-            // Graceful compatibility fallback if migration 7 has not yet been applied on remote database
-            if (error.code === "42703") {
-                const fallbackQuery = await supabase
-                    .from("videos")
-                    .select(`
-                        id,
-                        title,
-                        description,
-                        storage_path,
-                        thumbnail_path,
-                        duration_seconds,
-                        status,
-                        published_at,
-                        creator:profiles!videos_creator_id_fkey (
-                            id,
-                            username,
-                            display_name,
-                            avatar_path
-                        )
-                    `)
-                    .eq("status", "published")
-                    .is("deleted_at", null)
-                    .order("published_at", { ascending: false })
-                    .order("id", { ascending: false })
-                    .range(offset, offset + limit - 1);
-
-                if (fallbackQuery.error) return { data: [], error: fallbackQuery.error };
-
-                const normalizedFallback = (fallbackQuery.data || []).map((v) => ({
-                    id: v.id,
-                    title: v.title,
-                    description: v.description,
-                    storagePath: v.storage_path,
-                    thumbnailPath: v.thumbnail_path,
-                    durationSeconds: v.duration_seconds,
-                    contentType: "reel",
-                    publishedAt: v.published_at,
-                    creator: {
-                        id: v.creator?.id,
-                        username: v.creator?.username,
-                        displayName: v.creator?.display_name || "Kreator NusaTales",
-                        avatarPath: v.creator?.avatar_path,
-                    },
-                }));
-                return { data: normalizedFallback, error: null };
-            }
-            return { data: [], error };
-        }
+        // Public feeds require the current publication schema; never widen a
+        // failed query to owner-readable drafts or animation media.
+        if (error) return { data: [], error };
 
         const normalized = (data || []).map((v) => ({
             id: v.id,
@@ -129,6 +84,7 @@ export const reelsRepository = {
             `)
             .eq("id", videoId)
             .eq("status", "published")
+            .eq("video_is_public", true)
             .is("deleted_at", null)
             .maybeSingle();
 
