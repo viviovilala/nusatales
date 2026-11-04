@@ -5,6 +5,7 @@ import React, { useState, useId } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 import { authRepository } from "../authRepository";
+import GoogleSignInButton from "../components/GoogleSignInButton";
 import { normalizeSupabaseError } from "../../../lib/errors";
 
 export default function LoginPage({ embedded = false, onAuthenticated }) {
@@ -52,7 +53,9 @@ export default function LoginPage({ embedded = false, onAuthenticated }) {
 
     return <ActionFormLayout embedded={embedded} title="Masuk" description="Selamat datang kembali. Cerita berikutnya menunggumu.">
         <form onSubmit={handleSubmit} className="ui-form">
-            <Notice>{errorMessage}</Notice>
+            <Notice>{errorMessage || location.state?.oauthError}</Notice>
+            <GoogleSignInButton disabled={isPending} onError={setErrorMessage} />
+            <p className="ui-hint" style={{ textAlign: "center" }}>atau masuk dengan email dan kata sandi</p>
             <Field id={`${formId}-email`} label="Email" required>
                 <Input id={`${formId}-email`} type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nama@email.com" disabled={isPending} />
             </Field>

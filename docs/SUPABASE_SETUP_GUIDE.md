@@ -92,3 +92,48 @@ Jalankan script migrasi ini secara berurutan di **Supabase Dashboard $\rightarro
   * Unggah karya (`/studio/upload`) menggunakan protokol **TUS Resumable** murni dengan progress riil (`bytesUploaded / bytesTotal`), tombol batalkan unggahan, dan pembersihan berkas terputus.
   * Pemilihan format eksplisit: Film Animasi (16:9) vs Reels (9:16).
   * Dashboard Studio (`/studio`) dengan filter format, aksi tarik ke draf, edit metadata, dan soft delete.
+
+---
+
+## Google Login tanpa SMTP (setup manual dashboard)
+
+Google OAuth tetap menggunakan **Supabase Auth**, tetapi proses masuk lewat
+Google **tidak menggunakan email konfirmasi dari SMTP bawaan Supabase**.
+Login email/password lama tidak dihapus. Reset password dan verifikasi email
+tetap membutuhkan pengirim email jika fitur tersebut digunakan.
+
+1. Buka **Supabase Dashboard → Authentication → Sign In / Providers → Google**.
+   Catat **Callback URL** proyek yang tampil di sana, misalnya
+   `https://<PROJECT_REF>.supabase.co/auth/v1/callback`.
+2. Buka **Google Auth Platform** di Google Cloud Console. Buat proyek atau pakai
+   proyek yang sudah ada, konfigurasi OAuth consent screen, lalu buat OAuth
+   Client ID bertipe **Web application**.
+3. **Authorized JavaScript origins** (tanpa slash terakhir):
+   - `https://nusatales.islab.web.id`
+   - `https://nusatales-two.vercel.app` jika Vercel masih dipakai
+   - `http://localhost:5173` jika perlu pengujian lokal
+4. **Authorized redirect URIs** di Google: gunakan **persis** Callback URL
+   dari Supabase di langkah 1, **bukan** URL website NusaTales.
+5. Simpan **Client ID** dan **Client Secret** Google hanya di pengaturan
+   **Supabase Google Provider**, kemudian aktifkan Google Provider.
+   **Jangan** taruh Client Secret di file Vite/`VITE_*` atau GitHub.
+6. **Supabase → Authentication → URL Configuration**:
+   - Site URL: `https://nusatales.islab.web.id` (jika itu domain utama)
+   - Additional Redirect URLs (exact):
+     - `https://nusatales.islab.web.id/auth/callback`
+     - `https://nusatales-two.vercel.app/auth/callback` jika digunakan
+     - `http://localhost:5173/auth/callback` untuk pengujian lokal
+7. Deploy frontend dari branch yang sudah lolos tes, kemudian uji login Google
+   dan pembuatan profil dengan akun uji. Jangan gunakan secret produksi di chat.
+
+Kode frontend menggunakan `supabase.auth.signInWithOAuth({ provider: "google",
+options: { redirectTo: window.location.origin + "/auth/callback" } })`.
+Route `/auth/callback` sudah tersedia; callback menyelesaikan session dan
+mengalihkan pengguna ke Studio. Jika consent dibatalkan, pengguna kembali ke
+login dengan pesan gagal. Untuk OAuth consent screen berstatus Testing di
+Google, tambahkan akun uji yang diizinkan atau publikasikan aplikasi sesuai
+kebijakan Google sebelum menguji pengguna umum.
+
+Dokumentasi resmi:
+- https://supabase.com/docs/guides/auth/social-sign-in/auth-google
+- https://supabase.com/docs/guides/auth/redirect-urls

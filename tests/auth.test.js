@@ -37,6 +37,41 @@ describe("Auth Repository & Session Handling", () => {
         signInSpy.mockRestore();
     });
 
+    it("Google OAuth redirects only to the current site's callback", async () => {
+        vi.stubGlobal("window", { location: { origin: "https://nusatales.islab.web.id" } });
+        const oauthSpy = vi.spyOn(supabase.auth, "signInWithOAuth").mockResolvedValue({
+            data: { provider: "google", url: "https://accounts.google.com/example" },
+            error: null,
+        });
+        try {
+            const result = await authRepository.signInWithGoogle();
+            expect(result.error).toBeNull();
+            expect(oauthSpy).toHaveBeenCalledExactlyOnceWith({
+                provider: "google",
+                options: { redirectTo: "https://nusatales.islab.web.id/auth/callback" },
+            });
+        } finally {
+            oauthSpy.mockRestore();
+            vi.unstubAllGlobals();
+        }
+    });
+
+    it("surfaces a provider setup error instead of silently succeeding", async () => {
+        vi.stubGlobal("window", { location: { origin: "https://nusatales-two.vercel.app" } });
+        const oauthSpy = vi.spyOn(supabase.auth, "signInWithOAuth").mockResolvedValue({
+            data: { provider: "google", url: null },
+            error: { message: "Unsupported provider: google" },
+        });
+        try {
+            const result = await authRepository.signInWithGoogle();
+            expect(result.error?.message).toContain("Unsupported provider");
+            expect(oauthSpy).toHaveBeenCalledOnce();
+        } finally {
+            oauthSpy.mockRestore();
+            vi.unstubAllGlobals();
+        }
+    });
+
     it("signOut clears session cleanly via Supabase auth client", async () => {
         const signOutSpy = vi.spyOn(supabase.auth, "signOut").mockResolvedValue({
             error: null,

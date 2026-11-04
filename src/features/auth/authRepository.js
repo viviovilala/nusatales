@@ -21,6 +21,21 @@ export const authRepository = {
         return await supabase.auth.signInWithPassword({ email, password });
     },
 
+    async signInWithGoogle() {
+        if (!isSupabaseConfigured) {
+            return { data: null, error: { message: "Supabase belum dikonfigurasi." } };
+        }
+        if (typeof window === "undefined" || !window.location?.origin) {
+            return { data: null, error: { message: "Login Google hanya tersedia di browser." } };
+        }
+        // Only the current site's callback can receive the OAuth response.
+        // Google Client ID/Secret are configured in Supabase, never shipped to Vite.
+        return await supabase.auth.signInWithOAuth({
+            provider: "google",
+            options: { redirectTo: `${window.location.origin}/auth/callback` },
+        });
+    },
+
     async signUp({ email, password, displayName }) {
         if (!isSupabaseConfigured) {
             return {

@@ -14,6 +14,16 @@ export default function AuthCallbackPage() {
 
         async function handleCallback() {
             try {
+                // OAuth denials return to the callback URL without a session.
+                // Do not display raw provider details or leave the user stuck.
+                const search = new URLSearchParams(window.location.search);
+                const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+                if (search.has("error") || fragment.has("error")) {
+                    navigate("/login", { replace: true, state: {
+                        oauthError: "Login Google tidak berhasil atau dibatalkan. Silakan coba lagi.",
+                    } });
+                    return;
+                }
                 const { data, error } = await supabase.auth.getSession();
                 if (error) throw error;
 

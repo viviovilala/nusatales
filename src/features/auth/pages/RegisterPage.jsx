@@ -5,6 +5,7 @@ import React, { useState, useId } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { authRepository } from "../authRepository";
+import GoogleSignInButton from "../components/GoogleSignInButton";
 import { normalizeSupabaseError } from "../../../lib/errors";
 
 export default function RegisterPage({ embedded = false, onAuthenticated }) {
@@ -72,6 +73,8 @@ export default function RegisterPage({ embedded = false, onAuthenticated }) {
     return <ActionFormLayout embedded={embedded} title="Daftar akun" description="Satu akun untuk menikmati cerita dan membagikan karyamu.">
         <form onSubmit={handleSubmit} className="ui-form">
             <Notice>{errorMessage}</Notice><Notice tone="success">{successMessage}</Notice>
+            <GoogleSignInButton disabled={isPending} onError={setErrorMessage} />
+            <p className="ui-hint" style={{ textAlign: "center" }}>atau daftar dengan email dan kata sandi</p>
             <Field id={`${formId}-name`} label="Nama lengkap / studio" required>
                 <Input id={`${formId}-name`} required autoComplete="name" maxLength={60} value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Contoh: Roro Studio" disabled={isPending} />
             </Field>
